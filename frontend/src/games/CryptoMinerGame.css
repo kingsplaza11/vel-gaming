@@ -1,0 +1,142 @@
+.miner-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+  padding: 1rem;
+}
+
+.miner-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.crypto-selection h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.crypto-buttons {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.crypto-btn {
+  border: 3px solid;
+  border-radius: 10px;
+  padding: 1rem;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.crypto-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+}
+
+.crypto-btn.active {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px currentColor;
+}
+
+.mine-button {
+  width: 100%;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mine-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 20px rgba(255, 255, 255, 0.3);
+}
+
+.mine-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mining-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mining-rig {
+  background: rgba(0, 0, 0, 0.7);
+  border: 4px solid #d4af37;
+  border-radius: 20px;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.mining-animation {
+  text-align: center;
+  color: #ffd700;
+}
+
+.mining-icon {
+  font-size: 4rem;
+  animation: miningDig 2s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes miningDig {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(10deg); }
+}
+
+.mining-ready {
+  text-align: center;
+  color: #ffd700;
+}
+
+.rig-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.mining-results {
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.results-grid {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 2rem 0;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 1px solid #d4af37;
+}

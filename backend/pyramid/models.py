@@ -1,0 +1,24 @@
+from django.db import models
+from django.conf import settings
+
+class PyramidExploration(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    bet_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    chambers_explored = models.JSONField()
+    traps_encountered = models.IntegerField(default=0)
+    artifacts_found = models.JSONField()
+    win_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class PyramidStats(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    total_expeditions = models.IntegerField(default=0)
+    total_won = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_bet = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    traps_survived = models.IntegerField(default=0)
+    total_artifacts = models.IntegerField(default=0)
+    highest_multiplier = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    chambers_explored_total = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return f"{self.user.username}'s Pyramid Stats"

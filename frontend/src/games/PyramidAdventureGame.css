@@ -1,0 +1,290 @@
+.pyramid-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+  padding: 1rem;
+}
+
+.pyramid-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.adventure-info h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.info-card {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #d4af37;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.explore-button {
+  width: 100%;
+  background: linear-gradient(45deg, #FF9800, #FF5722);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.explore-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+}
+
+.explore-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pyramid-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pyramid-entrance {
+  background: rgba(139, 69, 19, 0.8);
+  border: 4px solid #d4af37;
+  border-radius: 20px;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.exploring-animation {
+  text-align: center;
+  color: #ffd700;
+}
+
+.torch {
+  font-size: 3rem;
+  animation: torchFlicker 1.5s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes torchFlicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.explorer {
+  font-size: 2rem;
+  animation: exploreMove 2s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes exploreMove {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(20px); }
+}
+
+.pyramid-ready {
+  text-align: center;
+  color: #ffd700;
+  padding: 2rem;
+}
+
+.pyramid-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.warning-text {
+  color: #ff6b6b;
+  font-weight: bold;
+  margin-top: 1rem;
+  font-size: 1.1rem;
+}
+
+.exploration-results {
+  width: 100%;
+  height: 100%;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.chambers-explored {
+  margin-bottom: 1.5rem;
+}
+
+.chambers-explored h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.chambers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.chamber-item {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.chamber-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.chamber-name {
+  color: #ffd700;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.danger-level {
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.traps-encountered {
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff4444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.traps-count {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.artifacts-found {
+  margin-bottom: 1.5rem;
+}
+
+.artifacts-found h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.artifacts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.75rem;
+}
+
+.artifact-item {
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid #d4af37;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.artifact-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.artifact-name {
+  color: #ffd700;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.artifact-value {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.expedition-summary {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #d4af37;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.stats-panel, .history-panel {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.history-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.chambers, .traps, .artifacts {
+  font-weight: bold;
+}
+
+.win-amount {
+  color: #00ff00;
+  font-weight: bold;
+}

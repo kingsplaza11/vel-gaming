@@ -1,0 +1,1219 @@
+/* src/components/TreasureHuntGame.css - MOBILE FIRST, FULLY RESPONSIVE */
+
+/* ===== CSS RESET & BASE ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.treasure-hunt-game {
+  min-height: 100vh;
+  background: 
+    radial-gradient(circle at 50% 0%, #0a0e1a 0%, #050813 45%, #000 100%),
+    repeating-linear-gradient(0deg, transparent 0px, rgba(0, 40, 255, 0.03) 1px, transparent 2px);
+  color: #f9fafb;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  position: relative;
+  overflow-x: hidden;
+  padding: 12px;
+}
+
+/* CRT scanlines effect */
+.treasure-hunt-game::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 3px 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.7;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.treasure-hunt-game::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.15;
+}
+
+/* ===== HEADER ===== */
+.treasure-game-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: linear-gradient(90deg, 
+    rgba(30, 0, 60, 0.9) 0%,
+    rgba(0, 20, 60, 0.9) 50%,
+    rgba(30, 0, 60, 0.9) 100%);
+  border-radius: 16px;
+  border: 3px solid #ffd700;
+  box-shadow: 
+    0 0 20px rgba(255, 215, 0, 0.4),
+    inset 0 0 20px rgba(0, 100, 255, 0.3);
+  position: relative;
+}
+
+.back-button {
+  align-self: flex-start;
+  border: none;
+  background: linear-gradient(135deg, #8b0000, #ff4500);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-family: 'Press Start 2P', monospace;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 0 #8b0000;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  min-height: 44px; /* Touch target size */
+}
+
+.back-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #8b0000;
+}
+
+.game-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.game-title-icon {
+  font-size: 40px;
+  filter: 
+    drop-shadow(0 0 10px #ffd700)
+    drop-shadow(0 0 20px #ff4500);
+  animation: compassSpin 10s linear infinite;
+}
+
+@keyframes compassSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.game-title-text h1 {
+  font-size: 18px;
+  margin: 0;
+  background: linear-gradient(45deg, #ffd700, #ff8c00, #ff4500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  font-family: 'Bungee', 'Press Start 2P', cursive;
+  line-height: 1.3;
+}
+
+.game-title-text p {
+  margin: 8px 0 0;
+  font-size: 10px;
+  color: #00ffff;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  line-height: 1.4;
+  max-width: 280px;
+  margin: 8px auto 0;
+}
+
+.balance-pill {
+  align-self: center;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00008b, #191970);
+  border: 3px solid #ffd700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 280px;
+  box-shadow: 
+    0 0 15px rgba(0, 0, 255, 0.4),
+    inset 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.balance-label {
+  font-size: 10px;
+  color: #87ceeb;
+  text-shadow: 0 0 4px rgba(135, 206, 235, 0.5);
+}
+
+.balance-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 
+    0 0 8px #ffd700,
+    0 0 15px #ff4500;
+}
+
+/* ===== MAIN LAYOUT ===== */
+.treasure-game-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ===== MAP SELECTION ===== */
+.map-selection-panel {
+  width: 100%;
+}
+
+.panel-card {
+  background: linear-gradient(145deg, 
+    rgba(10, 10, 40, 0.95) 0%,
+    rgba(20, 20, 60, 0.95) 50%,
+    rgba(10, 10, 40, 0.95) 100%);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.8),
+    inset 0 0 20px rgba(0, 0, 0, 0.5),
+    0 0 0 2px #ffd700;
+  border: 3px solid #4b0082;
+  position: relative;
+}
+
+.panel-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    #ff0000, #ffd700, #00ff00, #00ffff, #0000ff, #ff00ff);
+  z-index: 1;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  font-family: 'Bungee', 'Press Start 2P', cursive;
+  text-align: center;
+}
+
+.map-level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.map-level-card {
+  text-align: left;
+  border-radius: 12px;
+  padding: 16px;
+  background: linear-gradient(145deg, 
+    rgba(30, 30, 80, 0.9) 0%,
+    rgba(15, 15, 45, 0.9) 100%);
+  border: 2px solid;
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px; /* Touch target */
+}
+
+.map-level-card.active {
+  border-color: #ff4500;
+  box-shadow: 
+    0 0 20px rgba(255, 69, 0, 0.6),
+    inset 0 0 15px rgba(255, 215, 0, 0.2);
+  background: linear-gradient(145deg, 
+    rgba(139, 0, 0, 0.2) 0%,
+    rgba(30, 30, 80, 0.9) 100%);
+}
+
+.map-level-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.map-level-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.map-level-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+}
+
+.map-level-risk {
+  font-size: 10px;
+  color: #87ceeb;
+  margin-top: 4px;
+}
+
+.map-level-risk strong {
+  color: #ff4500;
+  text-shadow: 0 0 4px rgba(255, 69, 0, 0.5);
+}
+
+.map-level-description {
+  margin: 8px 0;
+  font-size: 10px;
+  color: #b0e0e6;
+  line-height: 1.4;
+}
+
+.map-level-footer {
+  font-size: 10px;
+  color: #ffd700;
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ===== GAME SCREEN SECTION ===== */
+.game-screen-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Game Screen */
+.map-screen {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+  border: 4px solid #333;
+  box-shadow: 
+    inset 0 0 30px rgba(0, 0, 0, 0.9),
+    0 20px 40px rgba(0, 0, 0, 0.8),
+    0 0 0 3px #666,
+    0 0 0 6px #ffd700;
+  min-height: 250px;
+  width: 100%;
+  aspect-ratio: 16/9;
+}
+
+/* Game elements - simplified for mobile */
+.sky-gradient {
+  position: absolute;
+  inset: 0 0 60% 0;
+  background: linear-gradient(to bottom, #0f172a 0%, #1e3c72 100%);
+}
+
+.sea {
+  position: absolute;
+  inset: 40% -20% 0 -20%;
+  background: linear-gradient(to bottom, #0c2461 0%, #0a1931 100%);
+}
+
+.wave {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  height: 60px;
+  border-radius: 100%;
+  opacity: 0.4;
+  background: radial-gradient(circle at center, rgba(0, 191, 255, 0.8), transparent 70%);
+}
+
+.boat {
+  position: absolute;
+  bottom: 18%;
+  left: 12%;
+  width: 60px;
+  height: 50px;
+  transform-origin: center;
+}
+
+.map-screen--sailing .boat {
+  animation: boatSail 7s linear infinite;
+}
+
+.island {
+  position: absolute;
+  bottom: 18%;
+  right: 12%;
+  width: 100px;
+  height: 60px;
+}
+
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+  background: radial-gradient(circle at center, 
+    transparent 0%,
+    rgba(0, 0, 0, 0.5) 100%);
+}
+
+.overlay-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+  margin-bottom: 8px;
+}
+
+.overlay-subtitle {
+  font-size: 10px;
+  color: #87ceeb;
+  max-width: 280px;
+  line-height: 1.4;
+}
+
+/* ===== STAKE CONTROLS ===== */
+.stake-controls-panel {
+  width: 100%;
+}
+
+.stake-controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Stake Input Section */
+.stake-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stake-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stake-label {
+  font-size: 12px;
+  color: #87ceeb;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.stake-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 30, 0.8);
+  border-radius: 16px;
+  padding: 16px;
+  border: 3px solid #00ffff;
+  box-shadow: 
+    inset 0 0 15px rgba(0, 0, 0, 0.6),
+    0 0 15px rgba(0, 255, 255, 0.4);
+}
+
+.stake-currency {
+  font-size: 20px;
+  color: #ffd700;
+  margin-right: 12px;
+  font-weight: 700;
+  min-width: 24px;
+}
+
+.stake-input-wrapper input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  min-width: 0;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+.stake-input-wrapper input::-webkit-inner-spin-button,
+.stake-input-wrapper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Quick Bet Section */
+.quick-bet-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-bet-label {
+  font-size: 11px;
+  color: #87ceeb;
+  text-align: center;
+}
+
+.quick-bet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.quick-bet-chip {
+  border-radius: 12px;
+  border: 2px solid #00ffff;
+  background: linear-gradient(135deg, #0066cc, #0044aa);
+  color: #fff;
+  font-size: 14px;
+  font-family: 'Press Start 2P', monospace;
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 0 #003388;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-bet-chip.selected {
+  background: linear-gradient(135deg, #ff8c00, #ff4500);
+  border-color: #ffd700;
+  box-shadow: 0 3px 0 #8b0000;
+}
+
+.quick-bet-chip:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #003388;
+}
+
+.quick-bet-chip.selected:active {
+  box-shadow: 0 1px 0 #8b0000;
+}
+
+/* Stake Summary Section */
+.stake-summary-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cost-summary {
+  border-radius: 16px;
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 30, 0.9),
+    rgba(0, 20, 60, 0.9));
+  padding: 20px;
+  border: 2px solid #ff4500;
+  box-shadow: 
+    inset 0 0 15px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(255, 69, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cost-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cost-item:last-child {
+  border-bottom: none;
+}
+
+.cost-label {
+  font-size: 11px;
+  color: #87ceeb;
+}
+
+.cost-value {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.cost-value.highlight {
+  color: #ffd700;
+  font-size: 14px;
+}
+
+.cost-item.total-cost {
+  background: rgba(255, 69, 0, 0.1);
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 4px;
+}
+
+.cost-value.total {
+  font-size: 18px;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+/* Hunt Button */
+.hunt-button {
+  width: 100%;
+  border: none;
+  border-radius: 16px;
+  padding: 20px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, 
+    #ff4500 0%,
+    #ff8c00 25%,
+    #ffd700 50%,
+    #ff8c00 75%,
+    #ff4500 100%);
+  color: #000;
+  cursor: pointer;
+  font-family: 'Bungee', 'Press Start 2P', cursive;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 6px 0 #8b0000;
+  transition: all 0.2s ease;
+  position: relative;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hunt-button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 #8b0000;
+}
+
+.hunt-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  background: linear-gradient(135deg, #666, #888);
+  color: #aaa;
+}
+
+.hunt-button-icon {
+  font-size: 20px;
+}
+
+.hunt-button-text {
+  flex: 1;
+  text-align: center;
+}
+
+.hunt-button-badge {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  border: 2px solid #000;
+}
+
+/* Balance Reminder */
+.balance-reminder {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 60, 0.9),
+    rgba(0, 20, 80, 0.9));
+  border-radius: 12px;
+  border: 2px solid #00ffff;
+}
+
+.balance-reminder .balance-label {
+  font-size: 11px;
+  color: #87ceeb;
+}
+
+.balance-reminder .balance-amount {
+  font-size: 16px;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+/* Error Banner */
+.error-banner {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: linear-gradient(135deg, 
+    rgba(139, 0, 0, 0.9),
+    rgba(178, 34, 34, 0.9));
+  color: #fff;
+  border: 2px solid #ff0000;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* ===== RESULTS PANEL ===== */
+.results-panel {
+  width: 100%;
+}
+
+.results-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.results-header h2 {
+  font-size: 14px;
+  color: #ffd700;
+  margin: 0;
+}
+
+.results-tag {
+  font-size: 11px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 2px solid #ffd700;
+  color: #ffd700;
+  background: rgba(255, 69, 0, 0.3);
+}
+
+.treasures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.treasure-card {
+  background: linear-gradient(145deg, 
+    rgba(30, 30, 80, 0.9) 0%,
+    rgba(15, 15, 45, 0.9) 100%);
+  border-radius: 12px;
+  padding: 16px;
+  border: 2px solid #ffd700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.treasure-icon {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+
+.treasure-name {
+  font-size: 10px;
+  color: #fff;
+  line-height: 1.3;
+}
+
+.treasure-multiplier {
+  font-size: 14px;
+  color: #00ff00;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid #00ff00;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.hunt-summary {
+  margin: 20px 0;
+  padding: 16px;
+  background: rgba(0, 0, 30, 0.5);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-value {
+  font-size: 14px;
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.summary-value.win {
+  color: #00ff00;
+  font-size: 16px;
+}
+
+.summary-note {
+  font-size: 10px;
+  color: #87ceeb;
+  line-height: 1.4;
+  padding: 12px;
+  background: rgba(0, 0, 30, 0.3);
+  border-radius: 10px;
+  border-left: 3px solid #00ffff;
+  margin-top: 16px;
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Small tablets and large phones (≥ 480px) */
+@media (min-width: 480px) {
+  .treasure-hunt-game {
+    padding: 16px;
+  }
+  
+  .game-title-text h1 {
+    font-size: 20px;
+  }
+  
+  .game-title-text p {
+    font-size: 11px;
+    max-width: 320px;
+  }
+  
+  .balance-pill {
+    max-width: 320px;
+  }
+  
+  .map-level-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  
+  .treasures-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Tablets (≥ 640px) */
+@media (min-width: 640px) {
+  .treasure-game-header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .back-button {
+    order: 1;
+    align-self: center;
+  }
+  
+  .game-title {
+    order: 2;
+    flex: 1;
+    text-align: center;
+    flex-direction: row;
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .game-title-text {
+    text-align: left;
+  }
+  
+  .balance-pill {
+    order: 3;
+    max-width: 200px;
+    align-self: center;
+  }
+  
+  .stake-controls-grid {
+    flex-direction: row;
+    gap: 24px;
+  }
+  
+  .stake-input-section {
+    flex: 1;
+  }
+  
+  .stake-summary-section {
+    flex: 1;
+    max-width: 300px;
+  }
+  
+  .treasures-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Large tablets (≥ 768px) */
+@media (min-width: 768px) {
+  .treasure-game-layout {
+    flex-direction: row;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  
+  .map-selection-panel {
+    width: 280px;
+    position: sticky;
+    top: 20px;
+    flex-shrink: 0;
+  }
+  
+  .game-screen-section {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .map-screen {
+    min-height: 300px;
+  }
+  
+  .quick-bet-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .hunt-button {
+    font-size: 18px;
+    padding: 24px 16px;
+  }
+}
+
+/* Desktop (≥ 1024px) */
+@media (min-width: 1024px) {
+  .treasure-hunt-game {
+    padding: 24px;
+  }
+  
+  .treasure-game-header {
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .game-title-text h1 {
+    font-size: 24px;
+  }
+  
+  .game-title-text p {
+    font-size: 12px;
+  }
+  
+  .map-selection-panel {
+    width: 320px;
+  }
+  
+  .map-screen {
+    min-height: 350px;
+  }
+  
+  .stake-controls-grid {
+    gap: 32px;
+  }
+  
+  .stake-input-wrapper input {
+    font-size: 28px;
+  }
+  
+  .quick-bet-chip {
+    font-size: 16px;
+    padding: 16px 8px;
+  }
+  
+  .hunt-button {
+    font-size: 20px;
+    padding: 28px 16px;
+  }
+}
+
+/* Large desktop (≥ 1280px) */
+@media (min-width: 1280px) {
+  .treasure-game-layout {
+    gap: 32px;
+  }
+  
+  .map-selection-panel {
+    width: 350px;
+  }
+  
+  .map-screen {
+    min-height: 400px;
+  }
+  
+  .panel-card {
+    padding: 24px;
+  }
+  
+  .stake-controls-grid {
+    gap: 40px;
+  }
+}
+
+/* Extra large screens (≥ 1536px) */
+@media (min-width: 1536px) {
+  .treasure-hunt-game {
+    padding: 32px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  
+  .treasure-game-header {
+    padding: 24px;
+    margin-bottom: 40px;
+  }
+  
+  .game-title-icon {
+    font-size: 48px;
+  }
+  
+  .game-title-text h1 {
+    font-size: 28px;
+  }
+  
+  .map-selection-panel {
+    width: 380px;
+  }
+  
+  .map-screen {
+    min-height: 450px;
+  }
+}
+
+/* ===== TOUCH DEVICE OPTIMIZATIONS ===== */
+@media (hover: none) and (pointer: coarse) {
+  .map-level-card,
+  .quick-bet-chip,
+  .back-button,
+  .hunt-button {
+    min-height: 48px;
+  }
+  
+  .stake-input-wrapper input {
+    font-size: 28px;
+  }
+  
+  /* Increase tap targets */
+  .quick-bet-chip {
+    padding: 16px;
+  }
+  
+  .hunt-button {
+    padding: 24px;
+  }
+}
+
+/* ===== LANDSCAPE MODE ===== */
+@media (max-height: 600px) and (orientation: landscape) {
+  .treasure-hunt-game {
+    padding: 12px;
+  }
+  
+  .treasure-game-layout {
+    flex-direction: row;
+    gap: 16px;
+  }
+  
+  .map-selection-panel {
+    width: 250px;
+    position: static;
+  }
+  
+  .map-screen {
+    aspect-ratio: 21/9;
+    min-height: 200px;
+  }
+  
+  .stake-controls-grid {
+    flex-direction: row;
+  }
+  
+  .quick-bet-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .treasures-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .game-title-icon,
+  .boat {
+    animation: none !important;
+  }
+}
+
+/* ===== DARK MODE CONSISTENCY ===== */
+@media (prefers-color-scheme: dark) {
+  .panel-card {
+    border-color: #555;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .treasure-hunt-game {
+    background: white !important;
+    color: black !important;
+    padding: 0;
+  }
+  
+  .map-screen,
+  .panel-card {
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+  }
+  
+  .hunt-button,
+  .quick-bet-chip,
+  .back-button {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Import arcade fonts */
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Press+Start+2P&display=swap');
+
+/* Arcade button press effect */
+.map-level-card:active,
+.quick-bet-chip:active {
+  transform: translateY(2px);
+}
+
+/* Glowing effects for active states */
+@keyframes activeGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 69, 0, 0.6); }
+  50% { box-shadow: 0 0 25px rgba(255, 69, 0, 0.9); }
+}
+
+.map-level-card.active {
+  animation: activeGlow 2s infinite;
+}
+
+/* Input focus states */
+.stake-input-wrapper:focus-within {
+  animation: inputGlow 1s infinite alternate;
+}
+
+@keyframes inputGlow {
+  0% { box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); }
+  100% { box-shadow: 0 0 25px rgba(0, 255, 255, 0.8); }
+}
+
+/* Game animations */
+@keyframes boatSail {
+  0% { left: 12%; transform: translateY(0) rotate(0deg); }
+  50% { left: 50%; transform: translateY(-8px) rotate(-3deg); }
+  100% { left: 88%; transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes sonarPing {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Utility classes for spacing */
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.p-1 { padding: 8px; }
+.p-2 { padding: 16px; }
+
+/* Hide scrollbars but keep functionality */
+.map-selection-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.map-selection-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.map-selection-panel::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ffd700, #ff8c00);
+  border-radius: 2px;
+}
+
+/* Ensure content doesn't overflow horizontally */
+.treasure-hunt-game {
+  overflow-x: hidden;
+}
+
+* {
+  max-width: 100%;
+}
+
+/* Prevent text overflow */
+.map-level-name,
+.treasure-name,
+.overlay-subtitle {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Loading state */
+.hunt-button:disabled .hunt-button-text::after {
+  content: '...';
+  animation: loadingDots 1.5s infinite;
+}
+
+@keyframes loadingDots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
+}
+
+/* Accessibility: focus outlines */
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #00ffff;
+  outline-offset: 2px;
+}

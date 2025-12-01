@@ -1,0 +1,373 @@
+.minesweeper-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 1rem;
+}
+
+.minesweeper-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.difficulty-selection h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.difficulty-levels {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.difficulty-level {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.difficulty-level:hover {
+  transform: translateX(5px);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.difficulty-level.active {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px currentColor;
+}
+
+.level-info {
+  flex: 1;
+}
+
+.level-label {
+  color: #ffd700;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.level-details {
+  color: #b8b8b8;
+  font-size: 0.85rem;
+}
+
+.level-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  margin-left: 1rem;
+}
+
+.start-button, .cashout-button, .play-again-button {
+  width: 100%;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.start-button:hover:not(:disabled),
+.cashout-button:hover:not(:disabled),
+.play-again-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+.start-button:disabled,
+.cashout-button:disabled,
+.play-again-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cashout-button {
+  background: linear-gradient(45deg, #00C853, #64DD17);
+}
+
+.play-again-button {
+  background: linear-gradient(45deg, #2979FF, #2962FF);
+}
+
+.game-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.game-info {
+  text-align: center;
+  width: 100%;
+}
+
+.multiplier-display {
+  font-size: 3rem;
+  font-weight: bold;
+  text-shadow: 0 0 10px currentColor;
+  margin-bottom: 0.5rem;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.game-status {
+  font-size: 1.5rem;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.minesweeper-grid {
+  display: inline-block;
+  border: 3px solid #d4af37;
+  border-radius: 10px;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.grid-row {
+  display: flex;
+}
+
+.minesweeper-cell {
+  width: 50px;
+  height: 50px;
+  border: 2px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.minesweeper-cell.hidden {
+  background: linear-gradient(135deg, #4a5568, #2d3748);
+  border-color: #4a5568;
+}
+
+.minesweeper-cell.hidden:hover {
+  background: linear-gradient(135deg, #5a6578, #3d4758);
+  transform: scale(1.05);
+}
+
+.minesweeper-cell.safe {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  border-color: #2f855a;
+  animation: revealCell 0.3s ease-out;
+}
+
+@keyframes revealCell {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.minesweeper-cell.mine {
+  background: linear-gradient(135deg, #f56565, #e53e3e);
+  border-color: #c53030;
+  animation: mineExplode 0.5s ease-out;
+}
+
+@keyframes mineExplode {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.game-instructions {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  max-width: 400px;
+}
+
+.game-instructions h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.game-instructions ul {
+  color: #b8b8b8;
+  list-style-type: none;
+  padding: 0;
+}
+
+.game-instructions li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.game-instructions li:last-child {
+  border-bottom: none;
+}
+
+.game-instructions li::before {
+  content: '🎯';
+  margin-right: 0.5rem;
+}
+
+.game-info-panels {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.stats-panel, .history-panel {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.stats-panel h3, .history-panel h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 0.5rem;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.history-list {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.history-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item.won {
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.history-item.lost {
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.history-item.cashed_out {
+  background: rgba(255, 193, 7, 0.1);
+}
+
+.status.won {
+  color: #4CAF50;
+}
+
+.status.lost {
+  color: #F44336;
+}
+
+.status.cashed_out {
+  color: #FFC107;
+}
+
+.multiplier {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.win-amount {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .minesweeper-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .minesweeper-cell {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-info-panels {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .minesweeper-cell {
+    width: 35px;
+    height: 35px;
+    font-size: 0.9rem;
+  }
+  
+  .multiplier-display {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .minesweeper-game {
+    padding: 0.5rem;
+  }
+  
+  .minesweeper-cell {
+    width: 30px;
+    height: 30px;
+    font-size: 0.8rem;
+  }
+  
+  .difficulty-levels {
+    grid-template-columns: 1fr;
+  }
+}

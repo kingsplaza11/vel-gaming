@@ -1,0 +1,327 @@
+.color-switch-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 1rem;
+}
+
+.color-switch-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.multiplier-display {
+  font-size: 3rem;
+  font-weight: bold;
+  text-shadow: 0 0 20px currentColor;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.sequence-display {
+  background: rgba(0, 0, 0, 0.7);
+  border: 4px solid #d4af37;
+  border-radius: 20px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 600px;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.sequence-showing h3,
+.sequence-input h3 {
+  color: #ffd700;
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+}
+
+.sequence-colors {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.sequence-color {
+  width: 80px;
+  height: 80px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.sequence-color.active {
+  opacity: 1;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px currentColor;
+}
+
+/* Color Classes */
+.color-red { background: linear-gradient(135deg, #FF4444, #CC0000); border: 3px solid #FF4444; }
+.color-blue { background: linear-gradient(135deg, #4444FF, #0000CC); border: 3px solid #4444FF; }
+.color-green { background: linear-gradient(135deg, #44AA44, #008800); border: 3px solid #44AA44; }
+.color-yellow { background: linear-gradient(135deg, #FFAA00, #CC8800); border: 3px solid #FFAA00; }
+.color-purple { background: linear-gradient(135deg, #AA44AA, #880088); border: 3px solid #AA44AA; }
+.color-orange { background: linear-gradient(135deg, #FF8800, #CC6600); border: 3px solid #FF8800; }
+
+.player-progress {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.progress-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid #d4af37;
+  transition: all 0.3s ease;
+}
+
+.progress-dot.filled {
+  background: #d4af37;
+  box-shadow: 0 0 10px #d4af37;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  max-width: 300px;
+}
+
+.color-button {
+  width: 80px;
+  height: 80px;
+  border-radius: 15px;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-button:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px currentColor;
+}
+
+.color-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.game-ready,
+.game-over,
+.cashout-success {
+  color: #ffd700;
+}
+
+.ready-icon {
+  font-size: 4rem;
+  margin-top: 1rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.start-button,
+.cashout-button,
+.restart-button {
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.start-button {
+  background: linear-gradient(45deg, #2196F3, #1976D2);
+}
+
+.start-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+}
+
+.cashout-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+.restart-button {
+  background: linear-gradient(45deg, #4CAF50, #2E7D32);
+}
+
+.restart-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.start-button:disabled,
+.cashout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.game-info-panels {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.stats-panel,
+.history-panel {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.stats-panel h3,
+.history-panel h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.history-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.sequence-length,
+.multiplier {
+  font-weight: bold;
+}
+
+.status.cashed_out {
+  color: #00ff00;
+}
+
+.status.lost {
+  color: #ff4444;
+}
+
+.win-amount {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .color-switch-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .sequence-display {
+    min-height: 300px;
+    padding: 1.5rem;
+  }
+  
+  .sequence-color,
+  .color-button {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+  
+  .game-info-panels {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .color-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .color-switch-game {
+    padding: 0.5rem;
+  }
+  
+  .sequence-colors {
+    gap: 0.5rem;
+  }
+  
+  .sequence-color,
+  .color-button {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+  
+  .multiplier-display {
+    font-size: 2rem;
+  }
+}
