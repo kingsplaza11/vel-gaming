@@ -28,50 +28,51 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check authentication status
+    const checkAuth = async () => {
+      try {
+        const response = await authService.getProfile();
+        setUser(response.data);
+      } catch (error) {
+        // 401, 403, network error → not logged in → totally fine
+        setUser(null);
+      } finally {
+        // THIS LINE IS CRITICAL — ALWAYS runs, even if request fails or redirects
+        setLoading(false);
+      }
+    };
+
     checkAuth();
-    
-    // Set initial meta tags
+
+    // Set SEO & meta tags (only once)
     const setInitialMetaTags = () => {
-      const metaDesc = document.querySelector('meta[name="description"]');
-      if (!metaDesc) {
+      // Description
+      if (!document.querySelector('meta[name="description"]')) {
         const desc = document.createElement('meta');
         desc.name = 'description';
         desc.content = 'Experience premium crypto gaming at Veltora. Play exciting casino games and win real money in Naira.';
         document.head.appendChild(desc);
       }
-      
-      // Add viewport meta tag if not present
-      let viewport = document.querySelector('meta[name="viewport"]');
-      if (!viewport) {
-        viewport = document.createElement('meta');
-        viewport.name = 'viewport';
-        viewport.content = 'width=device-width, initial-scale=1, maximum-scale=5';
-        document.head.appendChild(viewport);
+
+      // Viewport
+      if (!document.querySelector('meta[name="viewport"]')) {
+        const vp = document.createElement('meta');
+        vp.name = 'viewport';
+        vp.content = 'width=device-width, initial-scale=1, maximum-scale=5';
+        document.head.appendChild(vp);
       }
-      
-      // Add theme-color meta tag
-      let themeColor = document.querySelector('meta[name="theme-color"]');
-      if (!themeColor) {
-        themeColor = document.createElement('meta');
-        themeColor.name = 'theme-color';
-        themeColor.content = '#0a0a0f';
-        document.head.appendChild(themeColor);
+
+      // Theme color
+      if (!document.querySelector('meta[name="theme-color"]')) {
+        const tc = document.createElement('meta');
+        tc.name = 'theme-color';
+        tc.content = '#0a0a0f';
+        document.head.appendChild(tc);
       }
     };
-    
+
     setInitialMetaTags();
   }, []);
-
-  const checkAuth = async () => {
-    try {
-      const response = await authService.getProfile();
-      setUser(response.data);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -81,12 +82,13 @@ function App() {
     try {
       await authService.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout failed:', error);
     } finally {
       setUser(null);
     }
   };
 
+  // SHOW SPINNER ONLY WHILE CHECKING AUTH
   if (loading) {
     return (
       <div className="loading-screen">
@@ -100,211 +102,57 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          {/* Login Route */}
-          <Route 
-            path="/login" 
+          {/* Public Routes */}
+          <Route
+            path="/login"
             element={
               <>
                 <SeoHead page="login" />
                 {!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" replace />}
               </>
-            } 
+            }
           />
-          
-          {/* Register Route */}
-          <Route 
-            path="/register" 
+          <Route
+            path="/register"
             element={
               <>
                 <SeoHead page="register" />
                 {!user ? <Register onLogin={handleLogin} /> : <Navigate to="/" replace />}
               </>
-            } 
+            }
           />
-          
-          {/* Dashboard Route */}
-          <Route 
-            path="/" 
+
+          {/* Protected Routes */}
+          <Route
+            path="/"
             element={
               <>
                 <SeoHead page="dashboard" user={user} />
                 {user ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" replace />}
               </>
-            } 
+            }
           />
-          
-          {/* Game Routes with Individual SEO */}
-          <Route 
-            path="/slots" 
-            element={
-              <>
-                <SeoHead page="games" subpage="slots" user={user} />
-                {user ? <SlotsGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/crash" 
-            element={
-              <>
-                <SeoHead page="games" subpage="crash" user={user} />
-                {user ? <CrashGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/fishing" 
-            element={
-              <>
-                <SeoHead page="games" subpage="fishing" user={user} />
-                {user ? <FishingGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/treasure" 
-            element={
-              <>
-                <SeoHead page="games" subpage="treasure" user={user} />
-                {user ? <TreasureHuntGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/dragon" 
-            element={
-              <>
-                <SeoHead page="games" subpage="dragon" user={user} />
-                {user ? <DragonArenaGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          {/* Additional Game Routes */}
-          <Route 
-            path="/miner" 
-            element={
-              <>
-                <SeoHead page="games" subpage="miner" user={user} />
-                {user ? <CryptoMinerGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/space" 
-            element={
-              <>
-                <SeoHead page="games" subpage="space" user={user} />
-                {user ? <SpaceExplorerGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/potion" 
-            element={
-              <>
-                <SeoHead page="games" subpage="potion" user={user} />
-                {user ? <PotionBrewingGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/pyramid" 
-            element={
-              <>
-                <SeoHead page="games" subpage="pyramid" user={user} />
-                {user ? <PyramidAdventureGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/heist" 
-            element={
-              <>
-                <SeoHead page="games" subpage="heist" user={user} />
-                {user ? <CyberHeistGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/tower" 
-            element={
-              <>
-                <SeoHead page="games" subpage="tower" user={user} />
-                {user ? <TowerGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/cards" 
-            element={
-              <>
-                <SeoHead page="games" subpage="cards" user={user} />
-                {user ? <CardMatchingGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/clicker" 
-            element={
-              <>
-                <SeoHead page="games" subpage="clicker" user={user} />
-                {user ? <ClickerGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/colorswitch" 
-            element={
-              <>
-                <SeoHead page="games" subpage="colorswitch" user={user} />
-                {user ? <ColorSwitchGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/guessing" 
-            element={
-              <>
-                <SeoHead page="games" subpage="guessing" user={user} />
-                {user ? <NumberGuessingGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          <Route 
-            path="/minesweeper" 
-            element={
-              <>
-                <SeoHead page="games" subpage="minesweeper" user={user} />
-                {user ? <MinesweeperGame user={user} onBalanceUpdate={setUser} /> : <Navigate to="/login" replace />}
-              </>
-            } 
-          />
-          
-          {/* Catch-all route for 404 */}
-          <Route 
-            path="*" 
-            element={
-              <>
-                <SeoHead page="404" />
-                <Navigate to="/" replace />
-              </>
-            } 
-          />
+
+          {/* All Game Routes — Protected */}
+          <Route path="/slots" element={user ? <> <SeoHead page="games" subpage="slots" user={user} /> <SlotsGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/crash" element={user ? <> <SeoHead page="games" subpage="crash" user={user} /> <CrashGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/fishing" element={user ? <> <SeoHead page="games" subpage="fishing" user={user} /> <FishingGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/treasure" element={user ? <> <SeoHead page="games" subpage="treasure" user={user} /> <TreasureHuntGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/dragon" element={user ? <> <SeoHead page="games" subpage="dragon" user={user} /> <DragonArenaGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/miner" element={user ? <> <SeoHead page="games" subpage="miner" user={user} /> <CryptoMinerGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/space" element={user ? <> <SeoHead page="games" subpage="space" user={user} /> <SpaceExplorerGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/potion" element={user ? <> <SeoHead page="games" subpage="potion" user={user} /> <PotionBrewingGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/pyramid" element={user ? <> <SeoHead page="games" subpage="pyramid" user={user} /> <PyramidAdventureGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/heist" element={user ? <> <SeoHead page="games" subpage="heist" user={user} /> <CyberHeistGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/tower" element={user ? <> <SeoHead page="games" subpage="tower" user={user} /> <TowerGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/cards" element={user ? <> <SeoHead page="games" subpage="cards" user={user} /> <CardMatchingGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/clicker" element={user ? <> <SeoHead page="games" subpage="clicker" user={user} /> <ClickerGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/colorswitch" element={user ? <> <SeoHead page="games" subpage="colorswitch" user={user} /> <ColorSwitchGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/guessing" element={user ? <> <SeoHead page="games" subpage="guessing" user={user} /> <NumberGuessingGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+          <Route path="/minesweeper" element={user ? <> <SeoHead page="games" subpage="minesweeper" user={user} /> <MinesweeperGame user={user} onBalanceUpdate={setUser} /> </> : <Navigate to="/login" replace />} />
+
+          {/* 404 → Redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
