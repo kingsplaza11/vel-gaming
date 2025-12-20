@@ -1,0 +1,486 @@
+/* ===========================
+   ROOT & RESET
+=========================== */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: radial-gradient(circle at top, #061b2d, #020812);
+  font-family: "Orbitron", "Poppins", system-ui, sans-serif;
+}
+
+/* ===========================
+   GAME CONTAINER
+=========================== */
+.fishing-game.mobile {
+  min-height: 100vh;
+  color: #e6f6ff;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ===========================
+   TOP BAR (ARCADE HEADER)
+=========================== */
+.top-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #0c2740, #051525);
+  border-bottom: 2px solid rgba(0, 255, 255, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.top-bar button {
+  background: none;
+  border: none;
+  color: #5df2ff;
+  font-size: 22px;
+}
+
+.top-bar span:nth-child(2) {
+  text-align: center;
+  font-size: 16px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(93, 242, 255, 0.7);
+}
+
+.top-bar span:last-child {
+  font-weight: 700;
+  color: #00ffb7;
+  text-shadow: 0 0 10px rgba(0, 255, 183, 0.7);
+}
+
+/* ===========================
+   GAME SCREEN
+=========================== */
+.game-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+/* ===========================
+   OCEAN SCREEN (ARCADE DISPLAY)
+=========================== */
+.ocean {
+  position: relative;
+  flex: 1;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top, rgba(0, 180, 255, 0.25), transparent 60%),
+    linear-gradient(180deg, #021b2f, #010a16);
+  box-shadow:
+    inset 0 0 40px rgba(0, 200, 255, 0.2),
+    0 0 25px rgba(0, 200, 255, 0.15);
+  overflow: hidden;
+  border: 2px solid rgba(0, 255, 255, 0.15);
+}
+
+/* Animated light waves */
+.ocean::before,
+.ocean::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle, rgba(0, 255, 255, 0.15), transparent 60%);
+  animation: waveGlow 8s linear infinite;
+}
+
+.ocean::after {
+  animation-duration: 12s;
+  opacity: 0.4;
+}
+
+@keyframes waveGlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===========================
+   CASTING STATE
+=========================== */
+.ocean.casting {
+  animation: pulse 1.2s infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    box-shadow: inset 0 0 40px rgba(0, 200, 255, 0.2),
+      0 0 25px rgba(0, 200, 255, 0.2);
+  }
+  to {
+    box-shadow: inset 0 0 70px rgba(0, 255, 255, 0.6),
+      0 0 45px rgba(0, 255, 255, 0.6);
+  }
+}
+
+/* ===========================
+   CATCH DISPLAY
+=========================== */
+.catch {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 80px;
+  animation: popCatch 0.6s ease-out forwards;
+  text-shadow:
+    0 0 20px rgba(255, 255, 255, 0.8),
+    0 0 40px rgba(0, 255, 255, 0.8);
+}
+
+@keyframes popCatch {
+  from {
+    transform: scale(0.3) rotate(-20deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* ===========================
+   CAST BUTTON (ARCADE)
+=========================== */
+.cast-btn {
+  margin-top: 16px;
+  height: 64px;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #00161f;
+  background: linear-gradient(180deg, #00ffd0, #00bfa5);
+  border: none;
+  box-shadow:
+    0 0 20px rgba(0, 255, 200, 0.6),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.cast-btn:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 0 12px rgba(0, 255, 200, 0.4),
+    inset 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ===========================
+   MODAL OVERLAY
+=========================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 5, 10, 0.85);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+/* ===========================
+   MODALS (ARCADE PANELS)
+=========================== */
+.modal {
+  width: 90%;
+  max-width: 360px;
+  border-radius: 18px;
+  padding: 20px;
+  background: linear-gradient(180deg, #0b2a44, #041525);
+  border: 2px solid rgba(0, 255, 255, 0.2);
+  box-shadow:
+    0 0 40px rgba(0, 255, 255, 0.35),
+    inset 0 0 25px rgba(0, 200, 255, 0.2);
+  text-align: center;
+}
+
+/* Titles */
+.modal h3 {
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+  color: #5df2ff;
+  text-shadow: 0 0 12px rgba(93, 242, 255, 0.7);
+}
+
+/* ===========================
+   STAKE INPUT
+=========================== */
+.stake-modal input {
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  border: none;
+  background: #020f1c;
+  color: #00ffb7;
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: 12px;
+  box-shadow: inset 0 0 10px rgba(0, 255, 183, 0.4);
+}
+
+/* Quick buttons */
+.quick-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quick-row button {
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #1b4b63, #0b2a44);
+  color: #e6f6ff;
+  border: 1px solid rgba(0, 255, 255, 0.25);
+}
+
+/* ===========================
+   PRIMARY BUTTON
+=========================== */
+button.primary {
+  height: 56px;
+  width: 100%;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #00161f;
+  background: linear-gradient(180deg, #00ffd0, #00bfa5);
+  border: none;
+  box-shadow: 0 0 25px rgba(0, 255, 200, 0.7);
+}
+
+/* ===========================
+   RESULT MODAL
+=========================== */
+.result-emoji {
+  font-size: 72px;
+  margin: 10px 0;
+}
+
+.win {
+  color: #00ffb7;
+  text-shadow: 0 0 12px rgba(0, 255, 183, 0.7);
+}
+
+.lose {
+  color: #ff4d4d;
+  text-shadow: 0 0 12px rgba(255, 77, 77, 0.7);
+}
+
+/* ===========================
+   ERROR
+=========================== */
+.error {
+  color: #ff4d4d;
+  margin-bottom: 10px;
+}
+
+/* ===========================
+   SMALL SCREENS
+=========================== */
+@media (max-height: 650px) {
+  .cast-btn {
+    height: 56px;
+    font-size: 16px;
+  }
+}
+
+/* Fishing Line */
+.fishing-line {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 0;
+  background: linear-gradient(#fff, #00eaff);
+  transform: translateX(-50%);
+  transition: height 0.6s ease;
+}
+
+.fishing-line.throw {
+  height: 65%;
+}
+
+/* Hook */
+.hook {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 26px;
+  opacity: 0;
+  transition: opacity 0.3s ease 0.5s;
+}
+
+.fishing-line.throw + .hook {
+  opacity: 1;
+}
+
+/* Catch pop */
+.catch.pop {
+  animation: fishPop 0.6s cubic-bezier(.2,1.4,.4,1);
+}
+
+@keyframes fishPop {
+  0% {
+    transform: scale(0.3) rotate(-20deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.ocean.casting::after {
+  content: "";
+  position: absolute;
+  inset: 40%;
+  border-radius: 50%;
+  border: 2px solid rgba(0,255,255,0.6);
+  animation: ripple 1s ease-out infinite;
+}
+
+@keyframes ripple {
+  from {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  to {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Loading states for wallet balance */
+.balance-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.balance-loading-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.loading-spinner-small {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Balance display in header */
+.balance-display {
+    font-weight: 600;
+    color: #2ecc71;
+    min-width: 100px;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* Balance summary in stake modal */
+.balance-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    background: rgba(52, 152, 219, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(52, 152, 219, 0.2);
+}
+
+.balance-label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.balance-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2ecc71;
+}
+
+/* New balance display in result modal */
+.new-balance {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 15px 0;
+    padding: 12px 15px;
+    background: rgba(46, 204, 113, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(46, 204, 113, 0.2);
+}
+
+.new-balance .balance-amount {
+    color: #27ae60;
+    font-size: 1.2rem;
+}
+
+/* Disabled states */
+button:disabled:not(.primary) {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.primary:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .balance-display {
+        min-width: 80px;
+        font-size: 0.9rem;
+    }
+    
+    .balance-summary {
+        padding: 8px 12px;
+    }
+    
+    .balance-label {
+        font-size: 0.85rem;
+    }
+    
+    .balance-amount {
+        font-size: 1rem;
+    }
+    
+    .new-balance .balance-amount {
+        font-size: 1.1rem;
+    }
+}

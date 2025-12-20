@@ -1,0 +1,517 @@
+.heist-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a1a2a 0%, #1a1a2e 100%);
+  padding: 1rem;
+}
+
+.heist-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 2rem;
+}
+
+.bank-selection h3 {
+  color: #00ff00;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.bank-options {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bank-option {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.bank-option:hover {
+  transform: translateX(5px);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.bank-option.active {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px currentColor;
+}
+
+.bank-icon {
+  font-size: 2rem;
+  margin-top: 0.25rem;
+}
+
+.bank-info {
+  flex: 1;
+}
+
+.bank-name {
+  color: #00ff00;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.bank-security {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.bank-multiplier {
+  color: #ffd700;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.bank-desc {
+  color: #b8b8b8;
+  font-size: 0.8rem;
+}
+
+.heist-button {
+  width: 100%;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.heist-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
+}
+
+.heist-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.heist-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminal {
+  background: rgba(0, 0, 0, 0.8);
+  border: 4px solid;
+  border-radius: 15px;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Courier New', monospace;
+}
+
+.hacking-animation {
+  text-align: center;
+  color: #00ff00;
+  width: 100%;
+  padding: 2rem;
+}
+
+.hacker {
+  font-size: 3rem;
+  animation: hackerType 2s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes hackerType {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.code-lines {
+  text-align: left;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(0, 255, 0, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #00ff00;
+}
+
+.code-line {
+  color: #00ff00;
+  margin-bottom: 0.5rem;
+  font-family: 'Courier New', monospace;
+}
+
+.terminal-ready {
+  text-align: center;
+  color: #00ff00;
+  padding: 2rem;
+}
+
+.terminal-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.selected-target {
+  font-weight: bold;
+  margin: 1rem 0;
+  font-size: 1.1rem;
+}
+
+.risk-warning {
+  color: #ff6b6b;
+  font-weight: bold;
+  margin-top: 1rem;
+}
+
+.heist-results {
+  width: 100%;
+  height: 100%;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.heist-results.success {
+  background: linear-gradient(135deg, rgba(0, 255, 0, 0.1), rgba(255, 215, 0, 0.1));
+}
+
+.heist-results.failure {
+  background: linear-gradient(135deg, rgba(255, 0, 0, 0.1), rgba(139, 0, 0, 0.1));
+}
+
+.result-header h2 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.target-info {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.target-bank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.hacks-used {
+  margin-bottom: 2rem;
+}
+
+.hacks-used h4 {
+  color: #00ff00;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.hacks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.hack-item {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #00ff00;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.hack-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.hack-name {
+  color: #00ff00;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.hack-success {
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.escape-result {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.escape-success, .escape-failure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.success-icon {
+  font-size: 2rem;
+}
+
+.failure-icon {
+  font-size: 2rem;
+}
+
+.success-text {
+  color: #00ff00;
+}
+
+.failure-text {
+  color: #ff4444;
+}
+
+.heist-rewards {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.reward-multiplier {
+  color: #ffd700;
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.reward-amount {
+  color: #00ff00;
+  font-size: 2rem;
+  font-weight: bold;
+  text-shadow: 0 0 10px #00ff00;
+  animation: rewardPulse 1s infinite;
+}
+
+@keyframes rewardPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.stats-panel, .history-panel {
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid #00ff00;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.history-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item.success {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.history-item.failure {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.status.success {
+  color: #00ff00;
+}
+
+.status.failure {
+  color: #ff4444;
+}
+
+.win-amount {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.heist-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at top, rgba(34,211,238,0.08), transparent 40%),
+    linear-gradient(180deg, rgba(0,0,0,0.92), rgba(2,6,23,0.98));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.heist-modal-card {
+  width: 94%;
+  max-width: 440px;
+  background:
+    linear-gradient(180deg, rgba(15,23,42,0.96), rgba(2,6,23,0.98));
+  border-radius: 16px;
+  padding: 22px 20px 24px;
+  color: #e5e7eb;
+  box-shadow:
+    0 0 0 1px rgba(34,211,238,0.15),
+    0 25px 60px rgba(0,0,0,0.9),
+    inset 0 0 40px rgba(34,211,238,0.05);
+  backdrop-filter: blur(14px);
+  animation: slideUp 0.3s cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.heist-modal-card h3 {
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  color: #22d3ee;
+  text-transform: uppercase;
+}
+.modal-section {
+  margin-bottom: 18px;
+}
+
+.modal-section label {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.bank-card {
+  position: relative;
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #020617, #020617);
+  border: 1px solid #1e293b;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.bank-card span {
+  font-size: 1.6rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.bank-card small {
+  display: block;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.bank-card:hover {
+  transform: translateY(-2px);
+  border-color: #22d3ee;
+  box-shadow: 0 0 14px rgba(34,211,238,0.25);
+}
+
+.bank-card.active {
+  border-color: #22d3ee;
+  box-shadow:
+    0 0 0 1px rgba(34,211,238,0.6),
+    0 0 20px rgba(34,211,238,0.6);
+}
+
+.bank-card.active::after {
+  content: "TARGET";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.6rem;
+  color: #22d3ee;
+  letter-spacing: 0.1em;
+}
+.heist-modal-card input[type="number"] {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: #020617;
+  border: 1px solid #1e293b;
+  color: #e5e7eb;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.heist-modal-card input[type="number"]:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 1px rgba(34,211,238,0.5);
+}
+.error-banner {
+  background: linear-gradient(135deg, #7f1d1d, #450a0a);
+  border: 1px solid #dc2626;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  margin-top: 10px;
+  color: #fecaca;
+}
+.heist-start-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+  color: #020617;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.heist-start-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(34,211,238,0.5);
+}
+
+.heist-start-btn:active {
+  transform: scale(0.97);
+}

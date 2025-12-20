@@ -1,0 +1,558 @@
+.minesweeper-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 1rem;
+}
+
+.minesweeper-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.difficulty-selection h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.difficulty-levels {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.difficulty-level {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.difficulty-level:hover {
+  transform: translateX(5px);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.difficulty-level.active {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px currentColor;
+}
+
+.level-info {
+  flex: 1;
+}
+
+.level-label {
+  color: #ffd700;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.level-details {
+  color: #b8b8b8;
+  font-size: 0.85rem;
+}
+
+.level-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  margin-left: 1rem;
+}
+
+.start-button, .cashout-button, .play-again-button {
+  width: 100%;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.start-button:hover:not(:disabled),
+.cashout-button:hover:not(:disabled),
+.play-again-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+.start-button:disabled,
+.cashout-button:disabled,
+.play-again-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cashout-button {
+  background: linear-gradient(45deg, #00C853, #64DD17);
+}
+
+.play-again-button {
+  background: linear-gradient(45deg, #2979FF, #2962FF);
+}
+
+.game-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.game-info {
+  text-align: center;
+  width: 100%;
+}
+
+.multiplier-display {
+  font-size: 3rem;
+  font-weight: bold;
+  text-shadow: 0 0 10px currentColor;
+  margin-bottom: 0.5rem;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.game-status {
+  font-size: 1.5rem;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.minesweeper-grid {
+  display: inline-block;
+  border: 3px solid #d4af37;
+  border-radius: 10px;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.grid-row {
+  display: flex;
+}
+
+.minesweeper-cell {
+  width: 50px;
+  height: 50px;
+  border: 2px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.minesweeper-cell.hidden {
+  background: linear-gradient(135deg, #4a5568, #2d3748);
+  border-color: #4a5568;
+}
+
+.minesweeper-cell.hidden:hover {
+  background: linear-gradient(135deg, #5a6578, #3d4758);
+  transform: scale(1.05);
+}
+
+.minesweeper-cell.safe {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  border-color: #2f855a;
+  animation: revealCell 0.3s ease-out;
+}
+
+@keyframes revealCell {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.minesweeper-cell.mine {
+  background: linear-gradient(135deg, #f56565, #e53e3e);
+  border-color: #c53030;
+  animation: mineExplode 0.5s ease-out;
+}
+
+@keyframes mineExplode {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.game-instructions {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  max-width: 400px;
+}
+
+.game-instructions h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.game-instructions ul {
+  color: #b8b8b8;
+  list-style-type: none;
+  padding: 0;
+}
+
+.game-instructions li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.game-instructions li:last-child {
+  border-bottom: none;
+}
+
+.game-instructions li::before {
+  content: '🎯';
+  margin-right: 0.5rem;
+}
+
+.game-info-panels {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.stats-panel, .history-panel {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.stats-panel h3, .history-panel h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 0.5rem;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.history-list {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.history-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item.won {
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.history-item.lost {
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.history-item.cashed_out {
+  background: rgba(255, 193, 7, 0.1);
+}
+
+.status.won {
+  color: #4CAF50;
+}
+
+.status.lost {
+  color: #F44336;
+}
+
+.status.cashed_out {
+  color: #FFC107;
+}
+
+.multiplier {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.win-amount {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .minesweeper-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .minesweeper-cell {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-info-panels {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .minesweeper-cell {
+    width: 35px;
+    height: 35px;
+    font-size: 0.9rem;
+  }
+  
+  .multiplier-display {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .minesweeper-game {
+    padding: 0.5rem;
+  }
+  
+  .minesweeper-cell {
+    width: 30px;
+    height: 30px;
+    font-size: 0.8rem;
+  }
+  
+  .difficulty-levels {
+    grid-template-columns: 1fr;
+  }
+}
+/* ================================
+   STAKE MODAL – PRO VERSION
+================================ */
+
+.stake-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    rgba(10, 14, 20, 0.92),
+    rgba(0, 0, 0, 0.98)
+  );
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInOverlay 0.25s ease-out;
+}
+
+.stake-modal {
+  width: min(92%, 420px);
+  background: linear-gradient(
+    180deg,
+    #121825 0%,
+    #0b0f18 100%
+  );
+  border-radius: 18px;
+  padding: 26px 22px 28px;
+  color: #ffffff;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: modalPop 0.35s cubic-bezier(.2,.8,.2,1);
+  position: relative;
+}
+
+/* Header */
+.stake-modal h3 {
+  margin: 0 0 18px;
+  font-size: 22px;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+/* Stake Input */
+.stake-modal label {
+  display: block;
+  font-size: 13px;
+  opacity: 0.75;
+  margin-bottom: 6px;
+}
+
+.stake-modal input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: #0f1627;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.stake-modal input:focus {
+  background: #121b33;
+  box-shadow:
+    inset 0 0 0 1px #00e5ff,
+    0 0 0 2px rgba(0, 229, 255, 0.15);
+}
+
+/* Quick Stake Buttons */
+.quick-stakes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 14px 0 18px;
+}
+
+.quick-stakes button {
+  background: linear-gradient(180deg, #1b2236, #121a2c);
+  border: none;
+  color: #cfd8ff;
+  padding: 10px 6px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.quick-stakes button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
+}
+
+/* Risk Info */
+.risk-info {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.risk-info b {
+  color: #00e5ff;
+}
+
+.risk-info .danger b {
+  color: #ff5252;
+}
+
+/* Start Button */
+.start-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  color: #041019;
+  background: linear-gradient(
+    135deg,
+    #00e5ff,
+    #00bcd4
+  );
+  box-shadow:
+    0 10px 24px rgba(0, 229, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.start-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 32px rgba(0, 229, 255, 0.6);
+}
+
+.start-btn:disabled {
+  background: linear-gradient(180deg, #2a2f3d, #1b2030);
+  color: #888;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Animations */
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Mobile Polish */
+@media (max-width: 480px) {
+  .stake-modal {
+    padding: 22px 18px 24px;
+  }
+
+  .quick-stakes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

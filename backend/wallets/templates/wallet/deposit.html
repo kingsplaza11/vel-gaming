@@ -1,0 +1,43 @@
+<!-- templates/wallet/deposit.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Deposit</title>
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+</head>
+<body>
+
+<h2>Deposit Funds</h2>
+
+<form id="deposit-form">
+  <input type="number" id="amount" placeholder="Amount (₦)" min="100" required />
+  <button type="submit">Deposit</button>
+</form>
+
+<script>
+document.getElementById("deposit-form").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const amount = document.getElementById("amount").value;
+
+  const res = await fetch("/wallet/deposit/initialize/", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}",
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: `amount=${amount}`
+  });
+
+  const data = await res.json();
+  if (data.authorization_url) {
+    window.location.href = data.authorization_url;
+  } else {
+    alert(data.error || "Error");
+  }
+});
+</script>
+
+</body>
+</html>

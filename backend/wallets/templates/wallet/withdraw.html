@@ -1,0 +1,101 @@
+<form method="post" action="/wallet/withdraw/auto/" id="withdrawForm">
+  {% csrf_token %}
+
+  <input
+    type="number"
+    name="amount"
+    placeholder="Amount ₦"
+    min="1000"
+    required
+  />
+
+  <select name="bank_code" id="bank_code" required>
+    <option value="">Select Bank</option>
+    <option value="044">Access Bank</option>
+    <option value="058">GTBank</option>
+    <option value="011">First Bank</option>
+    <option value="070">Fidelity</option>
+    <option value="057">Zenith Bank</option>
+    <option value="033">UBA</option>
+    <option value="032">Union Bank</option>
+    <option value="035">Wema Bank</option>
+    <option value="050">EcoBank</option>
+    <option value="090267">Kuda Bank</option>
+    <option value="090405">Moniepoint MFB</option>
+  </select>
+
+  <input
+    type="text"
+    name="account_number"
+    id="account_number"
+    placeholder="Account Number"
+    maxlength="10"
+    required
+  />
+
+  <!-- Auto-resolved account name -->
+  <input
+    type="text"
+    id="account_name"
+    placeholder="Account Name"
+    readonly
+  />
+
+  <div id="lookupStatus" style="margin:8px 0;font-size:14px;"></div>
+
+  <button type="submit" id="withdrawBtn" disabled>
+    Withdraw Instantly
+  </button>
+</form>
+<script>
+  const bankSelect = document.getElementById("bank_code");
+  const acctInput = document.getElementById("account_number");
+  const acctNameInput = document.getElementById("account_name");
+  const statusBox = document.getElementById("lookupStatus");
+  const withdrawBtn = document.getElementById("withdrawBtn");
+
+  let lookupTimeout = null;
+
+  function resetLookup() {
+    acctNameInput.value = "";
+    withdrawBtn.disabled = true;
+    statusBox.innerHTML = "";
+  }
+
+  async function resolveAccount() {
+    const bankCode = bankSelect.value;
+    const acctNumber = acctInput.value;
+
+    if (!bankCode || acctNumber.length !== 10) return;
+
+    statusBox.innerHTML = "🔄 Verifying account...";
+    withdrawBtn.disabled = true;
+
+    try {
+      const res = await fetch(
+        `/wallet/resolve-account/?account_number=${acctNumber}&bank_code=${bankCode}`
+      );
+      const data = await res.json();
+
+      if (data.status === "success") {
+        acctNameInput.value = data.account_name;
+        statusBox.innerHTML = "✅ Account verified";
+        withdrawBtn.disabled = false;
+      } else {
+        resetLookup();
+        statusBox.innerHTML = "❌ Account not found";
+      }
+    } catch (err) {
+      resetLookup();
+      statusBox.innerHTML = "⚠️ Verification failed";
+    }
+  }
+
+  acctInput.addEventListener("input", () => {
+    resetLookup();
+    clearTimeout(lookupTimeout);
+    lookupTimeout = setTimeout(resolveAccount, 600);
+  });
+
+  bankSelect.addEventListener("change", resetLookup);
+</script>

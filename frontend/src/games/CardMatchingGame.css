@@ -1,0 +1,255 @@
+/* ===============================
+   ROOT & GLOBAL RESET
+================================ */
+* {
+  box-sizing: border-box;
+}
+
+.cmg-root {
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 80% at 50% -20%, #1e293b 0%, #020617 55%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #e5e7eb;
+}
+
+/* ===============================
+   TOP HUD (CLEAN & CALM)
+================================ */
+.cmg-hud {
+  width: 100%;
+  max-width: 480px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cmg-back {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #e5e7eb;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 16px;
+}
+
+.cmg-balance {
+  background: rgba(34,197,94,0.12);
+  color: #22c55e;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ===============================
+   GAME SURFACE (CENTERED)
+================================ */
+.cmg-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 10px auto 24px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, #020617 0%, #020617 100%);
+  border-radius: 22px;
+  box-shadow:
+    0 25px 60px rgba(0,0,0,0.65),
+    inset 0 0 0 1px rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===============================
+   GAME INFO BAR
+================================ */
+.cmg-info {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+/* ===============================
+   CARD GRID (PERFECT BALANCE)
+================================ */
+.cmg-grid {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  padding: 6px;
+}
+
+/* ===============================
+   CARD TILE (PREMIUM FEEL)
+================================ */
+.cmg-tile {
+  aspect-ratio: 1 / 1;
+  position: relative;
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, #0f172a, #020617);
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.45),
+    inset 0 0 0 1px rgba(255,255,255,0.08);
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(.4,.2,.2,1),
+              box-shadow 0.3s;
+}
+
+/* Hover (desktop polish only) */
+@media (hover: hover) {
+  .cmg-tile:hover {
+    box-shadow:
+      0 14px 32px rgba(0,0,0,0.6),
+      inset 0 0 0 1px rgba(255,255,255,0.12);
+  }
+}
+
+/* FLIP */
+.cmg-tile.flip {
+  transform: rotateY(180deg);
+}
+
+/* MATCHED FEEDBACK */
+.cmg-tile.matched {
+  box-shadow:
+    0 0 25px rgba(34,197,94,0.6),
+    inset 0 0 0 1px rgba(34,197,94,0.6);
+}
+
+/* ===============================
+   CARD FACES
+================================ */
+.cmg-tile .front,
+.cmg-tile .back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  font-size: clamp(22px, 5vw, 32px);
+}
+
+.cmg-tile .front {
+  color: rgba(255,255,255,0.25);
+  font-weight: 700;
+}
+
+.cmg-tile .back {
+  transform: rotateY(180deg);
+}
+
+/* ===============================
+   START / RESTART BUTTON
+================================ */
+.cmg-restart {
+  width: 100%;
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  border: none;
+  background:
+    linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: 0 14px 30px rgba(37,99,235,0.45);
+}
+
+/* ===============================
+   MODAL OVERLAY
+================================ */
+.cmg-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(2,6,23,0.85), rgba(0,0,0,0.95));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* ===============================
+   MODAL CARD (BET SLIP)
+================================ */
+.cmg-modal {
+  width: 90%;
+  max-width: 360px;
+  background:
+    linear-gradient(180deg, #020617, #020617);
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow:
+    0 40px 90px rgba(0,0,0,0.85),
+    inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+/* MODAL TITLE */
+.cmg-modal h3 {
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 20px;
+}
+
+/* INPUT */
+.cmg-modal label {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.cmg-modal input {
+  width: 100%;
+  padding: 14px;
+  margin: 6px 0 16px;
+  border-radius: 14px;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 16px;
+}
+
+/* DIFFICULTY */
+.cmg-difficulty {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.cmg-difficulty button {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color: #e5e7eb;
+  font-weight: 600;
+}
+
+.cmg-difficulty .active {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #020617;
+}
+
+/* CONFIRM */
+.cmg-confirm {
+  width: 100%;
+  padding: 16px;
+  border-radius: 18px;
+  border: none;
+  background:
+    linear-gradient(135deg, #22c55e, #16a34a);
+  color: #020617;
+  font-size: 17px;
+  font-weight: 800;
+  box-shadow: 0 16px 36px rgba(34,197,94,0.45);
+}

@@ -1,0 +1,66 @@
+{
+  "name": "Veltora - Premium Casino Entertainment",
+  "short_name": "Veltora",
+  "description": "Premium online casino platform with classic slots and exhilarating live games",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#ffd700",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "orientation": "portrait-primary",
+  "categories": ["games", "entertainment", "casino"],
+  "screenshots": [
+    {
+      "src": "/images/screenshots/mobile-screenshot.jpg",
+      "sizes": "375x667",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/images/screenshots/desktop-screenshot.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Play Golden Slots",
+      "short_name": "Slots",
+      "description": "Spin the reels on our premium Golden Slots",
+      "url": "/slots"
+    },
+    {
+      "name": "Play Rush",
+      "short_name": "Rush",
+      "description": "Test your luck in the high-stakes Rush game",
+      "url": "/crash"
+    }
+  ]
+}

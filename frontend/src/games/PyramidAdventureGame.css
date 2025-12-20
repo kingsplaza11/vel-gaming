@@ -1,0 +1,636 @@
+.pyramid-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+  padding: 1rem;
+}
+
+.pyramid-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.adventure-info h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.info-card {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #d4af37;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.explore-button {
+  width: 100%;
+  background: linear-gradient(45deg, #FF9800, #FF5722);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.explore-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+}
+
+.explore-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pyramid-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pyramid-entrance {
+  background: rgba(139, 69, 19, 0.8);
+  border: 4px solid #d4af37;
+  border-radius: 20px;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.exploring-animation {
+  text-align: center;
+  color: #ffd700;
+}
+
+.torch {
+  font-size: 3rem;
+  animation: torchFlicker 1.5s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes torchFlicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.explorer {
+  font-size: 2rem;
+  animation: exploreMove 2s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes exploreMove {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(20px); }
+}
+
+.pyramid-ready {
+  text-align: center;
+  color: #ffd700;
+  padding: 2rem;
+}
+
+.pyramid-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.warning-text {
+  color: #ff6b6b;
+  font-weight: bold;
+  margin-top: 1rem;
+  font-size: 1.1rem;
+}
+
+.exploration-results {
+  width: 100%;
+  height: 100%;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.chambers-explored {
+  margin-bottom: 1.5rem;
+}
+
+.chambers-explored h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.chambers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.chamber-item {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.chamber-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.chamber-name {
+  color: #ffd700;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.danger-level {
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.traps-encountered {
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff4444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.traps-count {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.artifacts-found {
+  margin-bottom: 1.5rem;
+}
+
+.artifacts-found h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.artifacts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.75rem;
+}
+
+.artifact-item {
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid #d4af37;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.artifact-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.artifact-name {
+  color: #ffd700;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.artifact-value {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.expedition-summary {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #d4af37;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.stats-panel, .history-panel {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.history-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.chambers, .traps, .artifacts {
+  font-weight: bold;
+}
+
+.win-amount {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+/* ===============================
+   MODAL OVERLAY (GLOBAL)
+================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+      circle at top,
+      rgba(212, 175, 55, 0.15),
+      rgba(0, 0, 0, 0.9)
+    ),
+    rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 1rem;
+  animation: fadeIn 0.35s ease;
+}
+
+/* ===============================
+   MODAL CARD
+================================ */
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: linear-gradient(
+    180deg,
+    rgba(30, 10, 45, 0.98),
+    rgba(15, 5, 25, 0.98)
+  );
+  border-radius: 18px;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  padding: 1.5rem;
+  box-shadow:
+    0 0 25px rgba(212, 175, 55, 0.25),
+    inset 0 0 20px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  animation: popIn 0.35s ease;
+}
+
+/* ===============================
+   MODAL TITLE
+================================ */
+.modal h3 {
+  color: #ffd700;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+/* ===============================
+   POTION TYPE BUTTONS
+================================ */
+.modal .potion-types {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+}
+
+.modal .potion-types button {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  border-radius: 12px;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.95rem;
+  color: #ffd700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.modal .potion-types button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+}
+
+.modal .potion-types button.active {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.35),
+    rgba(120, 80, 20, 0.35)
+  );
+  border-color: #ffd700;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.8);
+}
+
+/* ===============================
+   STAKE INPUT
+================================ */
+.modal input[type="number"] {
+  width: 100%;
+  padding: 0.8rem;
+  margin: 0.75rem 0 1.2rem;
+  font-size: 1.05rem;
+  border-radius: 12px;
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffd700;
+  text-align: center;
+  outline: none;
+}
+
+.modal input::placeholder {
+  color: rgba(255, 215, 0, 0.5);
+}
+
+/* ===============================
+   PRIMARY ACTION BUTTON
+================================ */
+.modal .brew-button {
+  width: 100%;
+  padding: 0.9rem;
+  font-size: 1.05rem;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(
+    135deg,
+    #d4af37,
+    #8b6a1f
+  );
+  color: #1a0d02;
+  font-weight: bold;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  box-shadow:
+    0 6px 20px rgba(212, 175, 55, 0.4);
+  transition: all 0.25s ease;
+}
+
+.modal .brew-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 30px rgba(212, 175, 55, 0.7);
+}
+
+.modal .brew-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===============================
+   ANIMATIONS
+================================ */
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* =====================================
+   PYRAMID MODAL – ANCIENT ARCADE THEME
+   ===================================== */
+
+.pyramid-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background:
+    radial-gradient(circle at center,
+      rgba(30, 20, 0, 0.6) 0%,
+      rgba(15, 10, 0, 0.85) 55%,
+      rgba(0, 0, 0, 0.95) 100%
+    );
+
+  backdrop-filter: blur(6px);
+  animation: pyramidFadeIn 0.35s ease-out;
+}
+
+@keyframes pyramidFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* === MODAL CARD === */
+.pyramid-modal-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 16px;
+
+  background:
+    linear-gradient(145deg,
+      rgba(40, 25, 5, 0.95),
+      rgba(10, 5, 0, 0.95)
+    );
+
+  border-radius: 20px;
+  padding: 24px 20px;
+
+  border: 3px solid #d4af37;
+
+  box-shadow:
+    0 0 35px rgba(212, 175, 55, 0.45),
+    inset 0 0 20px rgba(0, 0, 0, 0.7);
+
+  animation: pyramidPop 0.35s ease-out;
+}
+
+@keyframes pyramidPop {
+  from {
+    transform: scale(0.92) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* === TITLE === */
+.pyramid-modal-card h3 {
+  text-align: center;
+  margin-bottom: 18px;
+
+  font-size: 16px;
+  font-family: 'Bungee', 'Press Start 2P', cursive;
+
+  background: linear-gradient(45deg, #ffd700, #ff8c00, #c1440e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  text-shadow: 0 0 12px rgba(255, 165, 0, 0.6);
+}
+
+/* === INFO PANEL === */
+.pyramid-modal-info {
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(212, 175, 55, 0.4);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 18px;
+
+  display: grid;
+  gap: 8px;
+}
+
+.pyramid-modal-info div {
+  font-size: 11px;
+  color: #f5deb3;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* === STAKE INPUT === */
+.pyramid-stake-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.pyramid-stake-container label {
+  font-size: 11px;
+  text-align: center;
+  color: #f5deb3;
+  letter-spacing: 1px;
+}
+
+.pyramid-stake-container input {
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 14px;
+  border: 3px solid #ff9800;
+
+  padding: 16px;
+  text-align: center;
+
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'Press Start 2P', monospace;
+
+  color: #ffd700;
+
+  box-shadow:
+    inset 0 0 15px rgba(0, 0, 0, 0.7),
+    0 0 15px rgba(255, 152, 0, 0.5);
+}
+
+.pyramid-stake-container input:focus {
+  outline: none;
+  animation: pyramidInputGlow 1s infinite alternate;
+}
+
+@keyframes pyramidInputGlow {
+  from { box-shadow: 0 0 12px rgba(255, 152, 0, 0.5); }
+  to { box-shadow: 0 0 26px rgba(255, 152, 0, 0.9); }
+}
+
+/* === EXPLORE BUTTON === */
+.pyramid-modal-card .explore-button {
+  width: 100%;
+  padding: 18px;
+
+  border-radius: 16px;
+  border: none;
+
+  font-size: 16px;
+  font-family: 'Bungee', cursive;
+  text-transform: uppercase;
+
+  background:
+    linear-gradient(135deg,
+      #c1440e,
+      #ff8c00,
+      #ffd700
+    );
+
+  color: #000;
+
+  cursor: pointer;
+  box-shadow: 0 6px 0 #7a2c00;
+
+  transition: all 0.2s ease;
+}
+
+.pyramid-modal-card .explore-button:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 #7a2c00;
+}
+
+/* === MOBILE SAFETY === */
+@media (max-width: 480px) {
+  .pyramid-modal-card {
+    padding: 20px 16px;
+  }
+
+  .pyramid-modal-card h3 {
+    font-size: 14px;
+  }
+}

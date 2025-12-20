@@ -1,0 +1,78 @@
+.space-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+  padding: 1rem;
+}
+
+.space-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.mission-controls {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  height: fit-content;
+}
+
+.launch-button {
+  width: 100%;
+  background: linear-gradient(45deg, #7E57C2, #5E35B1);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.launch-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 20px rgba(126, 87, 194, 0.4);
+}
+
+.launch-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.space-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mission-animation {
+  text-align: center;
+  color: #ffd700;
+}
+
+.spaceship {
+  font-size: 4rem;
+  animation: spaceTravel 3s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spaceTravel {
+  0% { transform: translateX(-100px) rotate(0deg); }
+  50% { transform: translateX(100px) rotate(180deg); }
+  100% { transform: translateX(-100px) rotate(360deg); }
+}
+
+.mission-ready {
+  text-align: center;
+  color: #ffd700;
+}
+
+.planet {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}

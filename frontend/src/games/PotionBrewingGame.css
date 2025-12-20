@@ -1,0 +1,531 @@
+.potion-game {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2c003e 0%, #6a1b9a 100%);
+  padding: 1rem;
+}
+
+.potion-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+}
+
+.potion-selection h3 {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.potion-types {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.potion-type {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.potion-type:hover {
+  transform: translateX(5px);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.potion-type.active {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px currentColor;
+}
+
+.potion-icon {
+  font-size: 1.8rem;
+}
+
+.potion-info {
+  flex: 1;
+}
+
+.potion-name {
+  color: #ffd700;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.potion-desc {
+  color: #b8b8b8;
+  font-size: 0.85rem;
+}
+
+.brew-button {
+  width: 100%;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.brew-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+}
+
+.brew-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cauldron-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cauldron {
+  background: rgba(0, 0, 0, 0.7);
+  border: 4px solid;
+  border-radius: 20px;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.brewing-animation {
+  text-align: center;
+  color: #ffd700;
+}
+
+.bubbles {
+  font-size: 2rem;
+  animation: bubbleFloat 2s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes bubbleFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.1); }
+}
+
+.cauldron-icon {
+  font-size: 4rem;
+  animation: cauldronBubble 3s infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes cauldronBubble {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.1) rotate(5deg); }
+  75% { transform: scale(0.9) rotate(-5deg); }
+}
+
+.cauldron-ready {
+  text-align: center;
+  color: #ffd700;
+}
+
+.brew-results {
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.success-level {
+  padding: 0.5rem 1.5rem;
+  border-radius: 25px;
+  color: white;
+  font-weight: bold;
+  margin: 1rem 0;
+  font-size: 1.2rem;
+}
+
+.ingredients-used {
+  margin: 1.5rem 0;
+  width: 100%;
+}
+
+.ingredients-used h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+}
+
+.ingredients-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ingredient-item {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #d4af37;
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.ingredient-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.ingredient-name {
+  color: #ffd700;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.ingredient-power {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.brew-stats {
+  width: 100%;
+  max-width: 300px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.win-amount {
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.stats-panel, .history-panel {
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid #d4af37;
+  border-radius: 15px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.history-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+/* === GAME FEEL ANIMATIONS ONLY === */
+
+.ingredient-drop span {
+  font-size: 2rem;
+  display: inline-block;
+  animation: dropIn 0.6s ease forwards;
+  margin: 0 6px;
+}
+
+.ingredient-drop span:nth-child(2) { animation-delay: 0.2s; }
+.ingredient-drop span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dropIn {
+  from { transform: translateY(-40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.heat-wave .flames {
+  animation: flamePulse 0.8s infinite alternate;
+}
+
+@keyframes flamePulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.2); }
+}
+
+.bubbles.intense {
+  animation: bubbleBoost 0.6s infinite alternate;
+}
+
+@keyframes bubbleBoost {
+  from { transform: translateY(0); }
+  to { transform: translateY(-12px); }
+}
+
+.cauldron-icon.shake {
+  animation: cauldronShake 0.4s infinite;
+}
+
+@keyframes cauldronShake {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(5deg); }
+  75% { transform: rotate(-5deg); }
+}
+
+.brew-results.perfect {
+  animation: glowWin 1.2s infinite alternate;
+}
+
+.brew-results.failed {
+  animation: shakeFail 0.4s 2;
+}
+
+@keyframes glowWin {
+  from { box-shadow: 0 0 10px gold; }
+  to { box-shadow: 0 0 25px gold; }
+}
+
+@keyframes shakeFail {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+/* ===============================
+   POTION MODAL – THEME ALIGNED
+   =============================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background:
+    radial-gradient(circle at center,
+      rgba(0, 0, 0, 0.65) 0%,
+      rgba(0, 0, 0, 0.85) 60%,
+      rgba(0, 0, 0, 0.95) 100%
+    );
+
+  backdrop-filter: blur(6px);
+  animation: modalFadeIn 0.35s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* === MODAL CARD === */
+.modal-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 16px;
+
+  background:
+    linear-gradient(145deg,
+      rgba(20, 0, 35, 0.95),
+      rgba(5, 0, 15, 0.95)
+    );
+
+  border-radius: 20px;
+  padding: 24px 20px;
+
+  border: 3px solid #d4af37;
+
+  box-shadow:
+    0 0 30px rgba(212, 175, 55, 0.45),
+    inset 0 0 20px rgba(0, 0, 0, 0.6);
+
+  animation: modalPop 0.35s ease-out;
+}
+
+@keyframes modalPop {
+  from {
+    transform: scale(0.92) translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* === TITLE === */
+.modal-card h3 {
+  text-align: center;
+  margin-bottom: 18px;
+
+  font-size: 16px;
+  font-family: 'Bungee', 'Press Start 2P', cursive;
+
+  background: linear-gradient(45deg, #ffd700, #ff8c00, #ff4500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  text-shadow: 0 0 12px rgba(255, 165, 0, 0.6);
+}
+
+/* === POTION SELECTION === */
+.modal-card .potion-types {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.modal-card .potion-type {
+  padding: 14px;
+  border-radius: 14px;
+
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(212, 175, 55, 0.4);
+
+  color: #fff;
+  cursor: pointer;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  transition: all 0.25s ease;
+}
+
+.modal-card .potion-type small {
+  font-size: 10px;
+  color: #87ceeb;
+}
+
+.modal-card .potion-type:hover {
+  transform: translateY(-2px);
+  border-color: #ffd700;
+}
+
+.modal-card .potion-type.active {
+  background:
+    linear-gradient(135deg,
+      rgba(255, 140, 0, 0.25),
+      rgba(255, 69, 0, 0.25)
+    );
+
+  border-color: #ffd700;
+
+  box-shadow:
+    0 0 20px rgba(255, 165, 0, 0.6),
+    inset 0 0 15px rgba(0, 0, 0, 0.6);
+}
+
+/* === STAKE INPUT === */
+.stake-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stake-input-container label {
+  font-size: 11px;
+  text-align: center;
+  color: #87ceeb;
+  letter-spacing: 1px;
+}
+
+.stake-input-container input {
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 14px;
+  border: 3px solid #00ffff;
+
+  padding: 16px;
+  text-align: center;
+
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'Press Start 2P', monospace;
+
+  color: #ffd700;
+
+  box-shadow:
+    inset 0 0 15px rgba(0, 0, 0, 0.7),
+    0 0 15px rgba(0, 255, 255, 0.4);
+}
+
+.stake-input-container input:focus {
+  outline: none;
+  animation: modalInputGlow 1s infinite alternate;
+}
+
+@keyframes modalInputGlow {
+  from { box-shadow: 0 0 12px rgba(0, 255, 255, 0.5); }
+  to { box-shadow: 0 0 24px rgba(0, 255, 255, 0.9); }
+}
+
+/* === BREW BUTTON === */
+.modal-card .brew-button {
+  width: 100%;
+  padding: 18px;
+
+  border-radius: 16px;
+  border: none;
+
+  font-size: 16px;
+  font-family: 'Bungee', cursive;
+  text-transform: uppercase;
+
+  background:
+    linear-gradient(135deg,
+      #ff4500,
+      #ff8c00,
+      #ffd700
+    );
+
+  color: #000;
+
+  cursor: pointer;
+  box-shadow: 0 6px 0 #8b0000;
+
+  transition: all 0.2s ease;
+}
+
+.modal-card .brew-button:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 #8b0000;
+}
+
+/* === MOBILE SAFETY === */
+@media (max-width: 480px) {
+  .modal-card {
+    padding: 20px 16px;
+  }
+
+  .modal-card h3 {
+    font-size: 14px;
+  }
+}
