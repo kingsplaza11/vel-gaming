@@ -77,23 +77,56 @@ api.interceptors.response.use(
 );
 
 /* ======================================================
+   CSRF BOOTSTRAP (REQUIRED FOR SESSION AUTH)
+====================================================== */
+let csrfReady = false;
+
+async function ensureCSRF() {
+  if (csrfReady) return;
+
+  try {
+    // This endpoint must exist in backend:
+    // GET /api/accounts/csrf/
+    await api.get("/accounts/csrf/", {
+      skipAuthRedirect: true,
+    });
+
+    csrfReady = true;
+  } catch (err) {
+    console.error("CSRF bootstrap failed", err);
+    throw err;
+  }
+}
+
+
+/* ======================================================
+   AUTH SERVICE
+====================================================== */
+/* ======================================================
    AUTH SERVICE
 ====================================================== */
 export const authService = {
-  login: (credentials) =>
-    api.post("/accounts/login/", credentials),
+  login: async (credentials) => {
+    await ensureCSRF();
+    return api.post("/accounts/login/", credentials);
+  },
 
-  register: (userData) =>
-    api.post("/accounts/register/", userData),
+  register: async (userData) => {
+    await ensureCSRF();
+    return api.post("/accounts/register/", userData);
+  },
 
-  logout: () =>
-    api.post("/accounts/logout/"),
+  logout: async () => {
+    await ensureCSRF();
+    return api.post("/accounts/logout/");
+  },
 
   getProfile: () =>
     api.get("/accounts/profile/", {
       skipAuthRedirect: true,
     }),
 };
+
 
 /* ======================================================
    🎰 FORTUNE (MATCHES BACKEND SERIALIZER EXACTLY)

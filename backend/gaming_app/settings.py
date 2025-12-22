@@ -1,12 +1,13 @@
 from pathlib import Path
 import os
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+from dotenv import load_dotenv
+load_dotenv()
 SECRET_KEY = 'django-insecure-#tj4@qox5@d0--!&c-*h4l5xl4d7iegzj+5dv1rdo*&p&7!&!&'
 
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 
 # Application definition
@@ -104,16 +105,15 @@ DATABASES = {
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+# CORS_ALLOW_ALL_ORIGINS = True  # For development only
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "https://veltoragames.com",
+    "https://www.veltoragames.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "https://veltoragames.com"
 ]
 
 REST_FRAMEWORK = {
@@ -126,17 +126,18 @@ REST_FRAMEWORK = {
     ]
 }
 
-# Session settings
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+
 
 # CSRF settings
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_USE_SESSIONS = False
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = True
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -170,7 +171,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-
+STATIC_ROOT = BASE_DIR / "staticfiles"
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
