@@ -18,7 +18,7 @@ class PaystackService:
     def initialize_transaction(self, email, amount, reference, metadata=None):
         payload = {
             "email": email,
-            "amount": int(amount * 100),
+            "amount": int(amount),  # ✅ ALREADY KOBO
             "reference": reference,
             "currency": "NGN",
             "metadata": metadata or {},
@@ -31,10 +31,11 @@ class PaystackService:
             f"{self.base_url}/transaction/initialize",
             json=payload,
             headers=self._headers(),
-            timeout=30,
+            timeout=15,  # 10–15 is ideal
         )
 
         return res.json()
+
 
     def verify_transaction(self, reference):
         res = requests.get(

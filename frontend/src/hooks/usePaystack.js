@@ -10,7 +10,7 @@ export const usePaystack = () => {
         setError(null);
 
         try {
-            const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
+            const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api/';
             
             // Get CSRF token from cookies
             const getCSRFToken = () => {

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 SECRET_KEY = 'django-insecure-#tj4@qox5@d0--!&c-*h4l5xl4d7iegzj+5dv1rdo*&p&7!&!&'
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
@@ -103,39 +103,40 @@ DATABASES = {
 }
 
 
+def env_list(key, default=None):
+    value = os.getenv(key)
+    if not value:
+        return default or []
+    return [v.strip() for v in value.split(",")]
+
+
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
+
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+
 CORS_ALLOW_CREDENTIALS = True
-
-# CORS_ALLOW_ALL_ORIGINS = True  # For development only
-
-CORS_ALLOWED_ORIGINS = [
-    "https://veltoragames.com",
-    "https://www.veltoragames.com",
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://veltoragames.com"
-]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        # 'rest_framework.permissions.IsAuthenticated',
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
+        #'rest_framework.permissions.AllowAny',
     ]
 }
 
+CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_HTTPONLY = True
 
+CORS_ALLOW_ALL_ORIGINS = False
 
 # CSRF settings
-CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_USE_SESSIONS = False
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
-SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_SECURE = True
 

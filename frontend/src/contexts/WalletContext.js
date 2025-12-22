@@ -6,7 +6,7 @@ import axios from 'axios';
 const WalletContext = createContext();
 
 // API Base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api/';
 
 // Provider component
 export const WalletProvider = ({ children, user }) => {

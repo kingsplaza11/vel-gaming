@@ -1,0 +1,702 @@
+/* =========================
+   WALLET MODALS
+========================= */
+.wallet-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.wallet-modal-container {
+  width: 100%;
+  max-width: 500px;
+  background: linear-gradient(135deg, 
+    rgba(15, 15, 20, 0.95) 0%,
+    rgba(10, 10, 15, 0.98) 100%);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 215, 0, 0.2),
+    0 0 40px rgba(255, 215, 0, 0.1);
+  animation: modal-appear 0.3s ease-out;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Header */
+.wallet-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 25px 30px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.modal-icon-wrapper {
+  position: relative;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-icon {
+  width: 28px;
+  height: 28px;
+  color: #ffd700;
+  position: relative;
+  z-index: 2;
+}
+
+.modal-glow {
+  position: absolute;
+  inset: -5px;
+  background: radial-gradient(circle, 
+    rgba(255, 215, 0, 0.3) 0%, 
+    transparent 70%);
+  border-radius: 50%;
+  animation: modal-glow-pulse 2s ease-in-out infinite;
+}
+
+.wallet-modal-header h3 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #ffd700 0%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.modal-close-btn {
+  width: 40px;
+  height: 40px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+/* Modal Content */
+.wallet-modal-content {
+  padding: 30px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.modal-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: linear-gradient(135deg, 
+    rgba(255, 68, 68, 0.2) 0%, 
+    rgba(255, 0, 0, 0.1) 100%);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  border-radius: 12px;
+  margin-bottom: 25px;
+  color: #ff4444;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.modal-error svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Balance Display */
+.balance-display {
+  background: rgba(20, 20, 25, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.balance-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.balance-icon {
+  width: 24px;
+  height: 24px;
+  color: #ffd700;
+}
+
+.balance-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.balance-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.balance-amount {
+  color: #fff;
+  font-size: 24px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffd700, #d4af37);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Form Sections */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.amount-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.input-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.label-icon {
+  width: 18px;
+  height: 18px;
+  color: #ffd700;
+}
+
+.amount-input-wrapper {
+  position: relative;
+}
+
+.amount-prefix {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffd700;
+  z-index: 2;
+}
+
+.amount-input {
+  width: 100%;
+  padding: 20px 20px 20px 60px;
+  background: rgba(30, 30, 35, 0.8);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 16px;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.amount-input:focus {
+  outline: none;
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+.amount-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.quick-amounts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quick-amounts-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  margin: 0;
+}
+
+.quick-amounts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.quick-amount-btn {
+  padding: 12px;
+  background: rgba(30, 30, 35, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.quick-amount-btn:hover {
+  background: rgba(212, 175, 55, 0.1);
+  color: #ffd700;
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.quick-amount-btn.active {
+  background: linear-gradient(135deg, #ffd700, #d4af37);
+  color: #000;
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.quick-amount-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bank Details */
+.bank-details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.bank-select {
+  width: 100%;
+  padding: 16px 45px 16px 20px;
+  background: rgba(30, 30, 35, 0.8);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  appearance: none;
+  transition: all 0.3s ease;
+}
+
+.bank-select:focus {
+  outline: none;
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+.bank-select option {
+  background: #1e1e23;
+  color: #fff;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.account-input {
+  width: 100%;
+  padding: 16px 45px 16px 20px;
+  background: rgba(30, 30, 35, 0.8);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-family: monospace;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+}
+
+.account-input:focus {
+  outline: none;
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+.account-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0;
+  font-family: inherit;
+}
+
+.verify-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #ffd700, #d4af37);
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.verify-btn:hover:not(:disabled) {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.verify-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Account Verified */
+.account-verified {
+  position: relative;
+  background: rgba(0, 200, 83, 0.1);
+  border: 1px solid rgba(0, 200, 83, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.verified-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  position: relative;
+  z-index: 2;
+}
+
+.verified-icon {
+  width: 24px;
+  height: 24px;
+  color: #00c853;
+}
+
+.verified-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.verified-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.verified-name {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.verified-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, 
+    rgba(0, 200, 83, 0.2) 0%, 
+    transparent 70%);
+  z-index: 1;
+}
+
+/* Payment/Withdrawal Info */
+.payment-info,
+.withdrawal-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  padding: 20px;
+  background: rgba(20, 20, 25, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 16px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-icon {
+  width: 20px;
+  height: 20px;
+  color: #ffd700;
+  flex-shrink: 0;
+}
+
+.info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.info-subtitle {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+/* Modal Footer */
+.wallet-modal-footer {
+  display: flex;
+  gap: 15px;
+  padding: 25px 30px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.modal-secondary-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-secondary-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.modal-secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-primary-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.deposit-btn {
+  background: linear-gradient(135deg, #00c853, #00e676);
+  color: #000;
+}
+
+.withdraw-btn {
+  background: linear-gradient(135deg, #ffd700, #d4af37);
+  color: #000;
+}
+
+.modal-primary-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.2) 0%, 
+    transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.modal-primary-btn:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.modal-primary-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+}
+
+.modal-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Loading Spinners */
+.loading-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spinner-rotate 0.6s linear infinite;
+}
+
+.loading-spinner-tiny {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spinner-rotate 0.6s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes modal-glow-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .wallet-modal-container {
+    max-width: 100%;
+    margin: 0 15px;
+  }
+  
+  .wallet-modal-header,
+  .wallet-modal-content,
+  .wallet-modal-footer {
+    padding: 20px;
+  }
+  
+  .wallet-modal-header h3 {
+    font-size: 20px;
+  }
+  
+  .modal-icon-wrapper {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .modal-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .amount-input {
+    font-size: 24px;
+    padding: 18px 18px 18px 50px;
+  }
+  
+  .amount-prefix {
+    font-size: 20px;
+    left: 15px;
+  }
+  
+  .quick-amounts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .payment-info,
+  .withdrawal-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .wallet-modal-footer {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .wallet-modal-overlay {
+    padding: 10px;
+  }
+  
+  .wallet-modal-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .modal-title {
+    justify-content: center;
+  }
+  
+  .modal-close-btn {
+    align-self: flex-end;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+  }
+  
+  .quick-amounts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .info-item {
+    justify-content: center;
+    text-align: center;
+  }
+}

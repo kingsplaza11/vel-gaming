@@ -91,7 +91,14 @@ const Register = ({ onLogin }) => {
       }, 1500);
       
     } catch (error) {
-      setError(error.response?.data?.error || 'Registration failed. Please try again.');
+      if (error.response?.data) {
+        const data = error.response.data;
+        const firstError =
+          Object.values(data)?.[0]?.[0] || 'Registration failed';
+        setError(firstError);
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
