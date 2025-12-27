@@ -126,8 +126,6 @@ function App() {
     <WalletProvider user={user}>
       <Router>
         <Routes>
-          {/* 🔒 ADMIN GUARD (VERY IMPORTANT) */}
-          <Route path="/admin/*" element={<AdminRouteGuard />} />
 
           {/* AUTH */}
           <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
