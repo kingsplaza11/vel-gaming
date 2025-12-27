@@ -23,9 +23,11 @@ const BaseLayout = ({ user, onLogout }) => {
     // Set active nav based on current path
     const path = location.pathname;
     if (path === "/") setActiveNavItem("home");
-    else if (path.includes("games")) setActiveNavItem("games");
     else if (path.includes("wallet")) setActiveNavItem("wallet");
+    else if (path.includes("transactions")) setActiveNavItem("transactions");
+    else if (path.includes("referrals")) setActiveNavItem("referrals");
     else if (path.includes("profile")) setActiveNavItem("profile");
+    else if (path.includes("settings")) setActiveNavItem("settings");
   }, [location]);
 
   const toggleTheme = (mode) => {
@@ -97,14 +99,13 @@ const BaseLayout = ({ user, onLogout }) => {
             <nav className="sidebar-nav">
               {[
                 { id: "home", label: "Home", icon: "mdi:home", path: "/" },
-                { id: "games", label: "Games", icon: "mdi:gamepad-variant", path: "/games" },
                 { id: "wallet", label: "Wallet", icon: "mdi:wallet", path: "/wallet" },
                 { id: "profile", label: "Profile", icon: "mdi:account", path: "/profile" },
                 { id: "transactions", label: "Transactions", icon: "mdi:history", path: "/transactions" },
+
+                // 🔥 NEW
+                { id: "referrals", label: "Referrals", icon: "mdi:account-multiple", path: "/referrals" },
                 { id: "support", label: "Support", icon: "mdi:headset", path: "/support" },
-                { id: "tournaments", label: "Tournaments", icon: "mdi:trophy", path: "/tournaments" },
-                { id: "leaderboard", label: "Leaderboard", icon: "mdi:podium", path: "/leaderboard" },
-                { id: "friends", label: "Friends", icon: "mdi:account-group", path: "/friends" },
                 { id: "settings", label: "Settings", icon: "mdi:cog", path: "/settings" },
               ].map((item) => (
                 <button
@@ -176,85 +177,6 @@ const BaseLayout = ({ user, onLogout }) => {
           </button>
         </header>
 
-        {/* MOBILE SIDEBAR */}
-        <div className={`mobile-sidebar ${isMobileMenuOpen ? "open" : ""}`}>
-          <div className="mobile-sidebar-header">
-            <div className="mobile-user-profile">
-              <div className="mobile-avatar">
-                <Icon icon="mdi:account-circle" />
-              </div>
-              <div className="mobile-user-info">
-                <h3>{user?.username || "Guest"}</h3>
-                <button 
-                  className="mobile-user-balance-btn"
-                  onClick={() => {
-                    navigate("/wallet");
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  <Icon icon="mdi:currency-ngn" />
-                  {formatBalance(displayBalance)}
-                </button>
-              </div>
-            </div>
-            <button
-              className="close-mobile-sidebar"
-              onClick={() => setIsMobileMenuOpen(false)}
-              aria-label="Close menu"
-            >
-              <Icon icon="mdi:close" />
-            </button>
-          </div>
-
-          <nav className="mobile-nav">
-            {[
-              { label: "Home", path: "/", icon: "mdi:home" },
-              { label: "Games", path: "/games", icon: "mdi:gamepad-variant" },
-              { label: "Wallet", path: "/wallet", icon: "mdi:wallet" },
-              { label: "Profile", path: "/profile", icon: "mdi:account" },
-              { label: "Transactions", path: "/transactions", icon: "mdi:history" },
-              { label: "Support", path: "/support", icon: "mdi:headset" },
-              { label: "Tournaments", path: "/tournaments", icon: "mdi:trophy" },
-              { label: "Leaderboard", path: "/leaderboard", icon: "mdi:podium" },
-              { label: "Friends", path: "/friends", icon: "mdi:account-group" },
-              { label: "Settings", path: "/settings", icon: "mdi:cog" },
-            ].map((item) => (
-              <button
-                key={item.label}
-                className={`mobile-nav-item ${activeNavItem === item.label.toLowerCase() ? "active" : ""}`}
-                onClick={() => {
-                  setActiveNavItem(item.label.toLowerCase());
-                  navigate(item.path);
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <Icon icon={item.icon} />
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          <div className="mobile-sidebar-footer">
-            <div className="mobile-theme-switch">
-              <button
-                className={!isDarkMode ? "active" : ""}
-                onClick={() => toggleTheme(false)}
-              >
-                <Icon icon="mdi:weather-sunny" />
-              </button>
-              <button
-                className={isDarkMode ? "active" : ""}
-                onClick={() => toggleTheme(true)}
-              >
-                <Icon icon="mdi:weather-night" />
-              </button>
-            </div>
-            <button className="mobile-logout-btn" onClick={handleLogout}>
-              <Icon icon="mdi:logout" />
-              Logout
-            </button>
-          </div>
-        </div>
 
         {/* MAIN CONTENT */}
         <main className="dashboard-main">
@@ -344,6 +266,27 @@ const BaseLayout = ({ user, onLogout }) => {
               <button
                 className="modal-action-btn"
                 onClick={() => {
+                  navigate("/referrals");
+                  setIsBottomMenuOpen(false);
+                }}
+              >
+                <Icon icon="mdi:account-multiple" />
+                <span>Referrals</span>
+              </button>
+
+              <button
+                className="modal-action-btn"
+                onClick={() => {
+                  navigate("/settings");
+                  setIsBottomMenuOpen(false);
+                }}
+              >
+                <Icon icon="mdi:cog" />
+                <span>Settings</span>
+              </button>
+              <button
+                className="modal-action-btn"
+                onClick={() => {
                   navigate("/support");
                   setIsBottomMenuOpen(false);
                 }}
@@ -352,19 +295,10 @@ const BaseLayout = ({ user, onLogout }) => {
                 <span>Support</span>
               </button>
               <button
-                className="modal-action-btn"
-                onClick={() => {
-                  navigate("/tournaments");
-                  setIsBottomMenuOpen(false);
-                }}
-              >
-                <Icon icon="mdi:trophy" />
-                <span>Tournaments</span>
-              </button>
-              <button
                 className="modal-action-btn logout-action"
                 onClick={handleLogout}
               >
+
                 <Icon icon="mdi:logout" />
                 <span>Logout</span>
               </button>

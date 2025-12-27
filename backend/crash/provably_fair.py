@@ -2,7 +2,7 @@ import hmac
 import hashlib
 from decimal import Decimal, getcontext
 
-HOUSE_EDGE_DIVISOR = 33  # standard bustabit-style, gives ~1% edge
+HOUSE_EDGE_DIVISOR = 48  # standard bustabit-style, gives ~1% edge
 
 def sha256_hex(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()

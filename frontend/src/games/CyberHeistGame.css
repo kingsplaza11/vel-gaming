@@ -515,3 +515,90 @@
 .heist-start-btn:active {
   transform: scale(0.97);
 }
+
+/* Add to CyberHeistGame.css */
+
+/* Quick bet row */
+.quick-bet-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.quick-bet-btn {
+  flex: 1;
+  min-width: 70px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-bet-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.quick-bet-btn.active {
+  background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+  color: white;
+  font-weight: 600;
+  border-color: #9c27b0;
+  transform: scale(1.05);
+}
+
+.quick-bet-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Stake validation error */
+.stake-validation-error {
+  margin: 10px 0 0 0;
+  padding: 10px 12px;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 6px;
+  color: #ff3b30;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Input placeholder styling */
+.heist-modal-card input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Disabled start button state */
+.heist-start-btn:disabled:not(.active) {
+  background: linear-gradient(135deg, #444 0%, #333 100%);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  border-color: #444;
+}
+
+/* Better number formatting for balances */
+.balance-display,
+.balance-amount {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

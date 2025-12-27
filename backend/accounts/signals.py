@@ -4,6 +4,9 @@ from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from decimal import Decimal, InvalidOperation
 import re
+import random
+import string
+from django.db.models.signals import post_save
 
 User = get_user_model()
 
@@ -37,3 +40,13 @@ def validate_user_decimal_fields(sender, instance, **kwargs):
                 except (InvalidOperation, ValueError, TypeError):
                     # Set to default value if conversion fails
                     setattr(instance, field, Decimal('0.00'))
+
+
+def generate_ref_code():
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+@receiver(post_save, sender=User)
+def create_referral_code(sender, instance, created, **kwargs):
+    if created and not instance.referral_code:
+        instance.referral_code = generate_ref_code()
+        instance.save()

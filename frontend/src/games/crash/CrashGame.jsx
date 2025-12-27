@@ -14,6 +14,8 @@ import AlertModal from "../../components/ui/AlertModal";
 
 import "./CrashGame.css";
 
+const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
+
 export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   /* ---------------- GAME STATE ---------------- */
   const [phase, setPhase] = useState("betting"); // betting | running | crashed
@@ -21,7 +23,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   const [roundId, setRoundId] = useState(null);
 
   /* ---------------- BET STATE ---------------- */
-  const [betAmount, setBetAmount] = useState(100);
+  const [betAmount, setBetAmount] = useState(1000); // Start with minimum stake
   const [autoCashout, setAutoCashout] = useState(2.0);
   const [useAuto, setUseAuto] = useState(true);
   const [activeBetId, setActiveBetId] = useState(null);
@@ -44,6 +46,11 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
   /* ---------------- REFS ---------------- */
   const lastCashoutRef = useRef(0);
+
+  /* ---------------- STAKE VALIDATION ---------------- */
+  const isStakeValid = useMemo(() => {
+    return Number.isFinite(betAmount) && betAmount >= MINIMUM_STAKE;
+  }, [betAmount]);
 
   /* ---------------- HELPERS ---------------- */
   const colorFor = useMemo(
@@ -181,6 +188,37 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
   /* ---------------- REST ACTIONS ---------------- */
   const placeBet = async () => {
+    // Validate stake
+    if (!Number.isFinite(betAmount) || betAmount <= 0) {
+      showAlert(
+        "error",
+        "Invalid Stake",
+        "Please enter a valid bet amount."
+      );
+      return;
+    }
+
+    // Check minimum stake
+    if (betAmount < MINIMUM_STAKE) {
+      showAlert(
+        "error",
+        "Minimum Stake Required",
+        `Minimum bet is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}.`
+      );
+      return;
+    }
+
+    // Check balance
+    const userBalance = Number(user?.wallet_balance || 0);
+    if (betAmount > userBalance) {
+      showAlert(
+        "error",
+        "Insufficient Balance",
+        "Please deposit more funds to place this bet."
+      );
+      return;
+    }
+
     try {
       const res = await crashService.placeBet({
         amount: betAmount,
@@ -300,50 +338,36 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
               <label>Amount</label>
               <input
                 type="number"
-                min={1}
+                min={MINIMUM_STAKE}
                 value={betAmount}
                 onChange={(e) => setBetAmount(Number(e.target.value))}
               />
               <div className="quick">
-                {[50, 100, 250, 500].map((v) => (
-                  <button key={v} onClick={() => setBetAmount(v)} type="button">
-                    {v}
+                {[1000, 2000, 5000, 10000].map((v) => (
+                  <button 
+                    key={v} 
+                    onClick={() => setBetAmount(v)} 
+                    type="button"
+                    className={betAmount === v ? "active" : ""}
+                  >
+                    ₦{v.toLocaleString()}
                   </button>
                 ))}
               </div>
+              
+              {/* Stake validation message */}
+              {!isStakeValid && betAmount > 0 && (
+                <div className="stake-validation-error">
+                  Minimum bet is ₦{MINIMUM_STAKE.toLocaleString("en-NG")}
+                </div>
+              )}
             </div>
-
-            {/* <div className="field two">
-              <div className="toggle">
-                <label>Auto cashout</label>
-                <button
-                  type="button"
-                  className={`pill ${useAuto ? "on" : "off"}`}
-                  onClick={() => setUseAuto((s) => !s)}
-                >
-                  {useAuto ? "ON" : "OFF"}
-                </button>
-              </div>
-
-              <div className="auto">
-                <label>At</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={1.01}
-                  disabled={!useAuto}
-                  value={autoCashout}
-                  onChange={(e) => setAutoCashout(Number(e.target.value))}
-                />
-              </div>
-            </div> */}
-
             <div className="actions">
               {!activeBetId ? (
                 <button
                   className="primary"
                   onClick={placeBet}
-                  disabled={!connected || phase !== "betting"}
+                  disabled={!connected || phase !== "betting" || !isStakeValid}
                 >
                   BET
                 </button>
@@ -358,7 +382,10 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
               )}
 
               <div className="hint">
-                {phase === "betting" && "Place bet before flight starts"}
+                {phase === "betting" && 
+                  (isStakeValid 
+                    ? "Place bet before flight starts" 
+                    : `Minimum bet: ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`)}
                 {phase === "running" &&
                   (activeBetId
                     ? "Cash out anytime before crash"

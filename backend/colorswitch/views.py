@@ -7,7 +7,7 @@ from .models import ColorSwitchGame, ColorSwitchStats
 from wallets.models import Wallet
 
 COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
-MAX_PROFIT_RATIO = Decimal("0.30")
+MAX_PROFIT_RATIO = Decimal("0.50")
 
 
 @api_view(['POST'])

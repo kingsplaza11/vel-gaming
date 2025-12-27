@@ -41,7 +41,7 @@ const Profile = ({ onLogout }) => {
         setFormData({
           username: profileRes.data.username || "",
           email: profileRes.data.email || "",
-          phone: profileRes.data.phone || "",
+          phone: profileRes.data.phone_number || "",
           fullName: profileRes.data.full_name || "",
         });
       } catch (err) {
@@ -79,7 +79,7 @@ const Profile = ({ onLogout }) => {
     try {
       await api.put("/accounts/profile/", {
         username: formData.username,
-        phone: formData.phone,
+        phone_number: formData.phone,
         full_name: formData.fullName,
       });
 
@@ -277,7 +277,7 @@ const Profile = ({ onLogout }) => {
                   <input
                     type="tel"
                     name="phone"
-                    value={formData.phone}
+                    value={formData.phone_number}
                     onChange={handleInputChange}
                     className="form-input"
                     placeholder="Enter phone number"
@@ -286,8 +286,8 @@ const Profile = ({ onLogout }) => {
                 </div>
               ) : (
                 <div className="form-display">
-                  <span>{formData.phone || "Not set"}</span>
-                  {formData.phone && (
+                  <span>{formData.phone_number || "Not set"}</span>
+                  {formData.phone_number && (
                     <Icon icon="mdi:content-copy" className="copy-icon" />
                   )}
                 </div>
@@ -306,7 +306,7 @@ const Profile = ({ onLogout }) => {
                   <input
                     type="text"
                     name="fullName"
-                    value={formData.fullName}
+                    value={formData.full_name}
                     onChange={handleInputChange}
                     className="form-input"
                     placeholder="Enter full name"
@@ -315,7 +315,7 @@ const Profile = ({ onLogout }) => {
                 </div>
               ) : (
                 <div className="form-display">
-                  <span>{formData.fullName || "Not set"}</span>
+                  <span>{formData.full_name || "Not set"}</span>
                 </div>
               )}
             </div>

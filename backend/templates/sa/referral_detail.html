@@ -1,0 +1,128 @@
+{% extends "sa/base.html" %}
+{% block title %}Referral Details{% endblock %}
+
+{% block content %}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+    <h2 class="mb-2 mb-md-0">Referral Details</h2>
+    <a href="{% url 'adminpanel:referral_list' %}" class="btn btn-sm btn-outline-secondary">
+        ← Back to Referrals
+    </a>
+</div>
+
+<!-- USERS -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm p-3 h-100">
+            <h6 class="text-muted mb-1">Referrer</h6>
+            <h5 class="mb-1">{{ referrer.username }}</h5>
+            <p class="mb-1 text-muted">{{ referrer.email|default:"—" }}</p>
+
+            {% if referrer.referral_code %}
+                <span class="badge bg-dark">
+                    Code: {{ referrer.referral_code }}
+                </span>
+            {% else %}
+                <span class="text-muted small">No referral code</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm p-3 h-100">
+            <h6 class="text-muted mb-1">Referred User</h6>
+            <h5 class="mb-1">{{ user.username }}</h5>
+            <p class="mb-1 text-muted">{{ user.email|default:"—" }}</p>
+            <small class="text-muted">
+                Joined: {{ user.date_joined|date:"Y-m-d H:i" }}
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- WALLET -->
+<div class="row g-4 mb-4 text-center">
+    <div class="col-md-4">
+        <div class="card shadow-sm p-3">
+            <h6 class="text-muted">Main Balance</h6>
+            <h4 class="fw-semibold">₦{{ wallet.balance|default:"0.00" }}</h4>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm p-3">
+            <h6 class="text-muted">Spot Balance</h6>
+            <h4 class="fw-semibold">₦{{ wallet.spot_balance|default:"0.00" }}</h4>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm p-3">
+            <h6 class="text-muted">Locked Balance</h6>
+            <h4 class="fw-semibold">₦{{ wallet.locked_balance|default:"0.00" }}</h4>
+        </div>
+    </div>
+</div>
+
+<!-- EARNINGS SUMMARY -->
+<div class="card shadow-sm p-3 mb-4">
+    <h5 class="mb-3">Credit Transactions Summary</h5>
+    <div class="row text-center">
+        <div class="col-md-3 col-6 mb-3 mb-md-0">
+            <h6 class="text-muted">Today</h6>
+            <strong>₦{{ daily }}</strong>
+        </div>
+        <div class="col-md-3 col-6 mb-3 mb-md-0">
+            <h6 class="text-muted">This Week</h6>
+            <strong>₦{{ weekly }}</strong>
+        </div>
+        <div class="col-md-3 col-6">
+            <h6 class="text-muted">This Month</h6>
+            <strong>₦{{ monthly }}</strong>
+        </div>
+        <div class="col-md-3 col-6">
+            <h6 class="text-muted">Lifetime</h6>
+            <strong>₦{{ total }}</strong>
+        </div>
+    </div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div class="card shadow-sm p-3">
+    <h5 class="mb-3">Recent Transactions</h5>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Reference</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in transactions %}
+                <tr>
+                    <td>{{ tx.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if tx.tx_type == "CREDIT" %}
+                            <span class="badge bg-success">Credit</span>
+                        {% else %}
+                            <span class="badge bg-danger">Debit</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-semibold">₦{{ tx.amount }}</td>
+                    <td class="text-muted small">{{ tx.reference }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        No transactions found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

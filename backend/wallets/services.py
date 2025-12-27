@@ -5,79 +5,95 @@ from django.utils import timezone
 from .models import Wallet, WalletTransaction
 from crash.models import AuditLog
 
-def _get_wallet_for_update(user, is_demo: bool):
-    wallet = Wallet.objects.select_for_update().get(user=user)
-    return wallet
+
+# ======================================================
+# INTERNAL
+# ======================================================
+def _get_wallet_for_update(user):
+    return Wallet.objects.select_for_update().get(user=user)
 
 
+# ======================================================
+# PLACE BET (USES balance + spot_balance)
+# ======================================================
 @transaction.atomic
-def place_bet_atomic(user, amount: Decimal, reference: str, is_demo: bool = False):
-    wallet = _get_wallet_for_update(user, is_demo=is_demo)
+def place_bet_atomic(user, amount: Decimal, reference: str):
+    wallet = _get_wallet_for_update(user)
 
     if amount <= 0:
         raise ValueError("Invalid bet amount")
 
-    if is_demo:
-        if wallet.demo_balance < amount:
-            raise ValueError("Insufficient demo balance")
-        wallet.demo_balance = F("demo_balance") - amount
-    else:
-        if wallet.balance < amount:
-            raise ValueError("Insufficient balance")
-        wallet.balance = F("balance") - amount
-        wallet.locked_balance = F("locked_balance") + amount
+    available = wallet.balance + wallet.spot_balance
+    if available < amount:
+        raise ValueError("Insufficient funds")
 
-    wallet.save(update_fields=["balance", "locked_balance", "demo_balance"])
+    remaining = amount
+
+    # 1️⃣ Spend from spot balance first
+    if wallet.spot_balance > 0:
+        used_spot = min(wallet.spot_balance, remaining)
+        wallet.spot_balance = F("spot_balance") - used_spot
+        remaining -= used_spot
+
+    # 2️⃣ Spend remaining from main balance
+    if remaining > 0:
+        wallet.balance = F("balance") - remaining
+
+    # 3️⃣ Lock full bet
+    wallet.locked_balance = F("locked_balance") + amount
+
+    wallet.save(update_fields=["balance", "spot_balance", "locked_balance"])
 
     tx = WalletTransaction.objects.create(
         user=user,
         amount=amount,
         tx_type=WalletTransaction.DEBIT,
         reference=reference,
-        meta={"reason": "crash_bet", "is_demo": is_demo},
+        meta={"reason": "crash_bet"},
     )
 
     AuditLog.objects.create(
         user=user,
         action="BET_PLACED",
-        details={"amount": str(amount), "reference": reference, "is_demo": is_demo},
+        details={"amount": str(amount), "reference": reference},
     )
 
     return tx
 
 
+# ======================================================
+# CASHOUT (CREDITS SPOT BALANCE ONLY)
+# ======================================================
 @transaction.atomic
-def cashout_atomic(user, bet, payout_amount: Decimal, reference: str, is_demo: bool = False):
-    wallet = _get_wallet_for_update(user, is_demo=is_demo)
+def cashout_atomic(user, bet, payout_amount: Decimal, reference: str):
+    wallet = _get_wallet_for_update(user)
 
     if bet.status != "ACTIVE":
         raise ValueError("Bet not active")
 
-    if payout_amount <= 0:
+    if payout_amount < 0:
         raise ValueError("Invalid payout amount")
 
-    if is_demo:
-        wallet.demo_balance = F("demo_balance") + payout_amount
-    else:
-        # unlock bet amount and add profit
-        locked = bet.bet_amount
-        wallet.locked_balance = F("locked_balance") - locked
-        wallet.balance = F("balance") + payout_amount
+    # Release locked funds (always)
+    wallet.locked_balance = F("locked_balance") - bet.bet_amount
 
-    wallet.save(update_fields=["balance", "locked_balance", "demo_balance"])
+    # Credit winnings to SPOT balance
+    wallet.spot_balance = F("spot_balance") + payout_amount
+
+    wallet.save(update_fields=["locked_balance", "spot_balance"])
 
     tx = WalletTransaction.objects.create(
         user=user,
         amount=payout_amount,
         tx_type=WalletTransaction.CREDIT,
         reference=reference,
-        meta={"reason": "crash_cashout", "bet_id": bet.id, "is_demo": is_demo},
+        meta={"reason": "crash_cashout", "bet_id": bet.id},
     )
 
     bet.win_amount = payout_amount
     bet.status = "CASHED_OUT"
     bet.cashed_out_at = timezone.now()
-    bet.save(update_fields=["win_amount", "status", "cashed_out_at", "cashout_multiplier"])
+    bet.save(update_fields=["win_amount", "status", "cashed_out_at"])
 
     AuditLog.objects.create(
         user=user,
@@ -88,16 +104,16 @@ def cashout_atomic(user, bet, payout_amount: Decimal, reference: str, is_demo: b
     return tx
 
 
+# ======================================================
+# LOST BET (NO REFUND, JUST RELEASE LOCK)
+# ======================================================
 @transaction.atomic
-def settle_lost_bet_atomic(bet, is_demo: bool = False):
-    """
-    For real money, unlock locked_balance without refunding.
-    """
-    from decimal import Decimal
+def settle_lost_bet_atomic(bet):
     wallet = Wallet.objects.select_for_update().get(user=bet.user)
-    if not is_demo:
-        wallet.locked_balance = F("locked_balance") - bet.bet_amount
-        wallet.save(update_fields=["locked_balance"])
+
+    wallet.locked_balance = F("locked_balance") - bet.bet_amount
+    wallet.save(update_fields=["locked_balance"])
+
     bet.status = "LOST"
-    bet.win_amount = Decimal("0")
+    bet.win_amount = Decimal("0.00")
     bet.save(update_fields=["status", "win_amount"])

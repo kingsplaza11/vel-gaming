@@ -21,7 +21,7 @@ from .abuse import hit_rate_limit, tap_speed_check, RateLimit, AbuseError
 DEFAULT_RTP = {
     "fortune_mouse": {
         "target_rtp": Decimal("0.25"),
-        "win_prob_cap": Decimal("0.30"),
+        "win_prob_cap": Decimal("0.45"),
         "max_steps": 25,
         "max_multiplier": Decimal("50.0000"),
         "base_safe_prob": Decimal("0.40"),
@@ -31,7 +31,7 @@ DEFAULT_RTP = {
     },
     "fortune_tiger": {
         "target_rtp": Decimal("0.26"),
-        "win_prob_cap": Decimal("0.28"),
+        "win_prob_cap": Decimal("0.48"),
         "max_steps": 20,
         "max_multiplier": Decimal("40.0000"),
         "base_safe_prob": Decimal("0.38"),
@@ -41,7 +41,7 @@ DEFAULT_RTP = {
     },
     "fortune_rabbit": {
         "target_rtp": Decimal("0.27"),
-        "win_prob_cap": Decimal("0.30"),
+        "win_prob_cap": Decimal("0.47"),
         "max_steps": 30,
         "max_multiplier": Decimal("60.0000"),
         "base_safe_prob": Decimal("0.42"),
@@ -291,7 +291,12 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
         s.save(update_fields=["payout_amount", "status", "finished_at"])
 
         # Credit payout (wallet atomic inside)
-        credit_payout(s.user_id, s.currency, payout, ref=f"fortune:{s.id}:cashout")
+        credit_payout(
+            user_id=s.user_id,
+            payout=payout,
+            ref=f"fortune:{s.id}:cashout"
+        )
+
 
         # ✅ self-healing RTP fetch
         cfgm = self._get_or_create_rtp(s.game)

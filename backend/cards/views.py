@@ -10,7 +10,7 @@ from .models import CardGame, CardStats
 from accounts.models import User
 from wallets.models import Wallet  # ✅ ensure correct import
 
-MIN_BET = Decimal("500.00")
+MIN_BET = Decimal("1500.00")
 
 def create_card_deck(grid_size):
     pairs_count = grid_size // 2
@@ -31,7 +31,7 @@ def start_card_game(request):
         return Response({'error': 'Invalid parameters'}, status=400)
 
     if bet_amount < MIN_BET:
-        return Response({'error': 'Minimum stake is ₦500'}, status=400)
+        return Response({'error': 'Minimum stake is ₦1500'}, status=400)
 
     if grid_size % 2 != 0 or grid_size < 4:
         return Response({'error': 'Invalid grid size'}, status=400)

@@ -193,13 +193,13 @@ const WalletDashboard = () => {
                   <div className="card-icon">
                     <Icon icon="mdi:gamepad" />
                   </div>
-                  <h3>Demo Balance</h3>
+                  <h3>Spot Balance</h3>
                 </div>
                 <div className="card-balance">
                   <span className="currency">₦</span>
-                  <span className="amount">{formatAmount(safeWallet.demo_balance)}</span>
+                  <span className="amount">{formatAmount(safeWallet.spot_balance)}</span>
                 </div>
-                <p className="card-description">Practice funds</p>
+                <p className="card-description">Withdrawable Funds</p>
               </div>
               <div className="card-decoration"></div>
             </div>

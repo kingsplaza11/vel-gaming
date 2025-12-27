@@ -58,13 +58,13 @@ def calculate_fishing_level(total_sessions: int) -> str:
         return "Novice Angler 🐟"
 
 
-MAX_WIN_RATIO = Decimal("0.30")  # 30%
+MAX_WIN_RATIO = Decimal("0.48")  # 30%
 
 WRONG_TREASURES = ["Rusty Boot", "Sea Bomb", "Cursed Skull"]
 
 def _choose_fish():
     # 30% chance of trap → full loss
-    if random.random() < 0.30:
+    if random.random() < 0.48:
         return {
             "name": random.choice(WRONG_TREASURES),
             "rarity": "Trap",

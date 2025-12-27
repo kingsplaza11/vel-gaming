@@ -1,20 +1,18 @@
-// src/services/api.js
 import axios from "axios";
 
 /* ======================================================
    API BASE URL (HARD FAIL SAFE)
-   - NEVER silently falls back to localhost in production
 ====================================================== */
 const API_BASE =
   process.env.REACT_APP_API_URL?.replace(/\/+$/, "") ||
-  "https://veltoragames.com/api"; // ⚠️ CHANGE THIS FOR VPS
+  "https://veltoragames.com/api";
 
 /* ======================================================
    AXIOS INSTANCE
 ====================================================== */
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 15000, // prevents infinite hanging on VPS
+  timeout: 15000,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -23,7 +21,7 @@ const api = axios.create({
 });
 
 /* ======================================================
-   COOKIE HELPER (SAFE)
+   COOKIE HELPER
 ====================================================== */
 function getCookie(name) {
   if (!document.cookie) return null;
@@ -34,7 +32,7 @@ function getCookie(name) {
 }
 
 /* ======================================================
-   REQUEST INTERCEPTOR (CSRF SAFE — NO RECURSION)
+   REQUEST INTERCEPTOR (CSRF)
 ====================================================== */
 api.interceptors.request.use(
   (config) => {
@@ -48,7 +46,21 @@ api.interceptors.request.use(
 );
 
 /* ======================================================
-   RESPONSE INTERCEPTOR (AUTH SAFE — NO LOOPS)
+   🤝 REFERRALS
+====================================================== */
+export const referralService = {
+  getDashboard: () =>
+    api.get("/accounts/referral_dashboard/"),
+
+  getLink: () =>
+    api.get("/accounts/referral_dashboard/", {
+      skipAuthRedirect: true,
+    }),
+};
+
+
+/* ======================================================
+   RESPONSE INTERCEPTOR (AUTH SAFE)
 ====================================================== */
 api.interceptors.response.use(
   (response) => response,
@@ -56,12 +68,10 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     const path = window.location.pathname;
 
-    // Explicit opt-out
     if (error.config?.skipAuthRedirect) {
       return Promise.reject(error);
     }
 
-    // Never redirect during active games
     const isGameRoute =
       path.startsWith("/fortune") ||
       path.startsWith("/slots") ||
@@ -77,31 +87,20 @@ api.interceptors.response.use(
 );
 
 /* ======================================================
-   CSRF BOOTSTRAP (REQUIRED FOR SESSION AUTH)
+   CSRF BOOTSTRAP
 ====================================================== */
 let csrfReady = false;
 
 async function ensureCSRF() {
   if (csrfReady) return;
 
-  try {
-    // This endpoint must exist in backend:
-    // GET /api/accounts/csrf/
-    await api.get("/accounts/csrf/", {
-      skipAuthRedirect: true,
-    });
+  await api.get("/accounts/csrf/", {
+    skipAuthRedirect: true,
+  });
 
-    csrfReady = true;
-  } catch (err) {
-    console.error("CSRF bootstrap failed", err);
-    throw err;
-  }
+  csrfReady = true;
 }
 
-
-/* ======================================================
-   AUTH SERVICE
-====================================================== */
 /* ======================================================
    AUTH SERVICE
 ====================================================== */
@@ -111,9 +110,9 @@ export const authService = {
     return api.post("/accounts/login/", credentials);
   },
 
-  register: async (userData) => {
+  register: async (data) => {
     await ensureCSRF();
-    return api.post("/accounts/register/", userData);
+    return api.post("/accounts/register/", data);
   },
 
   logout: async () => {
@@ -127,25 +126,60 @@ export const authService = {
     }),
 };
 
+/* ======================================================
+   WALLET / TRANSACTIONS
+====================================================== */
+export const walletService = {
+  getTransactions: () =>
+    api.get("/wallet/transactions/"),
+
+  getBalance: () =>
+    api.get("/wallet/balance/", {
+      skipAuthRedirect: true,
+    }),
+};
 
 /* ======================================================
-   🎰 FORTUNE (MATCHES BACKEND SERIALIZER EXACTLY)
+   SETTINGS
+====================================================== */
+export const settingsService = {
+  updateProfile: (data) =>
+    api.post("/accounts/update-profile/", {
+      username: data.username,
+      email: data.email,
+    }),
+
+  changePassword: (data) =>
+    api.post("/accounts/change-password/", {
+      old_password: data.old_password,
+      new_password: data.new_password,
+    }),
+};
+
+/* ======================================================
+   SUPPORT
+====================================================== */
+export const supportService = {
+  submitTicket: (data) =>
+    api.post("/accounts/ticket/", {
+      message: data.message,
+    }),
+};
+
+/* ======================================================
+   FORTUNE
 ====================================================== */
 export const fortuneService = {
   startSession: (data) =>
-    api.post("/fortune/start/", {
-      game: data.game,
-      bet_amount: data.bet_amount,
-      client_seed: data.client_seed,
-    }),
+    api.post("/fortune/start/", data),
 
-  getSession: (sessionId) =>
-    api.get(`/fortune/session/${sessionId}/`, {
+  getSession: (id) =>
+    api.get(`/fortune/session/${id}/`, {
       skipAuthRedirect: true,
     }),
 
-  cashOut: (sessionId) =>
-    api.post(`/fortune/session/${sessionId}/cashout/`),
+  cashOut: (id) =>
+    api.post(`/fortune/session/${id}/cashout/`),
 };
 
 /* ======================================================
@@ -160,7 +194,6 @@ export const slotsService = {
 
   getStats: () => api.get("/slots/stats/"),
   getHistory: () => api.get("/slots/history/"),
-  getThemes: () => api.get("/slots/themes/"),
 };
 
 /* ======================================================
@@ -173,159 +206,54 @@ export const crashService = {
   cashOut: (data) =>
     api.post("/crash/cash-out/", data),
 
-  gameCrashed: (data) =>
-    api.post("/crash/game-crashed/", data),
-
   getStats: () => api.get("/crash/stats/"),
-  getHistory: () => api.get("/crash/history/"),
 };
 
 /* ======================================================
-   FISHING
+   GENERIC GAME SERVICES
 ====================================================== */
 export const fishingService = {
-  castLine: (data) =>
-    api.post("/fishing/cast-line/", data),
-
-  getStats: () => api.get("/fishing/stats/"),
-  getHistory: () => api.get("/fishing/history/"),
+  castLine: (data) => api.post("/fishing/cast-line/", data),
 };
 
-/* ======================================================
-   TREASURE
-====================================================== */
 export const treasureService = {
-  startHunt: (data) =>
-    api.post("/treasure/start-hunt/", data),
-
-  getStats: () => api.get("/treasure/stats/"),
-  getHistory: () => api.get("/treasure/history/"),
+  startHunt: (data) => api.post("/treasure/start-hunt/", data),
 };
 
-/* ======================================================
-   DRAGON
-====================================================== */
 export const dragonService = {
-  startBattle: (data) =>
-    api.post("/dragon/start-battle/", data),
-
-  getStats: () => api.get("/dragon/stats/"),
-  getHistory: () => api.get("/dragon/history/"),
+  startBattle: (data) => api.post("/dragon/start-battle/", data),
 };
 
-/* ======================================================
-   POTION
-====================================================== */
 export const potionService = {
-  brewPotion: (data) =>
-    api.post("/potion/brew-potion/", data),
-
-  getStats: () => api.get("/potion/stats/"),
-  getHistory: () => api.get("/potion/history/"),
+  brewPotion: (data) => api.post("/potion/brew-potion/", data),
 };
 
-/* ======================================================
-   PYRAMID
-====================================================== */
 export const pyramidService = {
-  explorePyramid: (data) =>
-    api.post("/pyramid/explore-pyramid/", data),
-
-  getStats: () => api.get("/pyramid/stats/"),
-  getHistory: () => api.get("/pyramid/history/"),
+  explorePyramid: (data) => api.post("/pyramid/explore-pyramid/", data),
 };
 
-/* ======================================================
-   HEIST
-====================================================== */
 export const heistService = {
-  startHeist: (data) =>
-    api.post("/heist/start-heist/", data),
-
-  getStats: () => api.get("/heist/stats/"),
-  getHistory: () => api.get("/heist/history/"),
+  startHeist: (data) => api.post("/heist/start-heist/", data),
 };
 
-/* ======================================================
-   MINESWEEPER
-====================================================== */
 export const minesweeperService = {
-  startGame: (data) =>
-    api.post("/minesweeper/start/", data),
-
-  revealCell: (data) =>
-    api.post("/minesweeper/reveal/", data),
-
-  cashOut: (data) =>
-    api.post("/minesweeper/cashout/", data),
-
-  getStats: () => api.get("/minesweeper/stats/"),
-  getHistory: () => api.get("/minesweeper/history/"),
+  startGame: (data) => api.post("/minesweeper/start/", data),
 };
 
-/* ======================================================
-   TOWER
-====================================================== */
 export const towerService = {
-  startGame: (data) =>
-    api.post("/tower/start/", data),
-
-  buildLevel: (data) =>
-    api.post("/tower/build/", data),
-
-  cashOut: (data) =>
-    api.post("/tower/cashout/", data),
-
-  getStats: () => api.get("/tower/stats/"),
-  getHistory: () => api.get("/tower/history/"),
+  startGame: (data) => api.post("/tower/start/", data),
 };
 
-/* ======================================================
-   CARDS
-====================================================== */
 export const cardService = {
-  startGame: (data) =>
-    api.post("/cards/start-game/", data),
-
-  revealCard: (data) =>
-    api.post("/cards/reveal-card/", data),
-
-  getStats: () => api.get("/cards/stats/"),
-  getHistory: () => api.get("/cards/history/"),
+  startGame: (data) => api.post("/cards/start-game/", data),
 };
 
-/* ======================================================
-   NUMBER GUESSING
-====================================================== */
 export const guessingService = {
-  startGame: (data) =>
-    api.post("/guessing/start/", data),
-
-  makeGuess: (data) =>
-    api.post("/guessing/guess/", data),
-
-  getStats: () => api.get("/guessing/stats/"),
-  getHistory: () => api.get("/guessing/history/"),
+  startGame: (data) => api.post("/guessing/start/", data),
 };
 
-/* ======================================================
-   COLOR SWITCH
-====================================================== */
 export const colorSwitchService = {
-  startGame: (data) =>
-    api.post("/colorswitch/start/", data),
-
-  submitSequence: (data) =>
-    api.post("/colorswitch/submit/", data),
-
-  cashOut: (data) =>
-    api.post("/colorswitch/cashout/", data),
-
-  getStats: () => api.get("/colorswitch/stats/"),
-  getHistory: () => api.get("/colorswitch/history/"),
+  startGame: (data) => api.post("/colorswitch/start/", data),
 };
 
-/* ======================================================
-   EXPORT AXIOS INSTANCE
-====================================================== */
 export default api;

@@ -1,34 +1,31 @@
 // File: src/contexts/WalletContext.js
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
 
-// Create the context
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+} from "react";
+
+import api from "../services/api"; // ✅ SINGLE axios instance (CSRF + session)
+
+// ======================================================
+// CONTEXT
+// ======================================================
 const WalletContext = createContext();
 
-// API Base URL
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL?.replace(/\/+$/, '') ||
-  'http://localhost:8001/api';
-
-// Provider component
+// ======================================================
+// PROVIDER
+// ======================================================
 export const WalletProvider = ({ children, user }) => {
   const [wallet, setWallet] = useState(null);
   const [transactions, setTransactions] = useState([]); // ALWAYS ARRAY
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  axios.defaults.withCredentials = true;
-
-  const getAuthHeaders = () => ({
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    withCredentials: true,
-  });
-
-  /* =========================
-     NORMALIZE TRANSACTIONS
-  ========================= */
+  // ======================================================
+  // HELPERS
+  // ======================================================
   const normalizeTransactions = (data) => {
     if (Array.isArray(data)) return data;
     if (data?.results && Array.isArray(data.results)) return data.results;
@@ -36,117 +33,138 @@ export const WalletProvider = ({ children, user }) => {
     return [];
   };
 
-  /* =========================
-     FETCH WALLET
-  ========================= */
+  const resetState = () => {
+    setWallet(null);
+    setTransactions([]);
+    setError(null);
+    setLoading(false);
+  };
+
+  // ======================================================
+  // FETCH WALLET BALANCE
+  // ======================================================
   const fetchWalletBalance = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      const res = await axios.get(
-        `${API_BASE_URL}/wallet/balance/`,
-        getAuthHeaders()
-      );
+      const res = await api.get("/wallet/balance/");
       setWallet(res.data || null);
       setError(null);
     } catch (err) {
-      console.error('Wallet fetch failed:', err);
-      setError('Failed to load wallet');
+      console.error("Wallet fetch failed:", err);
+      setError("Failed to load wallet");
     } finally {
       setLoading(false);
     }
   };
 
-  /* =========================
-     FETCH TRANSACTIONS
-  ========================= */
+  // ======================================================
+  // FETCH TRANSACTIONS
+  // ======================================================
   const fetchTransactions = async () => {
     if (!user) return;
 
     try {
-      const res = await axios.get(
-        `${API_BASE_URL}/wallet/transactions/`,
-        getAuthHeaders()
-      );
-
-      const safeTxs = normalizeTransactions(res.data);
-      setTransactions(safeTxs);
+      const res = await api.get("/wallet/transactions/");
+      setTransactions(normalizeTransactions(res.data));
     } catch (err) {
-      console.error('Transactions fetch failed:', err);
+      console.error("Transactions fetch failed:", err);
       setTransactions([]); // HARD FAIL SAFE
     }
   };
 
-  /* =========================
-     VERIFY TRANSACTION
-  ========================= */
+  // ======================================================
+  // VERIFY FUNDING (PAYSTACK)
+  // ======================================================
   const verifyTransaction = async (reference) => {
+    if (!reference) {
+      return { success: false, message: "Invalid reference" };
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
-      const res = await axios.post(
-        `${API_BASE_URL}/wallet/verify/`,
-        { reference },
-        getAuthHeaders()
-      );
+      const res = await api.post("/wallet/verify/", { reference });
 
       if (res.data?.status) {
         await fetchWalletBalance();
         await fetchTransactions();
         return { success: true };
       }
-      return { success: false, message: res.data?.message };
+
+      return {
+        success: false,
+        message: res.data?.message || "Verification failed",
+      };
     } catch (err) {
-      setError('Verification failed');
-      return { success: false };
+      console.error("Verification error:", err);
+      setError("Verification failed");
+      return { success: false, message: "Verification failed" };
     } finally {
       setLoading(false);
     }
   };
 
-  /* =========================
-     WITHDRAW
-  ========================= */
+  // ======================================================
+  // WITHDRAW FUNDS (PAYSTACK TRANSFER)
+  // ======================================================
   const withdrawFunds = async (payload) => {
     setLoading(true);
     setError(null);
 
     try {
-      const res = await axios.post(
-        `${API_BASE_URL}/wallet/withdraw/`,
-        payload,
-        getAuthHeaders()
-      );
+      const res = await api.post("/wallet/withdraw/", payload);
 
       if (res.data?.status) {
         await fetchWalletBalance();
         await fetchTransactions();
         return { success: true };
       }
-      return { success: false, message: res.data?.message };
+
+      return {
+        success: false,
+        message: res.data?.message || "Withdrawal failed",
+      };
     } catch (err) {
-      setError(err.response?.data?.message || 'Withdrawal failed');
-      return { success: false };
+      console.error("Withdrawal error:", err);
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Withdrawal failed";
+
+      setError(msg);
+      return { success: false, message: msg };
     } finally {
       setLoading(false);
     }
   };
 
+  // ======================================================
+  // MANUAL REFRESH
+  // ======================================================
   const refreshWallet = async () => {
     await fetchWalletBalance();
     await fetchTransactions();
   };
 
+  // ======================================================
+  // AUTO LOAD ON LOGIN / LOGOUT
+  // ======================================================
   useEffect(() => {
     if (user) {
       fetchWalletBalance();
       fetchTransactions();
     } else {
-      setWallet(null);
-      setTransactions([]);
+      resetState();
     }
   }, [user]);
 
+  // ======================================================
+  // PROVIDER EXPORT
+  // ======================================================
   return (
     <WalletContext.Provider
       value={{
@@ -164,10 +182,13 @@ export const WalletProvider = ({ children, user }) => {
   );
 };
 
+// ======================================================
+// HOOK
+// ======================================================
 export const useWallet = () => {
-  const ctx = useContext(WalletContext);
-  if (!ctx) {
-    throw new Error('useWallet must be used within WalletProvider');
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error("useWallet must be used within WalletProvider");
   }
-  return ctx;
+  return context;
 };

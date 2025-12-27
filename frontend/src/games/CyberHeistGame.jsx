@@ -25,6 +25,11 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
 
   const balance = Number(getWalletBalance() || 0);
 
+  // Validate stake amount
+  const isStakeValid = () => {
+    return Number.isFinite(betAmount) && betAmount >= MIN_STAKE;
+  };
+
   const banks = [
     { name: "Quantum Bank", security: 3, image: "🔒" },
     { name: "Neo Financial", security: 5, image: "💳" },
@@ -33,10 +38,23 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
   ];
 
   const startHeist = async () => {
-    if (betAmount < MIN_STAKE)
-      return setError("Minimum stake is ₦1,000");
-    if (betAmount > balance)
-      return setError("Insufficient wallet balance");
+    // Basic validation
+    if (!Number.isFinite(betAmount) || betAmount <= 0) {
+      setError("Enter a valid stake amount");
+      return;
+    }
+
+    // Check minimum stake
+    if (betAmount < MIN_STAKE) {
+      setError(`Minimum stake is ₦${MIN_STAKE.toLocaleString("en-NG")}`);
+      return;
+    }
+
+    // Check balance
+    if (betAmount > balance) {
+      setError("Insufficient wallet balance");
+      return;
+    }
 
     // Check if wallet is still loading
     if (walletLoading) {
@@ -88,7 +106,7 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
               Loading...
             </div>
           ) : (
-            `₦${balance.toFixed(2)}`
+            `₦${balance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
           )}
         </span>
       </div>
@@ -108,7 +126,7 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
                     Loading...
                   </div>
                 ) : (
-                  `₦${balance.toFixed(2)}`
+                  `₦${balance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
                 )}
               </span>
             </div>
@@ -140,7 +158,30 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
                 min={MIN_STAKE}
                 onChange={(e) => setBetAmount(Number(e.target.value))}
                 disabled={walletLoading}
+                placeholder="1000"
               />
+              
+              {/* Quick bet options */}
+              <div className="quick-bet-row">
+                {[1000, 2000, 5000, 10000].map((amount) => (
+                  <button
+                    key={amount}
+                    className={`quick-bet-btn ${betAmount === amount ? "active" : ""}`}
+                    onClick={() => setBetAmount(amount)}
+                    disabled={walletLoading}
+                    type="button"
+                  >
+                    ₦{amount.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+
+              {/* Stake validation message */}
+              {!isStakeValid() && betAmount > 0 && (
+                <div className="stake-validation-error">
+                  Minimum stake is ₦{MIN_STAKE.toLocaleString("en-NG")}
+                </div>
+              )}
             </div>
 
             {error && <div className="error-banner">{error}</div>}
@@ -148,7 +189,7 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
             <button 
               className="heist-start-btn" 
               onClick={startHeist}
-              disabled={walletLoading}
+              disabled={walletLoading || !isStakeValid()}
             >
               {walletLoading ? "LOADING..." : "START HEIST"}
             </button>
@@ -175,7 +216,7 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
               </h2>
               <p>
                 {result.escape_success
-                  ? `You gained ₦${result.win_amount.toFixed(2)}`
+                  ? `You gained ₦${Number(result.win_amount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
                   : "You lost your entire stake"}
               </p>
 
@@ -188,7 +229,7 @@ const CyberHeistGame = ({ user, onBalanceUpdate }) => {
                       Updating...
                     </div>
                   ) : (
-                    `₦${getWalletBalance().toFixed(2)}`
+                    `₦${Number(getWalletBalance() || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
                   )}
                 </span>
               </div>

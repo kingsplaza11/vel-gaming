@@ -15,6 +15,8 @@ import { useFortuneWS } from "./useFortuneWS";
 import { createSound } from "./sound";
 import AlertModal from "../../components/ui/AlertModal";
 
+const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
+
 /* ============================================================
    STAKE MODAL (REUSED PATTERN)
 ============================================================ */
@@ -26,10 +28,11 @@ function StakeModal({
   loading,
   onStart,
   onExit,
+  isStakeValid, // New prop to validate stake
 }) {
   if (!open) return null;
 
-  const quick = ["50", "100", "200", "500", "1000"];
+  const quick = ["1500", "2000", "2500", "5000"]; // Updated quick stakes to start from 1500
 
   return (
     <div className="fortune-stake-backdrop" onClick={onExit}>
@@ -65,11 +68,18 @@ function StakeModal({
             className="stake-input"
             value={bet}
             onChange={(e) => setBet(e.target.value)}
-            placeholder="100"
+            placeholder="1000"
             inputMode="decimal"
             disabled={loading}
           />
         </div>
+
+        {/* Stake validation message */}
+        {!isStakeValid && bet.trim() !== "" && (
+          <div className="stake-validation-error">
+            Minimum stake is ₦1,000
+          </div>
+        )}
 
         <div className="stake-quick">
           {quick.map((q) => (
@@ -91,7 +101,7 @@ function StakeModal({
           <button
             className={`stake-btn gold ${loading ? "loading" : ""}`}
             onClick={onStart}
-            disabled={loading || walletBalance === null || walletBalance === undefined}
+            disabled={loading || walletBalance === null || walletBalance === undefined || !isStakeValid}
           >
             {loading ? "Entering…" : "Start"}
           </button>
@@ -109,7 +119,7 @@ export default function FortuneRabbit({ user }) {
   const { wallet, loading: walletLoading } = useWallet(); // Get wallet data from context
 
   const [stakeOpen, setStakeOpen] = useState(true);
-  const [bet, setBet] = useState("100");
+  const [bet, setBet] = useState("1000"); // Start with minimum stake
   const [starting, setStarting] = useState(false);
   const [startPayload, setStartPayload] = useState(null);
 
@@ -143,6 +153,12 @@ export default function FortuneRabbit({ user }) {
   const getWalletBalance = () => {
     return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
   };
+
+  // Validate stake amount
+  const isStakeValid = useMemo(() => {
+    const betAmount = Number(bet);
+    return Number.isFinite(betAmount) && betAmount >= MINIMUM_STAKE;
+  }, [bet]);
 
   /* ------------------ WS EVENTS ------------------ */
   const onEvent = useCallback(
@@ -226,8 +242,22 @@ export default function FortuneRabbit({ user }) {
     const walletBalance = getWalletBalance();
     const currentBalance = Number(walletBalance || 0);
 
-    if (!betAmount || betAmount <= 0) {
-      setAlert({ open: true, title: "Invalid Stake", message: "Enter a valid amount." });
+    if (!Number.isFinite(betAmount) || betAmount <= 0) {
+      setAlert({ 
+        open: true, 
+        title: "Invalid Stake", 
+        message: "Enter a valid stake amount." 
+      });
+      return;
+    }
+
+    // Check minimum stake
+    if (betAmount < MINIMUM_STAKE) {
+      setAlert({
+        open: true,
+        title: "Minimum Stake Required",
+        message: `Minimum stake is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}.`,
+      });
       return;
     }
 
@@ -306,6 +336,7 @@ export default function FortuneRabbit({ user }) {
         loading={starting}
         onStart={startGame}
         onExit={() => navigate("/", { replace: true })} // Fixed navigation
+        isStakeValid={isStakeValid} // Pass stake validation
       />
 
       <AlertModal

@@ -1,0 +1,38 @@
+{% extends "sa/base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">Dashboard Overview</h2>
+
+<div class="row g-4">
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h6>Total Users</h6>
+            <h3>{{ total_users }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h6>Total Referrals</h6>
+            <h3>{{ total_referrals }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h6>Total Transactions</h6>
+            <h3>{{ total_transactions }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h6>Total Volume</h6>
+            <h3>₦{{ total_volume }}</h3>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

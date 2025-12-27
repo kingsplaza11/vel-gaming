@@ -1,0 +1,52 @@
+{% extends "sa/base.html" %}
+{% block title %}Users{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">User Management</h2>
+
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Wallet</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.username }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        {% if u.wallet %}
+                            ₦{{ u.wallet.balance }} /
+                            ₦{{ u.wallet.spot_balance }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ u.date_joined|date:"Y-m-d" }}</td>
+                    <td>
+                        {% if u.is_active %}
+                            <span class="badge-soft">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Blocked</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">No users</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

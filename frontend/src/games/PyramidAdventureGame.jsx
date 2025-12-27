@@ -86,8 +86,6 @@ const PyramidAdventureGame = ({ user }) => {
 
             <div className="pyramid-modal-info">
               <div><span>Risk:</span><strong>EXTREME</strong></div>
-              <div><span>Max Profit:</span><strong>30%</strong></div>
-              <div><span>Possible Loss:</span><strong>100%</strong></div>
             </div>
 
             <div className="pyramid-stake-container">

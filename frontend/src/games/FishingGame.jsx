@@ -4,12 +4,14 @@ import { useWallet } from "../contexts/WalletContext"; // Import wallet context
 import { fishingService } from "../services/api";
 import "./FishingGame.css";
 
+const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
+
 const FishingGame = ({ user, onBalanceUpdate }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet } = useWallet(); // Get wallet data from context
 
   /* ---------------- STATE ---------------- */
-  const [betAmount, setBetAmount] = useState(10);
+  const [betAmount, setBetAmount] = useState(1000); // Start with minimum stake
   const [isCasting, setIsCasting] = useState(false);
 
   const [lastCatch, setLastCatch] = useState(null);
@@ -31,13 +33,25 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
 
   const formatMoney = (v) => Number(v || 0).toFixed(2);
 
+  // Validate stake amount
+  const isStakeValid = () => {
+    const amt = Number(betAmount);
+    return Number.isFinite(amt) && amt >= MINIMUM_STAKE;
+  };
+
   /* ---------------- START GAME ---------------- */
   const startGame = () => {
     setErrorMessage("");
     const amt = Number(betAmount);
 
-    if (!amt || amt <= 0) {
+    if (!Number.isFinite(amt) || amt <= 0) {
       setErrorMessage("Enter a valid stake amount");
+      return;
+    }
+
+    // Check minimum stake
+    if (amt < MINIMUM_STAKE) {
+      setErrorMessage(`Minimum stake is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`);
       return;
     }
 
@@ -150,31 +164,39 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
 
             <input
               type="number"
-              min="1"
-              max="1000"
+              min={MINIMUM_STAKE}
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
               disabled={walletLoading}
+              placeholder="1000"
             />
 
             <div className="quick-row">
-              {[10, 25, 50, 100].map((v) => (
+              {[1000, 2000, 5000, 10000].map((v) => (
                 <button 
                   key={v} 
                   onClick={() => setBetAmount(v)}
                   disabled={walletLoading}
+                  className={betAmount === v ? "active" : ""}
                 >
-                  {v}
+                  ₦{v.toLocaleString()}
                 </button>
               ))}
             </div>
+
+            {/* Stake validation message */}
+            {!isStakeValid() && betAmount > 0 && (
+              <div className="stake-validation-error">
+                Minimum stake is ₦{MINIMUM_STAKE.toLocaleString("en-NG")}
+              </div>
+            )}
 
             {errorMessage && <p className="error">{errorMessage}</p>}
 
             <button 
               className="primary" 
               onClick={startGame}
-              disabled={walletLoading}
+              disabled={walletLoading || !isStakeValid()}
             >
               {walletLoading ? "LOADING..." : "START FISHING"}
             </button>

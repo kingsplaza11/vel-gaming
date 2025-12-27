@@ -4,7 +4,7 @@ import { useWallet } from '../contexts/WalletContext'; // Import wallet context
 import { cardService } from '../services/api';
 import './CardMatchingGame.css';
 
-const MIN_BET = 500;
+const MIN_BET = 1000; // Updated to 1000 naira minimum
 
 const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
      UI STATE
   ========================== */
   const [showModal, setShowModal] = useState(true);
-  const [betAmount, setBetAmount] = useState('');
+  const [betAmount, setBetAmount] = useState('1000'); // Start with minimum stake
   const [gridSize, setGridSize] = useState(16);
   const [error, setError] = useState('');
 
@@ -40,8 +40,8 @@ const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
   const [gameStatus, setGameStatus] = useState('idle'); // idle | playing | failed | completed
   const [locked, setLocked] = useState(false);
 
+  // Removed Easy mode, kept Normal and Hard
   const difficulties = [
-    { size: 12, label: 'Easy' },
     { size: 16, label: 'Normal' },
     { size: 20, label: 'Hard' },
   ];
@@ -50,9 +50,13 @@ const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
 
   const numericBet = Number(betAmount);
 
-  const canStart =
-    !isNaN(numericBet) &&
-    numericBet >= MIN_BET &&
+  // Validate stake
+  const isStakeValid = () => {
+    return Number.isFinite(numericBet) && numericBet >= MIN_BET;
+  };
+
+  const canStart = 
+    isStakeValid() &&
     numericBet <= walletBalance &&
     !walletLoading;
 
@@ -62,8 +66,13 @@ const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
   const startGame = async () => {
     setError('');
 
+    if (!Number.isFinite(numericBet) || numericBet <= 0) {
+      setError('Enter a valid stake amount');
+      return;
+    }
+
     if (numericBet < MIN_BET) {
-      setError(`Minimum stake is ₦${MIN_BET}`);
+      setError(`Minimum stake is ₦${MIN_BET.toLocaleString("en-NG")}`);
       return;
     }
 
@@ -193,7 +202,7 @@ const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
         });
 
         setTimeout(() => {
-          alert(`🎉 You won ₦${res.data.win_amount.toFixed(2)}`);
+          alert(`🎉 You won ₦${Number(res.data.win_amount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`);
           setShowModal(true);
         }, 800);
       }
@@ -219,7 +228,7 @@ const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
               Loading...
             </div>
           ) : (
-            `₦${walletBalance.toFixed(2)}`
+            `₦${walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
           )}
         </div>
       </div>
@@ -274,19 +283,42 @@ const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
                     Loading...
                   </div>
                 ) : (
-                  `₦${walletBalance.toFixed(2)}`
+                  `₦${walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
                 )}
               </span>
             </div>
 
-            <label>Bet Amount (₦500 minimum)</label>
+            <label>Bet Amount (₦{MIN_BET.toLocaleString("en-NG")} minimum)</label>
             <input
               type="number"
-              placeholder="Enter amount"
+              placeholder="1000"
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
               disabled={walletLoading}
+              min={MIN_BET}
             />
+
+            {/* Quick bet options */}
+            <div className="quick-bet-row">
+              {[1000, 2000, 5000, 10000].map((amount) => (
+                <button
+                  key={amount}
+                  className={`quick-bet-btn ${numericBet === amount ? 'active' : ''}`}
+                  onClick={() => setBetAmount(amount.toString())}
+                  disabled={walletLoading}
+                  type="button"
+                >
+                  ₦{amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+
+            {/* Stake validation message */}
+            {!isStakeValid() && betAmount.trim() !== '' && (
+              <div className="stake-validation-error">
+                Minimum stake is ₦{MIN_BET.toLocaleString("en-NG")}
+              </div>
+            )}
 
             {error && <p className="cmg-error">{error}</p>}
 

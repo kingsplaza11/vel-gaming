@@ -34,4 +34,4 @@ class WalletSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Wallet
-        fields = ['balance', 'locked_balance', 'demo_balance', 'updated_at', 'transactions']
+        fields = ['balance', 'locked_balance', 'spot_balance', 'updated_at', 'transactions']

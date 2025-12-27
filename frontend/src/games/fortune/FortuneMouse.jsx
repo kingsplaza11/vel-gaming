@@ -16,6 +16,7 @@ import { createSound } from "./sound";
 import AlertModal from "../../components/ui/AlertModal";
 
 const GRID_SIZE = 20;
+const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
 
 /* ============================================================
    STAKE MODAL
@@ -28,10 +29,11 @@ function StakeModal({
   loading,
   onStart,
   onExit,
+  isStakeValid, // New prop to validate stake
 }) {
   if (!open) return null;
 
-  const quick = ["50", "100", "200", "500", "1000", "2000"];
+  const quick = ["1500", "2000", "2500", "5000"];
 
   return (
     <div className="fortune-stake-backdrop" onClick={onExit}>
@@ -67,11 +69,18 @@ function StakeModal({
             className="stake-input"
             value={bet}
             onChange={(e) => setBet(e.target.value)}
-            placeholder="100"
+            placeholder="1000"
             inputMode="decimal"
             disabled={loading}
           />
         </div>
+
+        {/* Stake validation message */}
+        {!isStakeValid && bet.trim() !== "" && (
+          <div className="stake-validation-error">
+            Minimum stake is ₦1,000
+          </div>
+        )}
 
         <div className="stake-quick">
           {quick.map((q) => (
@@ -93,7 +102,7 @@ function StakeModal({
           <button
             className={`stake-btn gold ${loading ? "loading" : ""}`}
             onClick={onStart}
-            disabled={loading || walletBalance === null || walletBalance === undefined}
+            disabled={loading || walletBalance === null || walletBalance === undefined || !isStakeValid}
           >
             {loading ? "Entering…" : "Start"}
           </button>
@@ -117,7 +126,7 @@ export default function FortuneMouse({ user }) {
 
   /* ------------------ STATE ------------------ */
   const [stakeOpen, setStakeOpen] = useState(true);
-  const [bet, setBet] = useState("100");
+  const [bet, setBet] = useState("1000"); // Start with minimum stake
   const [starting, setStarting] = useState(false);
   const [startPayload, setStartPayload] = useState(null);
 
@@ -302,6 +311,12 @@ export default function FortuneMouse({ user }) {
     return Number(balance).toFixed(2);
   };
 
+  // Validate stake amount
+  const isStakeValid = useMemo(() => {
+    const betAmount = Number(bet);
+    return Number.isFinite(betAmount) && betAmount >= MINIMUM_STAKE;
+  }, [bet]);
+
   /* ------------------ START GAME ------------------ */
   const startGame = async () => {
     const betAmount = Number(bet);
@@ -313,6 +328,16 @@ export default function FortuneMouse({ user }) {
         open: true,
         title: "Invalid Stake",
         message: "Enter a valid stake amount.",
+      });
+      return;
+    }
+
+    // Check minimum stake
+    if (betAmount < MINIMUM_STAKE) {
+      setAlert({
+        open: true,
+        title: "Minimum Stake Required",
+        message: `Minimum stake is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}.`,
       });
       return;
     }
@@ -420,6 +445,7 @@ export default function FortuneMouse({ user }) {
         loading={starting}
         onStart={startGame}
         onExit={() => navigate("/", { replace: true })}
+        isStakeValid={isStakeValid} // Pass stake validation
       />
 
       <AlertModal
@@ -435,7 +461,7 @@ export default function FortuneMouse({ user }) {
           <div className="fortune-brand-text">
             <div className="fortune-name">Fortune Mouse</div>
             <div className="fortune-sub">
-              Tap tiles • Build streak • Cash out before the trap
+              Tap tiles • Build streak
             </div>
           </div>
         </div>

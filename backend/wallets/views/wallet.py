@@ -6,11 +6,10 @@ from django.db import transaction as db_transaction
 from django.conf import settings
 
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-
 from ..models import Wallet, WalletTransaction
 from ..wallet import (
     FundWalletSerializer,
@@ -30,7 +29,8 @@ class WalletViewSet(viewsets.GenericViewSet):
     - balance
     - fund (Paystack)
     - verify
-    - withdraw (Paystack transfer)
+    - withdraw (manual / starter-safe)
+    - resolve-account
     - transactions
     """
 
@@ -54,25 +54,11 @@ class WalletViewSet(viewsets.GenericViewSet):
     # ---------------------------------------------------
     @action(detail=False, methods=["post"])
     def fund(self, request):
-        logger.info("WALLET FUND REQUEST RECEIVED")
-        logger.info("REQUEST DATA: %s", request.data)
-
         serializer = FundWalletSerializer(data=request.data)
-
-        if not serializer.is_valid():
-            logger.error("FUND SERIALIZER ERROR: %s", serializer.errors)
-            return Response(
-                {
-                    "status": False,
-                    "message": "Invalid request data",
-                    "errors": serializer.errors,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer.is_valid(raise_exception=True)
 
         amount = serializer.validated_data["amount"]
         email = serializer.validated_data.get("email") or request.user.email
-        metadata = request.data.get("metadata", {})
 
         if amount < Decimal("100.00"):
             return Response(
@@ -81,13 +67,9 @@ class WalletViewSet(viewsets.GenericViewSet):
             )
 
         reference = f"fund_{uuid.uuid4().hex[:12]}"
-        paystack_amount = int(amount * 100)  # NAIRA → KOBO
-
-        logger.info("INITIALIZING PAYSTACK TX")
-        logger.info("EMAIL=%s AMOUNT=%s KOBO=%s REF=%s", email, amount, paystack_amount, reference)
+        paystack_amount = int(amount * 100)
 
         paystack = PaystackService()
-
         response = paystack.initialize_transaction(
             email=email,
             amount=paystack_amount,
@@ -95,20 +77,12 @@ class WalletViewSet(viewsets.GenericViewSet):
             metadata={
                 "user_id": request.user.id,
                 "purpose": "wallet_funding",
-                **metadata,
             },
         )
 
-        logger.info("PAYSTACK RESPONSE: %s", response)
-
         if not response.get("status"):
-            logger.error("PAYSTACK INIT FAILED: %s", response)
             return Response(
-                {
-                    "status": False,
-                    "message": "Failed to initialize transaction",
-                    "gateway_response": response,
-                },
+                {"status": False, "message": "Failed to initialize transaction"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -121,113 +95,122 @@ class WalletViewSet(viewsets.GenericViewSet):
                 "status": "pending",
                 "gateway": "paystack",
                 "authorization_url": response["data"]["authorization_url"],
-                "access_code": response["data"]["access_code"],
             },
         )
 
         return Response(
             {
                 "status": True,
-                "message": "Transaction initialized",
-                "data": {
-                    "authorization_url": response["data"]["authorization_url"],
-                    "reference": reference,
-                    "access_code": response["data"]["access_code"],
-                },
+                "authorization_url": response["data"]["authorization_url"],
+                "reference": reference,
             }
         )
 
     # ---------------------------------------------------
     # VERIFY FUNDING
     # ---------------------------------------------------
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["get", "post"])
     def verify(self, request):
-        reference = request.data.get("reference")
-
-        logger.info("VERIFY REQUEST: %s", reference)
+        reference = request.data.get("reference") or request.query_params.get("reference")
 
         if not reference:
-            return Response(
-                {"error": "Reference is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"status": False, "message": "Reference required"}, status=400)
 
         try:
-            wallet_tx = WalletTransaction.objects.get(
+            wallet_tx = WalletTransaction.objects.select_for_update().get(
                 reference=reference,
                 user=request.user,
             )
         except WalletTransaction.DoesNotExist:
-            logger.error("TX NOT FOUND: %s", reference)
-            return Response(
-                {"error": "Transaction not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return Response({"status": False, "message": "Transaction not found"}, status=404)
 
         if wallet_tx.meta.get("status") == "completed":
+            wallet = Wallet.objects.get(user=request.user)
             return Response(
-                {
-                    "status": True,
-                    "message": "Already verified",
-                    "data": {"balance": Wallet.objects.get(user=request.user).balance},
-                }
+                {"status": True, "balance": wallet.balance}
             )
 
         paystack = PaystackService()
         verification = paystack.verify_transaction(reference)
+        data = verification.get("data", {})
 
-        logger.info("PAYSTACK VERIFY RESPONSE: %s", verification)
+        if not verification.get("status") or data.get("status") != "success":
+            wallet_tx.meta = {**wallet_tx.meta, "status": "failed"}
+            wallet_tx.save()
+            return Response({"status": False, "message": "Verification failed"}, status=400)
 
-        if verification.get("status") and verification["data"]["status"] == "success":
-            with db_transaction.atomic():
-                wallet, _ = Wallet.objects.select_for_update().get_or_create(
-                    user=request.user
-                )
-                wallet.balance += wallet_tx.amount
-                wallet.save()
+        if data.get("amount") != int(wallet_tx.amount * 100):
+            wallet_tx.meta = {**wallet_tx.meta, "status": "failed", "reason": "amount_mismatch"}
+            wallet_tx.save()
+            return Response({"status": False, "message": "Amount mismatch"}, status=400)
 
-                wallet_tx.meta.update(
-                    {
-                        "status": "completed",
-                        "verified": True,
-                        "paystack_data": verification["data"],
-                    }
-                )
-                wallet_tx.save()
+        with db_transaction.atomic():
+            wallet, _ = Wallet.objects.select_for_update().get_or_create(user=request.user)
+            wallet.balance += wallet_tx.amount
+            wallet.save()
 
+            wallet_tx.meta = {
+                **wallet_tx.meta,
+                "status": "completed",
+                "verified": True,
+                "paystack_data": data,
+            }
+            wallet_tx.save()
+
+        return Response(
+            {
+                "status": True,
+                "amount": wallet_tx.amount,
+                "new_balance": wallet.balance,
+            }
+        )
+
+    # ---------------------------------------------------
+    # 🔥 RESOLVE BANK ACCOUNT (AUTO NAME)
+    # ---------------------------------------------------
+    @action(detail=False, methods=["get"])
+    def resolve_account(self, request):
+        bank_code = request.query_params.get("bank_code")
+        account_number = request.query_params.get("account_number")
+
+        if not bank_code or not account_number:
             return Response(
-                {
-                    "status": True,
-                    "message": "Wallet funded successfully",
-                    "data": {
-                        "amount": wallet_tx.amount,
-                        "new_balance": wallet.balance,
-                    },
-                }
+                {"status": False, "message": "Bank code and account number required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(account_number) != 10:
+            return Response(
+                {"status": False, "message": "Account number must be 10 digits"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        paystack = PaystackService()
+        response = paystack.resolve_account_number(
+            account_number=account_number,
+            bank_code=bank_code,
+        )
+
+        if not response.get("status"):
+            return Response(
+                {"status": False, "message": "Unable to resolve account"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         return Response(
             {
-                "status": False,
-                "message": "Transaction verification failed",
-                "gateway_response": verification,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
+                "status": True,
+                "account_name": response["data"]["account_name"],
+            }
         )
 
     # ---------------------------------------------------
-    # WITHDRAW
+    # WITHDRAW (STARTER-SAFE)
     # ---------------------------------------------------
     @action(detail=False, methods=["post"])
     def withdraw(self, request):
         serializer = WithdrawalSerializer(data=request.data)
-
-        if not serializer.is_valid():
-            logger.error("WITHDRAW SERIALIZER ERROR: %s", serializer.errors)
-            return Response(
-                {"status": False, "errors": serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer.is_valid(raise_exception=True)
 
         amount = serializer.validated_data["amount"]
         account_number = serializer.validated_data["account_number"]
@@ -235,28 +218,28 @@ class WalletViewSet(viewsets.GenericViewSet):
         bank_name = serializer.validated_data["bank_name"]
         account_name = serializer.validated_data["account_name"]
 
-        wallet = Wallet.objects.select_for_update().get(user=request.user)
-
-        if wallet.balance < amount:
-            return Response(
-                {"status": False, "message": "Insufficient balance"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        reference = f"withdraw_{uuid.uuid4().hex[:12]}"
-
         with db_transaction.atomic():
-            wallet.balance -= amount
+            wallet = Wallet.objects.select_for_update().get(user=request.user)
+
+            if wallet.spot_balance < amount:
+                return Response(
+                    {"status": False, "message": "Insufficient balance in Spot Balance"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            reference = f"withdraw_{uuid.uuid4().hex[:12]}"
+
+            wallet.spot_balance -= amount
             wallet.locked_balance += amount
             wallet.save()
 
-            tx = WalletTransaction.objects.create(
+            WalletTransaction.objects.create(
                 user=request.user,
                 amount=amount,
                 tx_type=WalletTransaction.DEBIT,
                 reference=reference,
                 meta={
-                    "status": "processing",
+                    "status": "pending_admin",
                     "bank_code": bank_code,
                     "bank_name": bank_name,
                     "account_number": account_number,
@@ -264,46 +247,10 @@ class WalletViewSet(viewsets.GenericViewSet):
                 },
             )
 
-        paystack = PaystackService()
-
-        recipient = paystack.create_transfer_recipient(
-            name=account_name,
-            account_number=account_number,
-            bank_code=bank_code,
-        )
-
-        if not recipient.get("status"):
-            logger.error("RECIPIENT FAILED: %s", recipient)
-            return Response(
-                {"status": False, "message": "Recipient creation failed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        transfer = paystack.initiate_transfer(
-            amount=int(amount * 100),
-            recipient_code=recipient["data"]["recipient_code"],
-            reason=f"Wallet withdrawal for {request.user.email}",
-        )
-
-        if not transfer.get("status"):
-            logger.error("TRANSFER FAILED: %s", transfer)
-            return Response(
-                {"status": False, "message": "Transfer failed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        tx.meta.update(
-            {
-                "transfer_code": transfer["data"]["transfer_code"],
-                "recipient_code": recipient["data"]["recipient_code"],
-            }
-        )
-        tx.save()
-
         return Response(
             {
                 "status": True,
-                "message": "Withdrawal initiated",
+                "message": "Withdrawal request submitted. Processing may take up to 24 hours.",
                 "reference": reference,
             }
         )
@@ -313,8 +260,25 @@ class WalletViewSet(viewsets.GenericViewSet):
     # ---------------------------------------------------
     @action(detail=False, methods=["get"])
     def transactions(self, request):
-        txs = WalletTransaction.objects.filter(user=request.user).order_by(
-            "-created_at"
-        )
+        txs = WalletTransaction.objects.filter(user=request.user).order_by("-created_at")
         serializer = WalletTransactionSerializer(txs, many=True)
         return Response(serializer.data)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def wallet_transactions(request):
+    qs = WalletTransaction.objects.filter(user=request.user).order_by("-created_at")
+
+    data = [
+        {
+            "id": tx.id,
+            "amount": str(tx.amount),
+            "tx_type": tx.tx_type,
+            "reference": tx.reference,
+            "meta": tx.meta,
+            "created_at": tx.created_at,
+        }
+        for tx in qs
+    ]
+
+    return Response(data)

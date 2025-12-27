@@ -27,14 +27,14 @@ class RTPConfig(models.Model):
     # RTP is capped at 0.30 by your rules
     target_rtp = models.DecimalField(
         max_digits=4, decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.00")), MaxValueValidator(Decimal("0.30"))],
+        validators=[MinValueValidator(Decimal("0.00")), MaxValueValidator(Decimal("0.49"))],
         default=Decimal("0.25"),
     )
 
     # Hard cap: probability to win anything <= 0.30
     win_prob_cap = models.DecimalField(
         max_digits=4, decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01")), MaxValueValidator(Decimal("0.30"))],
+        validators=[MinValueValidator(Decimal("0.01")), MaxValueValidator(Decimal("0.48"))],
         default=Decimal("0.28"),
     )
 

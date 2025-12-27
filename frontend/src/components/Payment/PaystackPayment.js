@@ -16,8 +16,8 @@ import {
   DialogActions,
 } from "@mui/material";
 
-const MIN_AMOUNT = 100;
-const MAX_AMOUNT = 1000000;
+const MIN_AMOUNT = 2500;
+const MAX_AMOUNT = 10000000;
 
 const PaystackPayment = ({ user }) => {
   const initialEmail = useMemo(() => user?.email || "", [user]);

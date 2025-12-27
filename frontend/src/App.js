@@ -1,11 +1,5 @@
-// src/App.js
 import React, { useState, useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 /* =========================
    LAYOUT
@@ -20,6 +14,14 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Profile from "./components/Profile";
 import SeoHead from "./components/SeoHead";
+import Referral from "./components/Referral";
+import PaymentCallback from "./components/Payment/PaymentCallback";
+/* =========================
+   EXTRA PAGES
+========================= */
+import Transactions from "./components/Wallet/Transactions";
+import Support from "./components/Support";
+import Settings from "./components/Settings";
 
 /* =========================
    WALLET
@@ -28,7 +30,7 @@ import WalletDashboard from "./components/Wallet/WalletDashboard";
 import { WalletProvider } from "./contexts/WalletContext";
 
 /* =========================
-   STANDARD GAMES (NO BASE)
+   GAMES
 ========================= */
 import SlotsGame from "./games/SlotsGame";
 import { CrashGame } from "./games";
@@ -45,7 +47,7 @@ import MinesweeperGame from "./games/MinesweeperGame";
 import ColorSwitchGame from "./games/ColorSwitchGame";
 
 /* =========================
-   FORTUNE GAMES (NO BASE)
+   FORTUNE GAMES
 ========================= */
 import FortuneStart from "./games/fortune/FortuneStart";
 import FortuneMouse from "./games/fortune/FortuneMouse";
@@ -70,34 +72,23 @@ const ProtectedRoute = ({ user, children }) => {
     return (
       <div className="loading-screen">
         <div className="loading-spinner" />
-        <p>Loading...</p>
       </div>
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
   return children;
 };
 
 function App() {
-  /*
-    user === undefined → checking auth
-    user === null      → logged out
-    user === object    → logged in
-  */
   const [user, setUser] = useState(undefined);
   const [loading, setLoading] = useState(true);
 
-  /* =========================
-     AUTH HYDRATION (ONCE)
-  ========================= */
   useEffect(() => {
     let mounted = true;
 
-    const hydrateAuth = async () => {
+    const hydrate = async () => {
       try {
         const res = await authService.getProfile();
         if (mounted) setUser(res?.data || null);
@@ -108,33 +99,20 @@ function App() {
       }
     };
 
-    hydrateAuth();
-
-    return () => {
-      mounted = false;
-    };
+    hydrate();
+    return () => (mounted = false);
   }, []);
 
-  /* =========================
-     AUTH HANDLERS
-  ========================= */
-  const handleLogin = (userData) => {
-    setUser(userData);
-  };
+  const handleLogin = (data) => setUser(data);
 
   const handleLogout = async () => {
     try {
       await authService.logout();
-    } catch (err) {
-      console.error("Logout error:", err);
     } finally {
       setUser(null);
     }
   };
 
-  /* =========================
-     GLOBAL BOOT LOADER
-  ========================= */
   if (loading) {
     return (
       <div className="loading-screen">
@@ -149,41 +127,11 @@ function App() {
       <Router>
         <Routes>
 
-          {/* =========================
-             AUTH ROUTES (NO BASE)
-          ========================= */}
-          <Route
-            path="/login"
-            element={
-              <>
-                <SeoHead page="login" />
-                {!user ? (
-                  <Login onLogin={handleLogin} />
-                ) : (
-                  <Navigate to="/" replace />
-                )}
-              </>
-            }
-          />
+          {/* AUTH */}
+          <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
+          <Route path="/register" element={!user ? <Register onLogin={handleLogin} /> : <Navigate to="/" />} />
 
-          <Route
-            path="/register"
-            element={
-              <>
-                <SeoHead page="register" />
-                {!user ? (
-                  <Register onLogin={handleLogin} />
-                ) : (
-                  <Navigate to="/" replace />
-                )}
-              </>
-            }
-          />
-
-          {/* =========================
-             BASE LAYOUT ROUTES
-             (DASHBOARD / WALLET / PROFILE)
-          ========================= */}
+          {/* BASE */}
           <Route
             element={
               <ProtectedRoute user={user}>
@@ -191,40 +139,18 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route
-              path="/"
-              element={
-                <>
-                  <SeoHead page="dashboard" user={user} />
-                  <Dashboard />
-                </>
-              }
-            />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/wallet" element={<WalletDashboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/settings" element={<Settings user={user} />} />
+            <Route path="/referrals" element={<Referral />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
 
-            <Route
-              path="/wallet"
-              element={
-                <>
-                  <SeoHead page="wallet" user={user} />
-                  <WalletDashboard />
-                </>
-              }
-            />
-
-            <Route
-              path="/profile"
-              element={
-                <>
-                  <SeoHead page="profile" user={user} />
-                  <Profile />
-                </>
-              }
-            />
           </Route>
 
-          {/* =========================
-             STANDARD GAMES (NO BASE)
-          ========================= */}
+          {/* GAMES */}
           <Route path="/slots" element={<ProtectedRoute user={user}><SlotsGame /></ProtectedRoute>} />
           <Route path="/crash" element={<ProtectedRoute user={user}><CrashGame /></ProtectedRoute>} />
           <Route path="/fishing" element={<ProtectedRoute user={user}><FishingGame /></ProtectedRoute>} />
@@ -239,18 +165,11 @@ function App() {
           <Route path="/guessing" element={<ProtectedRoute user={user}><NumberGuessingGame /></ProtectedRoute>} />
           <Route path="/minesweeper" element={<ProtectedRoute user={user}><MinesweeperGame /></ProtectedRoute>} />
 
-          {/* =========================
-             FORTUNE GAMES (NO BASE)
-          ========================= */}
+          {/* FORTUNE */}
           <Route path="/fortune" element={<ProtectedRoute user={user}><FortuneStart /></ProtectedRoute>} />
           <Route path="/fortune/mouse" element={<ProtectedRoute user={user}><FortuneMouse /></ProtectedRoute>} />
           <Route path="/fortune/tiger" element={<ProtectedRoute user={user}><FortuneTiger /></ProtectedRoute>} />
           <Route path="/fortune/rabbit" element={<ProtectedRoute user={user}><FortuneRabbit /></ProtectedRoute>} />
-
-          {/* =========================
-             FALLBACK
-          ========================= */}
-          <Route path="*" element={<Navigate to="/" replace />} />
 
         </Routes>
       </Router>
