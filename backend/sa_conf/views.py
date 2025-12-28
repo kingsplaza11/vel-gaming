@@ -5,7 +5,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-
+from django.contrib import messages
 from accounts.models import User, Referral
 from wallets.models import Wallet, WalletTransaction
 
@@ -91,6 +91,45 @@ def users(request):
         "users": users,
     })
 
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+@staff_member_required
+def admin_user_detail(request, user_id):
+    user = get_object_or_404(
+        User.objects.select_related("referred_by"),
+        id=user_id
+    )
+
+    wallet = getattr(user, "wallet", None)
+    referrals = user.referrals.all()
+
+    context = {
+        "user_obj": user,
+        "wallet": wallet,
+        "referrals": referrals,
+    }
+    return render(request, "sa/user_detail.html", context)
+
+@staff_member_required
+def admin_delete_user(request, user_id):
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect("adminpanel:users")
+
+    user = get_object_or_404(User, id=user_id)
+
+    # 🚫 Prevent admin from deleting themselves
+    if user == request.user:
+        messages.error(request, "You cannot delete your own account.")
+        return redirect("adminpanel:admin_user_detail", user_id=user.id)
+
+    email = user.email
+    user.delete()
+
+    messages.success(request, f"User {email} was deleted successfully.")
+    return redirect("adminpanel:users")
 
 
 from django.contrib.auth import authenticate, login

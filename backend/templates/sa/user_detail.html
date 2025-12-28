@@ -1,0 +1,100 @@
+{% extends "sa/base.html" %}
+{% block title %}User Details • Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">{{ user_obj.username }}</h2>
+        <small class="text-muted">UID: {{ user_obj.user_uid }}</small>
+    </div>
+</div>
+<div class="d-flex gap-2 mt-4">
+    <a href="{% url 'adminpanel:users' %}" class="btn btn-outline-light">
+        ← Back
+    </a>
+
+    {% if request.user != user_obj %}
+    <form method="post"
+          action="{% url 'adminpanel:admin_delete_user' user_obj.id %}"
+          onsubmit="return confirm('This will permanently delete the user. Continue?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash me-1"></i> Delete User
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+
+<div class="row g-4">
+
+    <!-- Account Info -->
+    <div class="col-lg-6">
+        <div class="dashboard-card">
+            <h5 class="mb-3">Account Information</h5>
+
+            <ul class="list-unstyled mb-0">
+                <li><strong>Email:</strong> {{ user_obj.email }}</li>
+                <li><strong>Full Name:</strong> {{ user_obj.full_name|default:"—" }}</li>
+                <li><strong>Phone:</strong> {{ user_obj.phone_number|default:"—" }}</li>
+                <li><strong>Date Joined:</strong> {{ user_obj.date_joined }}</li>
+                <li><strong>Last Login:</strong> {{ user_obj.last_login|default:"Never" }}</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Status -->
+    <div class="col-lg-6">
+        <div class="dashboard-card">
+            <h5 class="mb-3">Account Status</h5>
+
+            <span class="badge badge-soft-success mb-2">
+                {% if user_obj.is_active %}Active{% else %}Blocked{% endif %}
+            </span>
+
+            {% if user_obj.is_staff %}
+            <span class="badge badge-soft-info">Staff</span>
+            {% endif %}
+
+            {% if user_obj.is_superuser %}
+            <span class="badge badge-soft-warning">Admin</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Wallet -->
+    <div class="col-lg-6">
+        <div class="dashboard-card">
+            <h5 class="mb-3">Wallet</h5>
+
+            {% if wallet %}
+                <p><strong>Balance:</strong> ₦{{ wallet.balance|floatformat:2 }}</p>
+                <p><strong>Spot:</strong> ₦{{ wallet.spot_balance|default:"0.00" }}</p>
+                <p><strong>Locked:</strong> ₦{{ wallet.locked_balance|default:"0.00" }}</p>
+            {% else %}
+                <span class="badge badge-soft-secondary">No Wallet</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Referrals -->
+    <div class="col-lg-6">
+        <div class="dashboard-card">
+            <h5 class="mb-3">Referrals</h5>
+
+            <p><strong>Referral Code:</strong> {{ user_obj.referral_code }}</p>
+
+            {% if referrals %}
+                <ul class="list-unstyled">
+                    {% for r in referrals %}
+                        <li>{{ r.username }} ({{ r.email }})</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <small class="text-muted">No referrals</small>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

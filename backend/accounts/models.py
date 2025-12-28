@@ -64,8 +64,6 @@ class User(AbstractUser):
         return self.email
 
 
-
-
 class Referral(models.Model):
     referrer = models.ForeignKey(
         User,

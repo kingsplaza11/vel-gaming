@@ -146,7 +146,7 @@
                     </td>
                     <td class="text-end pe-4">
                         <div class="d-flex align-items-center justify-content-end gap-2">
-                            <a href="#" class="btn btn-sm btn-outline-light d-flex align-items-center gap-2"
+                            <a href="{% url 'adminpanel:admin_user_detail' u.id %}" class="btn btn-sm btn-outline-light d-flex align-items-center gap-2"
                                data-bs-toggle="tooltip" data-bs-title="View Profile">
                                 <i class="fas fa-eye"></i>
                             </a>
@@ -155,9 +155,19 @@
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#">
+                                    <li><a class="dropdown-item" href="{% url 'adminpanel:admin_user_detail' u.id %}">
                                         <i class="fas fa-eye me-2"></i>View Profile
                                     </a></li>
+                                    <li>
+                                        <form method="post"
+                                            action="{% url 'adminpanel:admin_delete_user' u.id %}"
+                                            onsubmit="return confirm('Are you sure you want to permanently delete this user?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="fas fa-trash me-2"></i>Delete User
+                                            </button>
+                                        </form>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
