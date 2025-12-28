@@ -15,6 +15,11 @@ import {
 } from "@mui/material";
 
 /* ======================================================
+   CONSTANTS
+====================================================== */
+const MIN_WITHDRAWAL_AMOUNT = 3000;
+
+/* ======================================================
    BANK LIST
 ====================================================== */
 const NIGERIAN_BANKS = [
@@ -120,6 +125,23 @@ const WithdrawalForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const amount = Number(formData.amount);
+
+    if (!amount || amount < MIN_WITHDRAWAL_AMOUNT) {
+      setErrors({
+        amount: `Minimum withdrawal amount is ₦${MIN_WITHDRAWAL_AMOUNT.toLocaleString()}`,
+      });
+      return;
+    }
+
+    if (wallet && amount > wallet.balance) {
+      setErrors({
+        amount: "Insufficient wallet balance",
+      });
+      return;
+    }
+
     const result = await withdrawFunds(formData);
 
     if (result.success) {
@@ -131,6 +153,7 @@ const WithdrawalForm = () => {
         bank_name: "",
         account_name: "",
       });
+      setErrors({});
     } else {
       alert(result.message || "Withdrawal failed");
     }
@@ -142,7 +165,9 @@ const WithdrawalForm = () => {
   return (
     <Card sx={{ maxWidth: 600, mx: "auto", mt: 4 }}>
       <CardContent>
-        <Typography variant="h5">Withdraw Funds</Typography>
+        <Typography variant="h5" gutterBottom>
+          Withdraw Funds
+        </Typography>
 
         {wallet && (
           <Alert severity="info" sx={{ my: 2 }}>
@@ -163,6 +188,15 @@ const WithdrawalForm = () => {
                 value={formData.amount}
                 onChange={handleChange}
                 required
+                inputProps={{
+                  min: MIN_WITHDRAWAL_AMOUNT,
+                  step: 100,
+                }}
+                error={!!errors.amount}
+                helperText={
+                  errors.amount ||
+                  `Minimum withdrawal: ₦${MIN_WITHDRAWAL_AMOUNT.toLocaleString()}`
+                }
               />
             </Grid>
 
@@ -174,6 +208,8 @@ const WithdrawalForm = () => {
                 value={formData.account_number}
                 onChange={handleChange}
                 inputProps={{ maxLength: 10 }}
+                error={!!errors.account_number}
+                helperText={errors.account_number}
                 required
               />
             </Grid>
@@ -220,7 +256,11 @@ const WithdrawalForm = () => {
                 variant="contained"
                 disabled={loading || resolving}
               >
-                {loading ? <CircularProgress size={24} /> : "Withdraw Funds"}
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  "Withdraw Funds"
+                )}
               </Button>
             </Grid>
           </Grid>
