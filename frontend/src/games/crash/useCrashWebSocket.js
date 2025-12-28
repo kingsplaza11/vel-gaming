@@ -39,7 +39,7 @@ export function useCrashWebSocket(mode = "real", onMessage) {
 
   const connect = useCallback(() => {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const WS_HOST = process.env.REACT_APP_WS_URL || "veltoragames.com/";
+    const WS_HOST = process.env.REACT_APP_WS_URL || "veltoragames.com";
     const url = `${protocol}://${WS_HOST}/ws/crash/${mode}/`;
 
     try {
