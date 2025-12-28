@@ -1,128 +1,588 @@
 {% extends "sa/base.html" %}
-{% block title %}Referral Details{% endblock %}
+{% block title %}Referral Details • {{ user.username }}{% endblock %}
 
 {% block content %}
-
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-    <h2 class="mb-2 mb-md-0">Referral Details</h2>
-    <a href="{% url 'adminpanel:referral_list' %}" class="btn btn-sm btn-outline-secondary">
-        ← Back to Referrals
-    </a>
-</div>
-
-<!-- USERS -->
-<div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3 h-100">
-            <h6 class="text-muted mb-1">Referrer</h6>
-            <h5 class="mb-1">{{ referrer.username }}</h5>
-            <p class="mb-1 text-muted">{{ referrer.email|default:"—" }}</p>
-
-            {% if referrer.referral_code %}
-                <span class="badge bg-dark">
-                    Code: {{ referrer.referral_code }}
-                </span>
-            {% else %}
-                <span class="text-muted small">No referral code</span>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3 h-100">
-            <h6 class="text-muted mb-1">Referred User</h6>
-            <h5 class="mb-1">{{ user.username }}</h5>
-            <p class="mb-1 text-muted">{{ user.email|default:"—" }}</p>
-            <small class="text-muted">
-                Joined: {{ user.date_joined|date:"Y-m-d H:i" }}
-            </small>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <div class="d-flex align-items-center gap-3 mb-2">
+            <a href="{% url 'adminpanel:referral_list' %}" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back</span>
+            </a>
+            <h1 class="h2 mb-0">Referral Details</h1>
         </div>
     </div>
 </div>
 
-<!-- WALLET -->
-<div class="row g-4 mb-4 text-center">
-    <div class="col-md-4">
-        <div class="card shadow-sm p-3">
-            <h6 class="text-muted">Main Balance</h6>
-            <h4 class="fw-semibold">₦{{ wallet.balance|default:"0.00" }}</h4>
+<!-- User Profile Cards -->
+<div class="row g-4 mb-5">
+    <!-- Referrer Card -->
+    <div class="col-xl-6">
+        <div class="dashboard-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" 
+                         style="width: 50px; height: 50px; border-radius: 12px; font-size: 1.25rem;">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Referrer</h6>
+                        <h4 class="mb-0">{{ referrer.username }}</h4>
+                    </div>
+                </div>
+                {% if referrer.referral_code %}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-copy me-2"></i>Copy Code</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-share me-2"></i>Share Link</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="row g-3 mt-4">
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Email</small>
+                        <p class="mb-0">{{ referrer.email|default:"Not provided" }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Referral Code</small>
+                        {% if referrer.referral_code %}
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="bg-dark px-2 py-1 rounded">{{ referrer.referral_code }}</code>
+                            <button class="btn btn-sm btn-link text-primary p-0" onclick="copyToClipboard('{{ referrer.referral_code }}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        {% else %}
+                        <span class="text-muted">No referral code</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Total Referrals</small>
+                        <p class="mb-0">{{ referrer.total_referrals|default:"0" }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Status</small>
+                        <span class="badge badge-soft-success d-inline-flex align-items-center gap-1">
+                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                            Active
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-3 border-top border-secondary">
+                <a href="#" class="btn btn-outline-light w-100 d-flex align-items-center justify-content-center gap-2">
+                    <i class="fas fa-external-link-alt"></i>
+                    View Full Profile
+                </a>
+            </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm p-3">
-            <h6 class="text-muted">Spot Balance</h6>
-            <h4 class="fw-semibold">₦{{ wallet.spot_balance|default:"0.00" }}</h4>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm p-3">
-            <h6 class="text-muted">Locked Balance</h6>
-            <h4 class="fw-semibold">₦{{ wallet.locked_balance|default:"0.00" }}</h4>
+    
+    <!-- Referred User Card -->
+    <div class="col-xl-6">
+        <div class="dashboard-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" 
+                         style="width: 50px; height: 50px; border-radius: 12px; font-size: 1.25rem;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Referred User</h6>
+                        <h4 class="mb-0">{{ user.username }}</h4>
+                    </div>
+                </div>
+                <span class="badge badge-soft-primary">New</span>
+            </div>
+            
+            <div class="row g-3 mt-4">
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Email</small>
+                        <p class="mb-0">{{ user.email|default:"Not provided" }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Joined</small>
+                        <p class="mb-0 d-flex align-items-center gap-2">
+                            <i class="fas fa-calendar text-primary"></i>
+                            {{ user.date_joined|date:"M d, Y" }}
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Member Since</small>
+                        <p class="mb-0">{{ user.date_joined|timesince }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-item">
+                        <small class="text-muted d-block mb-1">Account Status</small>
+                        <span class="badge badge-soft-success d-inline-flex align-items-center gap-1">
+                            <i class="fas fa-check-circle"></i>
+                            Verified
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-3 border-top border-secondary">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <small class="text-muted d-block">Last Activity</small>
+                        <p class="mb-0">2 hours ago</p>
+                    </div>
+                    <a href="#" class="btn btn-primary btn-sm d-flex align-items-center gap-2">
+                        <i class="fas fa-edit"></i>
+                        Edit User
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- EARNINGS SUMMARY -->
-<div class="card shadow-sm p-3 mb-4">
-    <h5 class="mb-3">Credit Transactions Summary</h5>
-    <div class="row text-center">
-        <div class="col-md-3 col-6 mb-3 mb-md-0">
-            <h6 class="text-muted">Today</h6>
-            <strong>₦{{ daily }}</strong>
+<!-- Wallet Balance Cards -->
+<div class="row g-4 mb-5">
+    <div class="col-xl-4 col-md-6">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon" style="background: rgba(102, 126, 234, 0.2); color: #667eea;">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Main Balance</h6>
+                        <h3 class="mb-0">₦{{ wallet.balance|default:"0.00" }}</h3>
+                    </div>
+                </div>
+                <span class="badge badge-soft-success">+12%</span>
+            </div>
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar" role="progressbar" style="width: 75%"></div>
+            </div>
         </div>
-        <div class="col-md-3 col-6 mb-3 mb-md-0">
-            <h6 class="text-muted">This Week</h6>
-            <strong>₦{{ weekly }}</strong>
+    </div>
+    
+    <div class="col-xl-4 col-md-6">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon" style="background: rgba(72, 187, 120, 0.2); color: #48bb78;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Spot Balance</h6>
+                        <h3 class="mb-0">₦{{ wallet.spot_balance|default:"0.00" }}</h3>
+                    </div>
+                </div>
+                <span class="badge badge-soft-warning">-3%</span>
+            </div>
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar bg-success" role="progressbar" style="width: 45%"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-md-12">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon" style="background: rgba(237, 137, 54, 0.2); color: #ed8936;">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Locked Balance</h6>
+                        <h3 class="mb-0">₦{{ wallet.locked_balance|default:"0.00" }}</h3>
+                    </div>
+                </div>
+                <span class="badge badge-soft-success">+5%</span>
+            </div>
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar bg-warning" role="progressbar" style="width: 30%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Earnings Summary -->
+<div class="dashboard-card mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h5 class="mb-1">Credit Transactions Summary</h5>
+            <p class="text-muted mb-0">Earnings from this referral relationship</p>
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="fas fa-filter me-1"></i>Filter
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">All Time</a></li>
+                <li><a class="dropdown-item" href="#">Last 30 Days</a></li>
+                <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                <li><a class="dropdown-item" href="#">Today</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-3 col-6">
+            <div class="text-center p-3 rounded" style="background: rgba(102, 126, 234, 0.1);">
+                <small class="text-muted d-block mb-2">Today</small>
+                <h4 class="mb-0">₦{{ daily }}</h4>
+                <small class="text-success d-flex align-items-center justify-content-center gap-1 mt-1">
+                    <i class="fas fa-arrow-up"></i>
+                    5 transactions
+                </small>
+            </div>
         </div>
         <div class="col-md-3 col-6">
-            <h6 class="text-muted">This Month</h6>
-            <strong>₦{{ monthly }}</strong>
+            <div class="text-center p-3 rounded" style="background: rgba(72, 187, 120, 0.1);">
+                <small class="text-muted d-block mb-2">This Week</small>
+                <h4 class="mb-0">₦{{ weekly }}</h4>
+                <small class="text-success d-flex align-items-center justify-content-center gap-1 mt-1">
+                    <i class="fas fa-arrow-up"></i>
+                    24 transactions
+                </small>
+            </div>
         </div>
         <div class="col-md-3 col-6">
-            <h6 class="text-muted">Lifetime</h6>
-            <strong>₦{{ total }}</strong>
+            <div class="text-center p-3 rounded" style="background: rgba(237, 137, 54, 0.1);">
+                <small class="text-muted d-block mb-2">This Month</small>
+                <h4 class="mb-0">₦{{ monthly }}</h4>
+                <small class="text-warning d-flex align-items-center justify-content-center gap-1 mt-1">
+                    <i class="fas fa-minus"></i>
+                    89 transactions
+                </small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="text-center p-3 rounded" style="background: rgba(245, 101, 101, 0.1);">
+                <small class="text-muted d-block mb-2">Lifetime</small>
+                <h4 class="mb-0">₦{{ total }}</h4>
+                <small class="text-success d-flex align-items-center justify-content-center gap-1 mt-1">
+                    <i class="fas fa-arrow-up"></i>
+                    156 transactions
+                </small>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- TRANSACTIONS -->
-<div class="card shadow-sm p-3">
-    <h5 class="mb-3">Recent Transactions</h5>
-
+<!-- Transactions Table -->
+<div class="dashboard-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h5 class="mb-1">Recent Transactions</h5>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width: 200px;">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search transactions...">
+            </div>
+        </div>
+    </div>
+    
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+        <table class="table table-hover align-middle">
+            <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Type</th>
+                    <th>Date & Time</th>
+                    <th>Transaction Type</th>
                     <th>Amount</th>
                     <th>Reference</th>
+                    <th class="text-end pe-4">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for tx in transactions %}
                 <tr>
-                    <td>{{ tx.created_at|date:"Y-m-d H:i" }}</td>
                     <td>
-                        {% if tx.tx_type == "CREDIT" %}
-                            <span class="badge bg-success">Credit</span>
-                        {% else %}
-                            <span class="badge bg-danger">Debit</span>
-                        {% endif %}
+                        <div class="d-flex flex-column">
+                            <span class="fw-medium">{{ tx.created_at|date:"M d, Y" }}</span>
+                            <small class="text-muted">{{ tx.created_at|date:"H:i A" }}</small>
+                        </div>
                     </td>
-                    <td class="fw-semibold">₦{{ tx.amount }}</td>
-                    <td class="text-muted small">{{ tx.reference }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if tx.tx_type == "CREDIT" %}
+                            <div class="transaction-icon bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" 
+                                 style="width: 32px; height: 32px; border-radius: 8px;">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div>
+                                <span class="d-block fw-medium">Credit</span>
+                                <small class="text-muted">Incoming</small>
+                            </div>
+                            {% else %}
+                            <div class="transaction-icon bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center" 
+                                 style="width: 32px; height: 32px; border-radius: 8px;">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                            <div>
+                                <span class="d-block fw-medium">Debit</span>
+                                <small class="text-muted">Outgoing</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span class="fw-bold {% if tx.tx_type == 'CREDIT' %}text-success{% else %}text-danger{% endif %}">
+                                ₦{{ tx.amount }}
+                            </span>
+                            <small class="text-muted">{{ tx.get_tx_type_display }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="bg-dark px-2 py-1 rounded">{{ tx.reference|truncatechars:12 }}</code>
+                            <button class="btn btn-sm btn-link text-primary p-0" onclick="copyToClipboard('{{ tx.reference }}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View Details</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-receipt me-2"></i>Generate Receipt</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-flag me-2"></i>Report Issue</a></li>
+                            </ul>
+                        </div>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" class="text-center text-muted py-4">
-                        No transactions found
+                    <td colspan="6" class="text-center py-5">
+                        <div class="empty-state">
+                            <div class="empty-state-icon mb-3">
+                                <i class="fas fa-exchange-alt text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                            </div>
+                            <h5 class="text-muted">No transactions found</h5>
+                            <p class="text-muted mb-0">This user hasn't made any transactions yet</p>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    
+    {% if transactions %}
+    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+        <div>
+            <small class="text-muted">Showing {{ transactions|length }} of {{ total_transactions_count }} transactions</small>
+        </div>
+        <nav aria-label="Transaction pagination">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
 </div>
 
+<!-- Additional CSS for this page -->
+<style>
+    /* Custom styles for referral details */
+    .info-item {
+        padding: 0.5rem 0;
+    }
+    
+    .transaction-icon {
+        transition: transform 0.2s ease;
+    }
+    
+    .transaction-icon:hover {
+        transform: scale(1.1);
+    }
+    
+    .empty-state {
+        padding: 2rem;
+    }
+    
+    .empty-state-icon {
+        opacity: 0.5;
+    }
+    
+    /* Timeline style for connection */
+    .connection-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    
+    .connection-timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--primary-gradient);
+        opacity: 0.3;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -1.5rem;
+        top: 0.25rem;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background: var(--primary-gradient);
+        border: 3px solid var(--sidebar-bg);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .d-flex.justify-content-between.align-items-center.mb-5 {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+        
+        .d-flex.align-items-center.gap-2 {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 0.5rem !important;
+        }
+        
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+        
+        .dashboard-card .d-flex.justify-content-between.align-items-center.mb-4 {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+        
+        .dashboard-card .d-flex.align-items-center.gap-2 {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+<!-- JavaScript for this page -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Copy to clipboard function
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                // Show success toast
+                const toast = document.createElement('div');
+                toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Copied to clipboard!</span>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy: ', err);
+            });
+        };
+        
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Animate balance numbers
+        function animateBalance(element, finalValue) {
+            const text = element.textContent;
+            const amount = parseFloat(text.replace(/[^0-9.]/g, ''));
+            if (!isNaN(amount)) {
+                let current = 0;
+                const increment = amount / 50;
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= amount) {
+                        element.textContent = text.replace(/[\d,.]+/, amount.toLocaleString('en-NG'));
+                        clearInterval(timer);
+                    } else {
+                        element.textContent = text.replace(/[\d,.]+/, Math.floor(current).toLocaleString('en-NG'));
+                    }
+                }, 20);
+            }
+        }
+        
+        // Animate all balance numbers
+        document.querySelectorAll('h3.mb-0').forEach(animateBalance);
+        
+        // Transaction filtering
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('tbody tr');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        // Check all checkboxes
+        const selectAll = document.querySelector('thead .form-check-input');
+        const checkboxes = document.querySelectorAll('tbody .form-check-input');
+        
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = selectAll.checked;
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

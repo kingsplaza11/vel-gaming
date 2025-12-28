@@ -43,9 +43,6 @@ class User(AbstractUser):
         related_name="referrals"
     )
 
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username"]
-
     def save(self, *args, **kwargs):
         if not self.user_uid:
             while True:

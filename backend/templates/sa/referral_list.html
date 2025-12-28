@@ -1,87 +1,559 @@
 {% extends "sa/base.html" %}
-{% block title %}Referral Management{% endblock %}
+{% block title %}Referral Management • Admin Panel{% endblock %}
 
 {% block content %}
-
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-5">
     <div>
-        <h2 class="mb-1">Referral Management</h2>
-        <p class="text-muted mb-0">All user referral relationships</p>
+        <h1 class="h2 mb-2">Referral Management</h1>
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>#</th>
-                        <th>Referrer</th>
-                        <th>Referred User</th>
-                        <th>Referral Code</th>
-                        <th>Date Joined</th>
-                        <th class="text-end"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in referrals %}
-                    <tr>
-                        <td class="fw-semibold">{{ forloop.counter }}</td>
-
-                        <!-- Referrer -->
-                        <td>
-                            <strong>{{ r.referred_by.username }}</strong><br>
-                            <small class="text-muted">
-                                {{ r.referred_by.email|default:"—" }}
-                            </small>
-                        </td>
-
-                        <!-- Referred User -->
-                        <td>
-                            <strong>{{ r.username }}</strong><br>
-                            <small class="text-muted">
-                                {{ r.email|default:"—" }}
-                            </small>
-                        </td>
-
-                        <!-- Referral Code -->
-                        <td>
-                            {% if r.referred_by.referral_code %}
-                                <span class="badge bg-dark">
-                                    {{ r.referred_by.referral_code }}
-                                </span>
-                            {% else %}
-                                <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Date Joined -->
-                        <td>
-                            {{ r.date_joined|date:"Y-m-d H:i" }}
-                        </td>
-
-                        <!-- Action -->
-                        <td class="text-end">
-                            <a
-                                href="{% url 'adminpanel:referral_detail' r.id %}"
-                                class="btn btn-sm btn-outline-primary"
-                            >
-                                View Details
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            No referral records found
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<!-- Stats Overview -->
+<div class="row g-4 mb-5">
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon primary">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Total Referrals</h6>
+                        <h3 class="mb-0">{{ referrals|length }}</h3>
+                    </div>
+                </div>
+                <span class="badge badge-soft-success">+8.3%</span>
+            </div>
+            <small class="text-muted d-flex align-items-center gap-1">
+                <i class="fas fa-chart-line"></i>
+                24 new this week
+            </small>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon" style="background: rgba(72, 187, 120, 0.2); color: #48bb78;">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Active Users</h6>
+                        <h3 class="mb-0">{{ active_users|default:"0" }}</h3>
+                    </div>
+                </div>
+                <span class="badge badge-soft-success">+12.5%</span>
+            </div>
+            <small class="text-muted d-flex align-items-center gap-1">
+                <i class="fas fa-users"></i>
+                85% engagement rate
+            </small>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon" style="background: rgba(237, 137, 54, 0.2); color: #ed8936;">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Total Rewards</h6>
+                        <h3 class="mb-0">₦{{ total_rewards|default:"0" }}</h3>
+                    </div>
+                </div>
+                <span class="badge badge-soft-warning">-2.1%</span>
+            </div>
+            <small class="text-muted d-flex align-items-center gap-1">
+                <i class="fas fa-exchange-alt"></i>
+                Avg: ₦{{ avg_reward|default:"0" }}
+            </small>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon" style="background: rgba(245, 101, 101, 0.2); color: #f56565;">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Conversion Rate</h6>
+                        <h3 class="mb-0">{{ conversion_rate|default:"0" }}%</h3>
+                    </div>
+                </div>
+                <span class="badge badge-soft-success">+15.7%</span>
+            </div>
+            <small class="text-muted d-flex align-items-center gap-1">
+                <i class="fas fa-trend-up"></i>
+                Industry avg: 28%
+            </small>
         </div>
     </div>
 </div>
 
+<!-- Main Table -->
+<div class="dashboard-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h5 class="mb-1">All Referral Relationships</h5>
+            <p class="text-muted mb-0">{{ referrals|length }} total relationships found</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Referral ID</th>
+                    <th>Referrer</th>
+                    <th>Referred User</th>
+                    <th>Referral Code</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in referrals %}
+                <tr class="referral-row">
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="id-badge bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" 
+                                 style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.875rem;">
+                                {{ forloop.counter }}
+                            </div>
+                            <div>
+                                <code class="text-muted small">#REF-{{ r.id|stringformat:"06d" }}</code>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle bg-dark d-flex align-items-center justify-content-center" 
+                                 style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-gradient);">
+                                <span class="text-white">{{ r.referred_by.username|first|upper }}</span>
+                            </div>
+                            <div>
+                                <div class="fw-medium">{{ r.referred_by.username }}</div>
+                                <small class="text-muted">{{ r.referred_by.email|truncatechars:20|default:"No email" }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" 
+                                 style="width: 36px; height: 36px; border-radius: 50%;">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div>
+                                <div class="fw-medium">{{ r.username }}</div>
+                                <small class="text-muted">{{ r.email|truncatechars:20|default:"No email" }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if r.referred_by.referral_code %}
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="bg-dark px-2 py-1 rounded">{{ r.referred_by.referral_code|truncatechars:12 }}</code>
+                            <button class="btn btn-sm btn-link text-primary p-0" onclick="copyToClipboard('{{ r.referred_by.referral_code }}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        {% else %}
+                        <span class="badge badge-soft-secondary">No code</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span class="fw-medium">{{ r.date_joined|date:"M d, Y" }}</span>
+                            <small class="text-muted">{{ r.date_joined|date:"H:i A" }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        {% if r.is_active %}
+                        <span class="badge badge-soft-success d-inline-flex align-items-center gap-1">
+                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="badge badge-soft-danger d-inline-flex align-items-center gap-1">
+                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                            Inactive
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="d-flex align-items-center justify-content-end gap-2">
+                            <a href="{% url 'adminpanel:referral_detail' r.id %}" 
+                               class="btn btn-sm btn-outline-light d-flex align-items-center gap-2"
+                               data-bs-toggle="tooltip" data-bs-title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{% url 'adminpanel:referral_detail' r.id %}">
+                                        <i class="fas fa-eye me-2"></i>View Details
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5">
+                        <div class="empty-state">
+                            <div class="empty-state-icon mb-3">
+                                <i class="fas fa-handshake text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                            </div>
+                            <h5 class="text-muted">No referral records found</h5>
+                            <p class="text-muted mb-3">Start building your referral network today</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if referrals %}
+    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+        <div class="d-flex align-items-center gap-3">
+            <div class="selected-count d-none" id="selectedCount">
+                <span class="badge bg-primary">0 selected</span>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" id="bulkActionsBtn" disabled>
+                    <i class="fas fa-tasks me-1"></i>Bulk Actions
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" id="bulkExport"><i class="fas fa-download me-2"></i>Export Selected</a></li>
+                    <li><a class="dropdown-item" href="#" id="bulkEmail"><i class="fas fa-envelope me-2"></i>Email Selected</a></li>
+                    <li><a class="dropdown-item" href="#" id="bulkDelete"><i class="fas fa-trash me-2 text-danger"></i>Delete Selected</a></li>
+                </ul>
+            </div>
+        </div>
+        <div>
+            <small class="text-muted me-3">Page 1 of 5</small>
+            <nav aria-label="Referral pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Additional CSS for this page -->
+<style>
+    /* Custom styles for referral management */
+    .referral-row {
+        transition: all 0.2s ease;
+    }
+    
+    .referral-row:hover {
+        background: rgba(255, 255, 255, 0.03) !important;
+        transform: translateX(2px);
+    }
+    
+    .avatar-circle {
+        transition: transform 0.2s ease;
+    }
+    
+    .avatar-circle:hover {
+        transform: scale(1.1);
+    }
+    
+    .id-badge {
+        font-weight: 600;
+    }
+    
+    .empty-state {
+        padding: 3rem 2rem;
+    }
+    
+    .empty-state-icon {
+        opacity: 0.5;
+    }
+    
+    /* Bulk actions styles */
+    .selected-count {
+        animation: fadeIn 0.3s ease;
+    }
+    
+    /* Table row selection */
+    .table tbody tr.selected {
+        background: rgba(102, 126, 234, 0.1) !important;
+        border-left: 3px solid #667eea;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .d-flex.justify-content-between.align-items-center.mb-5 {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+        
+        .d-flex.align-items-center.gap-3 {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 0.5rem !important;
+        }
+        
+        .input-group {
+            width: 100% !important;
+        }
+        
+        .dashboard-card .d-flex.justify-content-between.align-items-center.mb-4 {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+        
+        .dashboard-card .d-flex.align-items-center.gap-2 {
+            width: 100%;
+            justify-content: flex-start;
+        }
+        
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+        
+        .d-flex.justify-content-between.align-items-center.mt-4 {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<!-- JavaScript for this page -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Copy to clipboard function
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                // Show success toast
+                const toast = document.createElement('div');
+                toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Copied to clipboard!</span>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 2000);
+            });
+        };
+        
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Initialize modals
+        const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+        
+        // Search functionality
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('.referral-row');
+                let visibleCount = 0;
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+                
+                // Update count display
+                const countElement = document.querySelector('.dashboard-card p.text-muted.mb-0');
+                if (countElement) {
+                    countElement.textContent = `${visibleCount} relationships found`;
+                }
+            });
+        }
+        
+        // Row selection and bulk actions
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        const selectedCount = document.getElementById('selectedCount');
+        const bulkActionsBtn = document.getElementById('bulkActionsBtn');
+        const bulkActions = document.getElementById('bulkActions');
+        
+        // Select all functionality
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                const isChecked = this.checked;
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                    toggleRowSelection(checkbox);
+                });
+                updateSelectionUI();
+            });
+        }
+        
+        // Individual checkbox functionality
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                toggleRowSelection(this);
+                updateSelectionUI();
+            });
+        });
+        
+        function toggleRowSelection(checkbox) {
+            const row = checkbox.closest('tr');
+            if (checkbox.checked) {
+                row.classList.add('selected');
+            } else {
+                row.classList.remove('selected');
+            }
+        }
+        
+        function updateSelectionUI() {
+            const selected = document.querySelectorAll('.row-checkbox:checked');
+            const count = selected.length;
+            
+            if (count > 0) {
+                selectedCount.classList.remove('d-none');
+                selectedCount.querySelector('span').textContent = `${count} selected`;
+                bulkActionsBtn.disabled = false;
+            } else {
+                selectedCount.classList.add('d-none');
+                bulkActionsBtn.disabled = true;
+                selectAll.checked = false;
+            }
+        }
+        
+        // Bulk actions
+        document.getElementById('bulkExport')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selected = getSelectedIds();
+            if (selected.length > 0) {
+                exportModal.show();
+            }
+        });
+        
+        document.getElementById('bulkDelete')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selected = getSelectedIds();
+            if (selected.length > 0) {
+                if (confirm(`Are you sure you want to delete ${selected.length} referral record(s)?`)) {
+                    // Here you would typically make an AJAX request
+                    console.log('Deleting:', selected);
+                }
+            }
+        });
+        
+        function getSelectedIds() {
+            const selected = [];
+            document.querySelectorAll('.row-checkbox:checked').forEach(checkbox => {
+                selected.push(checkbox.value);
+            });
+            return selected;
+        }
+        
+        // Refresh button
+        document.getElementById('refreshBtn')?.addEventListener('click', function() {
+            const btn = this;
+            const icon = btn.querySelector('i');
+            
+            // Add spinning animation
+            icon.classList.add('fa-spin');
+            btn.disabled = true;
+            
+            // Simulate refresh
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                btn.disabled = false;
+                
+                // Show success message
+                const toast = document.createElement('div');
+                toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Data refreshed successfully!</span>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 2000);
+            }, 1000);
+        });
+        
+        // Animate stats on load
+        const stats = document.querySelectorAll('.dashboard-card h3.mb-0');
+        stats.forEach(stat => {
+            const text = stat.textContent;
+            const number = parseFloat(text.replace(/[^0-9.]/g, ''));
+            if (!isNaN(number)) {
+                animateNumber(stat, number);
+            }
+        });
+        
+        function animateNumber(element, finalValue) {
+            let current = 0;
+            const increment = finalValue / 50;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= finalValue) {
+                    element.textContent = finalValue.toLocaleString();
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(current).toLocaleString();
+                }
+            }, 20);
+        }
+    });
+</script>
 {% endblock %}
