@@ -1,9 +1,15 @@
 from django.contrib import admin
 from django.urls import path, include
 
+from sa_conf import views
+
+admin.site.login = views.admin_login
+
+
 urlpatterns = [
     path('admin-panel/', admin.site.urls),
     path('admin/', include('sa_conf.urls')),
+    path("admin_login/", views.admin_login, name="admin_login"),
 
     # Core / Accounts
     path('api/accounts/', include('accounts.urls')),

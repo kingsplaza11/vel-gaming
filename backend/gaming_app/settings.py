@@ -128,6 +128,10 @@ REST_FRAMEWORK = {
     ]
 }
 
+LOGIN_URL = "/admin/admin_login/"
+LOGIN_REDIRECT_URL = "/admin/"
+LOGOUT_REDIRECT_URL = "/admin/admin_login/"
+
 
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
