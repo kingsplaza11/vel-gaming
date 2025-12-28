@@ -4,7 +4,7 @@ import { useWallet } from '../contexts/WalletContext'; // Import wallet context
 import { potionService } from '../services/api';
 import './PotionBrewingGame.css';
 
-const MIN_STAKE = 1000;
+const MIN_STAKE = 200;
 
 const POTIONS = [
   { value: 'healing', label: '❤️ Healing Potion', desc: 'Restores vitality' },
@@ -59,7 +59,7 @@ const PotionBrewingGame = ({ user }) => {
     }
 
     if (betAmount < MIN_STAKE) {
-      alert('Minimum stake is ₦1,000');
+      alert('Minimum stake is ₦200');
       return;
     }
 

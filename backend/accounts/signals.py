@@ -50,3 +50,27 @@ def create_referral_code(sender, instance, created, **kwargs):
     if created and not instance.referral_code:
         instance.referral_code = generate_ref_code()
         instance.save()
+
+
+def generate_unique_code(field_name, length=8):
+    chars = string.ascii_uppercase + string.digits
+    while True:
+        code = ''.join(random.choices(chars, k=length))
+        if not User.objects.filter(**{field_name: code}).exists():
+            return code
+
+@receiver(post_save, sender=User)
+def assign_user_codes(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    updates = {}
+
+    if not instance.referral_code:
+        updates["referral_code"] = generate_unique_code("referral_code", 8)
+
+    if not instance.user_uid:
+        updates["user_uid"] = generate_unique_code("user_uid", 8)
+
+    if updates:
+        User.objects.filter(pk=instance.pk).update(**updates)

@@ -4,7 +4,7 @@ import { useWallet } from "../contexts/WalletContext"; // Import wallet context
 import { fishingService } from "../services/api";
 import "./FishingGame.css";
 
-const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
+const MINIMUM_STAKE = 200; // Minimum stake of 200 naira
 
 const FishingGame = ({ user, onBalanceUpdate }) => {
   const navigate = useNavigate();

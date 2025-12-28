@@ -51,14 +51,14 @@ function deriveWsBase() {
   if (explicit) return explicit;
 
   // 2) Derive from API URL
-  const api = process.env.REACT_APP_API_URL || "http://localhost:8001/api/";
+  const api = process.env.REACT_APP_API_URL || "https://veltoragames.com/api/";
   try {
     const u = new URL(api);
     const proto = u.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${u.host}`;
   } catch {
     // final fallback
-    return "ws://localhost:8001";
+    return "ws://veltoragames.com";
   }
 }
 

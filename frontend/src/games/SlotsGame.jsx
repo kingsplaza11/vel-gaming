@@ -7,7 +7,7 @@ import "./SlotsGame.css";
 /* ===============================
    GAME CONSTANTS
 ================================ */
-const MIN_STAKE = 1000; // Minimum stake of 1000 naira
+const MIN_STAKE = 200; // Minimum stake of 1000 naira
 
 const SYMBOLS = {
   classic: ["seven", "bar", "bell", "cherry", "orange", "lemon"],

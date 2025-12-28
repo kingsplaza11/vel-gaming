@@ -4,7 +4,7 @@ import { useWallet } from "../contexts/WalletContext"; // Import wallet context
 import { minesweeperService } from "../services/api";
 import "./MinesweeperGame.css";
 
-const MAX_PROFIT_RATIO = 0.3;
+const MAX_PROFIT_RATIO = 0.45;
 
 const MinesweeperGame = ({ user, onBalanceUpdate }) => {
   const navigate = useNavigate();
@@ -45,8 +45,8 @@ const MinesweeperGame = ({ user, onBalanceUpdate }) => {
 
   /* -------------------- START GAME -------------------- */
   const startGame = async () => {
-    if (betAmount < 1000) {
-      alert("Minimum stake is ₦1,000");
+    if (betAmount < 200) {
+      alert("Minimum stake is ₦200");
       return;
     }
 

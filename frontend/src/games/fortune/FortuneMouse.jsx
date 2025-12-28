@@ -16,7 +16,7 @@ import { createSound } from "./sound";
 import AlertModal from "../../components/ui/AlertModal";
 
 const GRID_SIZE = 20;
-const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
+const MINIMUM_STAKE = 200; // Minimum stake of 200 naira
 
 /* ============================================================
    STAKE MODAL
@@ -78,7 +78,7 @@ function StakeModal({
         {/* Stake validation message */}
         {!isStakeValid && bet.trim() !== "" && (
           <div className="stake-validation-error">
-            Minimum stake is ₦1,000
+            Minimum stake is ₦200
           </div>
         )}
 

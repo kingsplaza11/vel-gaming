@@ -15,7 +15,7 @@ import { useFortuneWS } from "./useFortuneWS";
 import { createSound } from "./sound";
 import AlertModal from "../../components/ui/AlertModal";
 
-const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
+const MINIMUM_STAKE = 200; // Minimum stake of 1000 naira
 
 /* ============================================================
    STAKE MODAL (CONSISTENT WITH MOUSE & RABBIT)

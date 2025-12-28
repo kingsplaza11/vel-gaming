@@ -79,7 +79,7 @@ TEMPLATES = [
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY")
 
-PAYSTACK_CALLBACK_URL = "http://localhost:3000/payment/callback"
+PAYSTACK_CALLBACK_URL = "https://veltoragames.com/payment/callback"
 
 
 

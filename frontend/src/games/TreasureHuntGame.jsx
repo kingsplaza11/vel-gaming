@@ -4,8 +4,8 @@ import { useWallet } from "../contexts/WalletContext"; // Import wallet context
 import { treasureService } from "../services/api";
 import "./TreasureHuntGame.css";
 
-const MIN_STAKE = 1000; // ₦1,000
-const MAX_WIN_RATIO = 0.3; // 30%
+const MIN_STAKE = 200; // ₦200
+const MAX_WIN_RATIO = 0.46; // 30%
 
 const MAP_LEVELS = [
   { level: 1, name: "Beginner Island", icon: "🏝️", risk: "Low" },

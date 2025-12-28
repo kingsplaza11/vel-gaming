@@ -4,7 +4,7 @@ import { useWallet } from "../contexts/WalletContext"; // Import wallet context
 import { colorSwitchService } from "../services/api";
 import "./ColorSwitchGame.css";
 
-const MAX_PROFIT_RATIO = 0.3; // 30%
+const MAX_PROFIT_RATIO = 0.4; // 30%
 
 const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
   const navigate = useNavigate();
@@ -49,8 +49,8 @@ const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
   const startGame = async () => {
     setError("");
 
-    if (stake < 1000) {
-      setError("Minimum stake is ₦1,000");
+    if (stake < 200) {
+      setError("Minimum stake is ₦200");
       return;
     }
 
