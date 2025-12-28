@@ -45,8 +45,8 @@ const MinesweeperGame = ({ user, onBalanceUpdate }) => {
 
   /* -------------------- START GAME -------------------- */
   const startGame = async () => {
-    if (betAmount < 200) {
-      alert("Minimum stake is ₦200");
+    if (betAmount < 100) {
+      alert("Minimum stake is ₦100");
       return;
     }
 

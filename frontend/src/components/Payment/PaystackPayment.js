@@ -16,7 +16,7 @@ import {
   DialogActions,
 } from "@mui/material";
 
-const MIN_AMOUNT = 2500;
+const MIN_AMOUNT = 2000;
 const MAX_AMOUNT = 10000000;
 
 const PaystackPayment = ({ user }) => {

@@ -4,7 +4,7 @@ import { useWallet } from "../contexts/WalletContext"; // Import wallet context
 import { guessingService } from "../services/api";
 import "./NumberGuessingGame.css";
 
-const MIN_STAKE = 200;
+const MIN_STAKE = 100;
 
 const NumberGuessingGame = ({ user }) => {
   const navigate = useNavigate();

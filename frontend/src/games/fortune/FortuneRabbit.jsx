@@ -15,11 +15,12 @@ import { useFortuneWS } from "./useFortuneWS";
 import { createSound } from "./sound";
 import AlertModal from "../../components/ui/AlertModal";
 
-const MINIMUM_STAKE = 200; // Minimum stake of 1000 naira
+const MINIMUM_STAKE = 100; // Minimum stake of 100 naira
 
 /* ============================================================
    STAKE MODAL (REUSED PATTERN)
 ============================================================ */
+
 function StakeModal({
   open,
   walletBalance, // Changed from balance to walletBalance

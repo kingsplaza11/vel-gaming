@@ -459,7 +459,7 @@ const WalletDashboard = () => {
           <Icon icon="mdi:shield-check" className="footer-icon" />
           <div className="footer-text">
             <p>Need help? Contact support at{' '}
-              <span className="support-email">support@veltora.com</span>
+              <span className="support-email">support@veltoragames.com</span>
             </p>
             <p className="footer-note">Your funds are protected with bank-level security</p>
           </div>

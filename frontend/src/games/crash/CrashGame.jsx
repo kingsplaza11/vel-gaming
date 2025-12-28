@@ -14,7 +14,7 @@ import AlertModal from "../../components/ui/AlertModal";
 
 import "./CrashGame.css";
 
-const MINIMUM_STAKE = 1000; // Minimum stake of 1000 naira
+const MINIMUM_STAKE = 100; // Minimum stake of 100 naira
 
 export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   /* ---------------- GAME STATE ---------------- */

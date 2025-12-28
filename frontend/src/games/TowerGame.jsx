@@ -4,7 +4,7 @@ import { useWallet } from "../contexts/WalletContext"; // Import wallet context
 import { towerService } from "../services/api";
 import "./TowerGame.css";
 
-const MIN_STAKE = 200;
+const MIN_STAKE = 100;
 
 const TowerGame = ({ user }) => {
   const navigate = useNavigate();

@@ -4,7 +4,7 @@ import { useWallet } from '../contexts/WalletContext'; // Import wallet context
 import { cardService } from '../services/api';
 import './CardMatchingGame.css';
 
-const MIN_BET = 200; // Updated to 1000 naira minimum
+const MIN_BET = 100; // Updated to 1000 naira minimum
 
 const CardMatchingGame = ({ user, onBalanceUpdate = () => {} }) => {
   const navigate = useNavigate();

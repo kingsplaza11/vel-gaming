@@ -49,8 +49,8 @@ const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
   const startGame = async () => {
     setError("");
 
-    if (stake < 200) {
-      setError("Minimum stake is ₦200");
+    if (stake < 100) {
+      setError("Minimum stake is ₦100");
       return;
     }
 

@@ -16,7 +16,7 @@ import { createSound } from "./sound";
 import AlertModal from "../../components/ui/AlertModal";
 
 const GRID_SIZE = 20;
-const MINIMUM_STAKE = 200; // Minimum stake of 200 naira
+const MINIMUM_STAKE = 100; // Minimum stake of 200 naira
 
 /* ============================================================
    STAKE MODAL
