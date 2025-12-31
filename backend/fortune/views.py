@@ -83,25 +83,26 @@ def start_session(request):
 
     try:
         with transaction.atomic():
-            # 1️⃣ Save session
             session.save()
 
-            # 2️⃣ Debit wallet (locked funds)
+            # 🔴 THIS WAS MISSING
+            session.refresh_from_db()
+
             debit_for_bet(
                 request.user.id,
                 bet_amount,
                 ref=f"fortune:{session.id}:bet",
             )
 
-            # 3️⃣ Generate WS token ONLY after commit
             def _after_commit():
                 ws_token_holder["token"] = sign_ws_token(
                     request.user.id,
                     str(session.id),
-                    str(session.server_nonce),
+                    str(session.server_nonce),  # NOW CORRECT
                 )
 
             transaction.on_commit(_after_commit)
+
 
     except WalletError as e:
         return Response({"detail": str(e)}, status=400)
