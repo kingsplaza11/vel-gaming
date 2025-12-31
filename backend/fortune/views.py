@@ -3,27 +3,35 @@ from __future__ import annotations
 
 import secrets
 from decimal import Decimal
+
 from django.db import transaction
 from django.utils import timezone
 from django.core.signing import TimestampSigner
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
 
 from .models import RTPConfig, GameSession
-from .serializers import StartSessionIn, StartSessionOut, SessionStateOut, CashoutOut
+from .serializers import (
+    StartSessionIn,
+    StartSessionOut,
+    SessionStateOut,
+    CashoutOut,
+)
 from .engine import seed_hash
 from .wallet import debit_for_bet, credit_payout, WalletError
 from .defaults import DEFAULT_RTP
 
+
+# =====================================================
+# WS TOKEN
+# =====================================================
+
 signer = TimestampSigner(salt="fortune-ws")
 
 
-# =====================================================
-# WS TOKEN HELPERS
-# =====================================================
 def sign_ws_token(user_id: int, session_id: str, server_nonce: str) -> str:
     payload = f"{user_id}:{session_id}:{server_nonce}"
     return signer.sign(payload)
@@ -35,19 +43,15 @@ def verify_ws_token(token: str, max_age: int = 120) -> tuple[int, str, str]:
     return int(user_id_s), session_id, nonce
 
 
+# =====================================================
+# START SESSION (CRITICAL FIX)
+# =====================================================
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def start_session(request):
     serializer = StartSessionIn(data=request.data)
-
-    if not serializer.is_valid():
-        return Response(
-            {
-                "detail": "Invalid request",
-                "errors": serializer.errors,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    serializer.is_valid(raise_exception=True)
 
     game = serializer.validated_data["game"]
     bet_amount = serializer.validated_data["bet_amount"]
@@ -57,11 +61,15 @@ def start_session(request):
     if not defaults:
         return Response({"detail": "Invalid game id"}, status=400)
 
-    cfg, _ = RTPConfig.objects.get_or_create(game=game, defaults=defaults)
+    cfg, _ = RTPConfig.objects.get_or_create(
+        game=game,
+        defaults=defaults,
+    )
 
     server_seed = secrets.token_hex(32)
     server_seed_h = seed_hash(server_seed)
 
+    # Prepare session instance
     session = GameSession(
         user=request.user,
         game=game,
@@ -71,22 +79,40 @@ def start_session(request):
         client_seed=client_seed,
     )
 
+    ws_token_holder: dict[str, str] = {}
+
     try:
         with transaction.atomic():
+            # 1️⃣ Save session
             session.save()
+
+            # 2️⃣ Debit wallet (locked funds)
             debit_for_bet(
                 request.user.id,
                 bet_amount,
                 ref=f"fortune:{session.id}:bet",
             )
+
+            # 3️⃣ Generate WS token ONLY after commit
+            def _after_commit():
+                ws_token_holder["token"] = sign_ws_token(
+                    request.user.id,
+                    str(session.id),
+                    str(session.server_nonce),
+                )
+
+            transaction.on_commit(_after_commit)
+
     except WalletError as e:
         return Response({"detail": str(e)}, status=400)
 
-    ws_token = sign_ws_token(
-        request.user.id,
-        str(session.id),
-        str(session.server_nonce),
-    )
+    # 🔒 Guaranteed committed + visible here
+    ws_token = ws_token_holder.get("token")
+    if not ws_token:
+        return Response(
+            {"detail": "Failed to initialize session"},
+            status=500,
+        )
 
     return Response(
         StartSessionOut({
@@ -98,38 +124,43 @@ def start_session(request):
             "max_steps": cfg.max_steps,
             "max_multiplier": cfg.max_multiplier,
         }).data,
-        status=201,
+        status=status.HTTP_201_CREATED,
     )
 
 
 # =====================================================
-# SESSION STATE (RECONNECT / REFRESH)
+# SESSION STATE (REFRESH / RECONNECT)
 # =====================================================
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def session_state(request, session_id):
     try:
-        s = GameSession.objects.get(id=session_id, user=request.user)
+        s = GameSession.objects.get(
+            id=session_id,
+            user=request.user,
+        )
     except GameSession.DoesNotExist:
         return Response(
             {"detail": "Session not found"},
-            status=status.HTTP_404_NOT_FOUND
+            status=status.HTTP_404_NOT_FOUND,
         )
 
-    out = SessionStateOut({
-        "session_id": s.id,
-        "status": s.status,
-        "step_index": s.step_index,
-        "current_multiplier": s.current_multiplier,
-        "payout_amount": s.payout_amount,
-    })
-
-    return Response(out.data)
+    return Response(
+        SessionStateOut({
+            "session_id": s.id,
+            "status": s.status,
+            "step_index": s.step_index,
+            "current_multiplier": s.current_multiplier,
+            "payout_amount": s.payout_amount,
+        }).data
+    )
 
 
 # =====================================================
 # CASHOUT (REST FALLBACK)
 # =====================================================
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def cashout(request, session_id):
@@ -137,52 +168,61 @@ def cashout(request, session_id):
         with transaction.atomic():
             s = GameSession.objects.select_for_update().get(
                 id=session_id,
-                user=request.user
+                user=request.user,
             )
 
             if s.status != GameSession.STATUS_ACTIVE:
                 return Response(
                     {"detail": "Session not active"},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=400,
                 )
 
-            # Player never progressed
             if s.step_index <= 0:
                 s.status = GameSession.STATUS_CASHED
                 s.finished_at = timezone.now()
                 s.payout_amount = Decimal("0.00")
-                s.save(update_fields=["status", "finished_at", "payout_amount"])
+                s.save(
+                    update_fields=[
+                        "status",
+                        "finished_at",
+                        "payout_amount",
+                    ]
+                )
+            else:
+                payout = (
+                    s.bet_amount * s.current_multiplier
+                ).quantize(Decimal("0.01"))
 
-                return Response(CashoutOut({
-                    "session_id": s.id,
-                    "status": s.status,
-                    "payout_amount": s.payout_amount,
-                    "revealed_server_seed": s.server_seed,
-                }).data)
+                s.payout_amount = payout
+                s.status = GameSession.STATUS_CASHED
+                s.finished_at = timezone.now()
+                s.save(
+                    update_fields=[
+                        "payout_amount",
+                        "status",
+                        "finished_at",
+                    ]
+                )
 
-            payout = (s.bet_amount * s.current_multiplier).quantize(Decimal("0.01"))
-
-            s.payout_amount = payout
-            s.status = GameSession.STATUS_CASHED
-            s.finished_at = timezone.now()
-            s.save(update_fields=["payout_amount", "status", "finished_at"])
-
+        # Wallet credit OUTSIDE transaction
+        if s.payout_amount > 0:
             credit_payout(
-                s.user_id,
-                s.currency,
-                payout,
-                ref=f"fortune:{s.id}:cashout"
+                user_id=s.user_id,
+                payout=s.payout_amount,
+                ref=f"fortune:{s.id}:cashout",
             )
 
     except GameSession.DoesNotExist:
         return Response(
             {"detail": "Session not found"},
-            status=status.HTTP_404_NOT_FOUND
+            status=404,
         )
 
-    return Response(CashoutOut({
-        "session_id": s.id,
-        "status": s.status,
-        "payout_amount": s.payout_amount,
-        "revealed_server_seed": s.server_seed,
-    }).data)
+    return Response(
+        CashoutOut({
+            "session_id": s.id,
+            "status": s.status,
+            "payout_amount": s.payout_amount,
+            "revealed_server_seed": s.server_seed,
+        }).data
+    )

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import uuid
 import random
+import time
 import traceback
 from decimal import Decimal
 
+from django.db import transaction
 from django.utils import timezone
-from django.db import IntegrityError
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 
@@ -15,14 +16,22 @@ from .views import verify_ws_token
 from .wallet import credit_payout
 
 
+# ===============================
+# GAME CONSTANTS
+# ===============================
+
 MIN_MULTIPLIER = Decimal("0.45")
 BASE_SAFE_PROB = Decimal("0.55")
 
+SESSION_RETRY_ATTEMPTS = 6
+SESSION_RETRY_DELAY = 0.15  # seconds
+
+
+# ===============================
+# CONSUMER
+# ===============================
 
 class FortuneConsumer(AsyncJsonWebsocketConsumer):
-    """
-    SQLite-safe Fortune Mouse WebSocket consumer
-    """
 
     # ===============================
     # CONNECTION
@@ -37,7 +46,7 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
 
         await self.send_json({
             "type": "connected",
-            "message": "Connected to Fortune Mouse"
+            "message": "Fortune Mouse socket ready"
         })
 
     async def disconnect(self, close_code):
@@ -46,7 +55,7 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
         self.session_id = None
 
     # ===============================
-    # MESSAGE ROUTER
+    # ROUTER
     # ===============================
 
     async def receive_json(self, content, **kwargs):
@@ -64,11 +73,12 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
             elif msg_type == "cashout":
                 await self.handle_cashout(content)
             else:
-                await self.send_error("invalid_message_type", "Unknown message type")
+                await self.send_error("invalid_message_type", "Unknown message")
 
         except Exception as e:
             traceback.print_exc()
-            await self.send_error("server_error", str(e))
+            await self.send_error("server_error", "Unhandled server error")
+            await self.close(code=1011)
 
     # ===============================
     # JOIN / AUTH
@@ -76,25 +86,36 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
 
     async def handle_join(self, content):
         token = content.get("ws_token")
+
         if not token:
-            await self.send_error("missing_token", "No token provided")
+            await self.send_error("missing_token", "Token required")
             await self.close(code=4001)
             return
 
         try:
-            user_id, session_id, nonce = await database_sync_to_async(verify_ws_token)(token, 120)
+            user_id, session_id, nonce = await database_sync_to_async(
+                verify_ws_token
+            )(token, 120)
         except Exception:
             await self.send_error("auth_failed", "Invalid token")
             await self.close(code=4001)
             return
 
-        ok = await self.bind_session(user_id, session_id, nonce)
-        if not ok:
-            await self.send_error("session_not_found", "Invalid session")
+        session = await self.get_session_with_retry(user_id, session_id)
+        if not session:
+            await self.send_error("session_not_found", "Session not available")
             await self.close(code=4002)
             return
 
-        session = await self.get_session()
+        if str(session.server_nonce) != str(nonce):
+            await self.send_error("auth_failed", "Nonce mismatch")
+            await self.close(code=4001)
+            return
+
+        self.user_id = user_id
+        self.session_id = session_id
+        self.authenticated = True
+
         await self.send_json({
             "type": "joined",
             "session_id": str(session.id),
@@ -106,22 +127,19 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
         })
 
     @database_sync_to_async
-    def bind_session(self, user_id, session_id, nonce):
-        try:
-            session = GameSession.objects.get(id=session_id, user_id=user_id)
-            if str(session.server_nonce) != str(nonce):
-                return False
-
-            self.user_id = user_id
-            self.session_id = session_id
-            self.authenticated = True
-            return True
-        except GameSession.DoesNotExist:
-            return False
-
-    @database_sync_to_async
-    def get_session(self):
-        return GameSession.objects.get(id=self.session_id, user_id=self.user_id)
+    def get_session_with_retry(self, user_id, session_id):
+        """
+        Postgres-safe visibility retry.
+        """
+        for _ in range(SESSION_RETRY_ATTEMPTS):
+            try:
+                return GameSession.objects.get(
+                    id=session_id,
+                    user_id=user_id
+                )
+            except GameSession.DoesNotExist:
+                time.sleep(SESSION_RETRY_DELAY)
+        return None
 
     # ===============================
     # STEP
@@ -139,90 +157,79 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
                 choice=content.get("choice"),
             )
             await self.send_json(result)
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
-            await self.send_error("server_error", str(e))
+            await self.send_error("server_error", "Step failed")
+            await self.close(code=1011)
 
     @database_sync_to_async
     def process_step(self, msg_id, action, choice):
         msg_uuid = uuid.UUID(msg_id)
 
-        session = GameSession.objects.get(
-            id=self.session_id,
-            user_id=self.user_id
-        )
+        with transaction.atomic():
+            session = GameSession.objects.select_for_update().get(
+                id=self.session_id,
+                user_id=self.user_id
+            )
 
-        if session.status != GameSession.STATUS_ACTIVE:
-            return self.session_state(session)
+            if session.status != GameSession.STATUS_ACTIVE:
+                return self.session_state(session)
 
-        if session.last_client_msg_id == msg_uuid:
-            return {"type": "duplicate"}
+            if session.last_client_msg_id == msg_uuid:
+                return {"type": "duplicate"}
 
-        expected_version = session.version
+            roll = random.random()
 
-        roll = random.random()
+            safe_prob = max(
+                Decimal("0.10"),
+                BASE_SAFE_PROB - Decimal(session.step_index) * Decimal("0.05")
+            )
 
-        safe_prob = max(
-            Decimal("0.10"),
-            BASE_SAFE_PROB - Decimal(session.step_index) * Decimal("0.05")
-        )
+            tile = "safe"
 
-        tile = "safe"
-        delta = Decimal("0.00")
+            if roll < float(safe_prob):
+                delta = Decimal(random.choice(["0.15", "0.25", "0.40"]))
+                session.current_multiplier += delta
+            elif roll < 0.70:
+                tile = "penalty"
+                session.current_multiplier *= Decimal("0.5")
+            elif roll < 0.85:
+                tile = "reset"
+                session.current_multiplier = MIN_MULTIPLIER
+            else:
+                tile = "trap"
+                session.status = GameSession.STATUS_LOST
 
-        if roll < float(safe_prob):
-            delta = Decimal(random.choice(["0.15", "0.25", "0.40"]))
-            session.current_multiplier += delta
-        elif roll < 0.70:
-            tile = "penalty"
-            session.current_multiplier *= Decimal("0.5")
-        elif roll < 0.85:
-            tile = "reset"
-            session.current_multiplier = MIN_MULTIPLIER
-        else:
-            tile = "trap"
-            session.status = GameSession.STATUS_LOST
+            session.current_multiplier = max(
+                session.current_multiplier,
+                MIN_MULTIPLIER
+            )
 
-        session.current_multiplier = max(session.current_multiplier, MIN_MULTIPLIER)
-        session.step_index += 1
-        session.version += 1
-        session.last_client_msg_id = msg_uuid
+            session.step_index += 1
+            session.last_client_msg_id = msg_uuid
 
-        updated = GameSession.objects.filter(
-            id=session.id,
-            version=expected_version
-        ).update(
-            step_index=session.step_index,
-            current_multiplier=session.current_multiplier,
-            status=session.status,
-            version=session.version,
-            last_client_msg_id=session.last_client_msg_id,
-        )
+            if tile == "trap":
+                session.finished_at = timezone.now()
 
-        if updated == 0:
+            session.save()
+
+            GameRound.objects.create(
+                session=session,
+                step=session.step_index,
+                client_action=action,
+                client_choice=choice,
+                safe_prob=safe_prob,
+                result=tile,
+                multiplier_after=session.current_multiplier,
+            )
+
             return {
-                "type": "error",
-                "code": "state_conflict",
-                "message": "Out of sync"
+                "type": "step_result",
+                "result": tile,
+                "status": session.status,
+                "step_index": session.step_index,
+                "current_multiplier": str(session.current_multiplier),
             }
-
-        GameRound.objects.create(
-            session=session,
-            step=session.step_index,
-            client_action=action,
-            client_choice=choice,
-            safe_prob=safe_prob,
-            result=tile,
-            multiplier_after=session.current_multiplier,
-        )
-
-        return {
-            "type": "step_result",
-            "result": tile,
-            "status": session.status,
-            "step_index": session.step_index,
-            "current_multiplier": str(session.current_multiplier),
-        }
 
     # ===============================
     # CASHOUT
@@ -236,41 +243,45 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
         try:
             result = await self.process_cashout(content.get("msg_id"))
             await self.send_json(result)
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
-            await self.send_error("server_error", str(e))
+            await self.send_error("server_error", "Cashout failed")
+            await self.close(code=1011)
 
     @database_sync_to_async
     def process_cashout(self, msg_id):
         msg_uuid = uuid.UUID(msg_id)
 
-        session = GameSession.objects.get(
-            id=self.session_id,
-            user_id=self.user_id
-        )
+        with transaction.atomic():
+            session = GameSession.objects.select_for_update().get(
+                id=self.session_id,
+                user_id=self.user_id
+            )
 
-        if session.status != GameSession.STATUS_ACTIVE:
-            return self.session_state(session)
+            if session.status != GameSession.STATUS_ACTIVE:
+                return self.session_state(session)
 
-        payout = (session.bet_amount * session.current_multiplier).quantize(Decimal("0.01"))
+            payout = (
+                session.bet_amount * session.current_multiplier
+            ).quantize(Decimal("0.01"))
 
-        session.status = GameSession.STATUS_CASHED
-        session.payout_amount = payout
-        session.finished_at = timezone.now()
-        session.version += 1
-        session.last_client_msg_id = msg_uuid
-        session.save()
+            session.status = GameSession.STATUS_CASHED
+            session.payout_amount = payout
+            session.finished_at = timezone.now()
+            session.last_client_msg_id = msg_uuid
+            session.save()
 
-        GameOutcome.objects.create(
-            session=session,
-            house_edge=Decimal("0.75"),
-            rtp_used=Decimal("0.25"),
-            win=True,
-            gross_payout=payout,
-            net_profit=payout - session.bet_amount,
-            reason="cashout",
-        )
+            GameOutcome.objects.create(
+                session=session,
+                house_edge=Decimal("0.75"),
+                rtp_used=Decimal("0.25"),
+                win=True,
+                gross_payout=payout,
+                net_profit=payout - session.bet_amount,
+                reason="cashout",
+            )
 
+        # Credit wallet OUTSIDE transaction
         credit_payout(
             user_id=session.user_id,
             payout=payout,
