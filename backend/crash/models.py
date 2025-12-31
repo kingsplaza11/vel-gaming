@@ -67,22 +67,102 @@ class CrashBet(models.Model):
         return f"Bet {self.id} on Round {self.round_id}"
 
 
-class RiskSettings(models.Model):
-    # Singleton row – manage via admin
-    max_bet_per_player = models.DecimalField(max_digits=18, decimal_places=2, default=1000)
-    max_exposure_per_round = models.DecimalField(max_digits=18, decimal_places=2, default=10000)
-    max_multiplier_cap = models.DecimalField(max_digits=8, decimal_places=2, default=500)
-    house_edge_percent = models.DecimalField(max_digits=5, decimal_places=2, default=1.00)
+# In your models.py, update the RiskSettings class:
 
+class RiskSettings(models.Model):
+    # Betting limits
+    min_bet_per_player = models.DecimalField(
+        max_digits=18, decimal_places=2, 
+        default=100,  # Minimum ₦100 bet
+        verbose_name="Minimum bet per player"
+    )
+    max_bet_per_player = models.DecimalField(
+        max_digits=18, decimal_places=2, 
+        default=1000,
+        verbose_name="Maximum bet per player"
+    )
+    max_bet_per_player_per_round = models.DecimalField(
+        max_digits=18, decimal_places=2, 
+        default=5000,
+        verbose_name="Maximum bet per player per round"
+    )
+    max_exposure_per_round = models.DecimalField(
+        max_digits=18, decimal_places=2, 
+        default=10000,
+        verbose_name="Maximum exposure per round"
+    )
+    max_win_per_bet = models.DecimalField(
+        max_digits=18, decimal_places=2, 
+        default=50000,
+        verbose_name="Maximum win per bet"
+    )
+    max_multiplier_cap = models.DecimalField(
+        max_digits=8, decimal_places=2, 
+        default=500,
+        verbose_name="Maximum multiplier cap"
+    )
+    
+    # House edge and game settings
+    house_edge_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, 
+        default=1.00,
+        verbose_name="House edge percentage"
+    )
+    min_auto_cashout = models.DecimalField(
+        max_digits=8, decimal_places=2, 
+        default=1.1,
+        verbose_name="Minimum auto cashout multiplier"
+    )
+    max_auto_cashout = models.DecimalField(
+        max_digits=8, decimal_places=2, 
+        default=100.0,
+        verbose_name="Maximum auto cashout multiplier"
+    )
+    
+    # Game control
     allow_demo = models.BooleanField(default=True)
     allow_real_money = models.BooleanField(default=True)
+    
+    # Cooldown settings
+    bet_cooldown_seconds = models.IntegerField(
+        default=1,
+        verbose_name="Bet cooldown in seconds"
+    )
+    
+    # Anti-bot settings
+    max_bets_per_minute = models.IntegerField(
+        default=30,
+        verbose_name="Maximum bets per minute"
+    )
+    
+    # Audit fields
+    last_modified = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Risk Settings"
+        verbose_name_plural = "Risk Settings"
 
     def __str__(self):
         return "Crash Game Risk Settings"
 
     @staticmethod
     def get():
-        obj, _ = RiskSettings.objects.get_or_create(pk=1)
+        obj, created = RiskSettings.objects.get_or_create(
+            pk=1,
+            defaults={
+                'min_bet_per_player': 100,
+                'max_bet_per_player': 1000,
+                'max_bet_per_player_per_round': 5000,
+                'max_exposure_per_round': 10000,
+                'max_win_per_bet': 50000,
+                'max_multiplier_cap': 500,
+                'house_edge_percent': 1.00,
+                'min_auto_cashout': 1.1,
+                'max_auto_cashout': 100.0,
+                'bet_cooldown_seconds': 1,
+                'max_bets_per_minute': 30,
+            }
+        )
         return obj
 
 
