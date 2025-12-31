@@ -5,25 +5,28 @@ import React, {
   useRef,
   useState,
 } from "react";
-
+import { useNavigate } from "react-router-dom";
+import { useWallet } from "../../contexts/WalletContext";
 import { crashService } from "../../services/api";
 import { useCrashWebSocket } from "./useCrashWebSocket";
 import CrashCandleChart from "./CrashCandleChart";
 import LiveBetTable from "./LiveBetTable";
 import AlertModal from "../../components/ui/AlertModal";
-
 import "./CrashGame.css";
 
 const MINIMUM_STAKE = 100; // Minimum stake of 100 naira
 
 export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
+  const navigate = useNavigate();
+  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+
   /* ---------------- GAME STATE ---------------- */
   const [phase, setPhase] = useState("betting"); // betting | running | crashed
   const [multiplier, setMultiplier] = useState(1.0);
   const [roundId, setRoundId] = useState(null);
 
   /* ---------------- BET STATE ---------------- */
-  const [betAmount, setBetAmount] = useState(1000); // Start with minimum stake
+  const [betAmount, setBetAmount] = useState("1000"); // Start with minimum stake
   const [autoCashout, setAutoCashout] = useState(2.0);
   const [useAuto, setUseAuto] = useState(true);
   const [activeBetId, setActiveBetId] = useState(null);
@@ -31,6 +34,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   /* ---------------- UI DATA ---------------- */
   const [history, setHistory] = useState([]);
   const [liveRows, setLiveRows] = useState([]);
+  const [error, setError] = useState("");
 
   /* ---------------- ALERT MODAL ---------------- */
   const [alert, setAlert] = useState({
@@ -47,10 +51,24 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   /* ---------------- REFS ---------------- */
   const lastCashoutRef = useRef(0);
 
+  /* ---------------- WALLET HELPERS ---------------- */
+  const getWalletBalance = () => {
+    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
+  };
+
+  const balance = Number(getWalletBalance() || 0);
+  const numericBet = Number(betAmount);
+
   /* ---------------- STAKE VALIDATION ---------------- */
   const isStakeValid = useMemo(() => {
-    return Number.isFinite(betAmount) && betAmount >= MINIMUM_STAKE;
-  }, [betAmount]);
+    return Number.isFinite(numericBet) && numericBet >= MINIMUM_STAKE && numericBet <= balance;
+  }, [numericBet, balance]);
+
+  /* ---------------- FORMATTING ---------------- */
+  const formatNGN = (value) =>
+    `₦${Number(value || 0).toLocaleString("en-NG", {
+      minimumFractionDigits: 2,
+    })}`;
 
   /* ---------------- HELPERS ---------------- */
   const colorFor = useMemo(
@@ -102,7 +120,13 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
         setActiveBetId(null);
 
-        if (res.data?.balance != null && onBalanceUpdate) {
+        // Update wallet
+        if (refreshWallet) {
+          await refreshWallet();
+        }
+
+        // Also update parent component if needed
+        if (onBalanceUpdate && res.data?.balance != null) {
           onBalanceUpdate((prev) => ({
             ...prev,
             wallet_balance: res.data.balance,
@@ -112,7 +136,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
         // ignore – too late or already cashed
       }
     },
-    [activeBetId, mode, onBalanceUpdate]
+    [activeBetId, mode, refreshWallet, onBalanceUpdate]
   );
 
   /* ---------------- WEBSOCKET HANDLER ---------------- */
@@ -188,59 +212,59 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
   /* ---------------- REST ACTIONS ---------------- */
   const placeBet = async () => {
+    setError("");
+
     // Validate stake
-    if (!Number.isFinite(betAmount) || betAmount <= 0) {
-      showAlert(
-        "error",
-        "Invalid Stake",
-        "Please enter a valid bet amount."
-      );
+    if (!Number.isFinite(numericBet) || numericBet <= 0) {
+      setError("Please enter a valid bet amount");
       return;
     }
 
     // Check minimum stake
-    if (betAmount < MINIMUM_STAKE) {
-      showAlert(
-        "error",
-        "Minimum Stake Required",
-        `Minimum bet is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}.`
-      );
+    if (numericBet < MINIMUM_STAKE) {
+      setError(`Minimum bet is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`);
       return;
     }
 
     // Check balance
-    const userBalance = Number(user?.wallet_balance || 0);
-    if (betAmount > userBalance) {
-      showAlert(
-        "error",
-        "Insufficient Balance",
-        "Please deposit more funds to place this bet."
-      );
+    if (numericBet > balance) {
+      setError("Insufficient balance");
+      return;
+    }
+
+    // Check if wallet is loading
+    if (walletLoading) {
+      setError("Please wait while your balance loads...");
       return;
     }
 
     try {
       const res = await crashService.placeBet({
-        amount: betAmount,
+        amount: numericBet,
         auto_cashout: useAuto ? autoCashout : null,
         mode,
       });
 
       setActiveBetId(res.data.bet_id);
 
-      if (res.data?.balance != null && onBalanceUpdate) {
+      // Update wallet
+      if (refreshWallet) {
+        await refreshWallet();
+      }
+
+      // Also update parent component if needed
+      if (onBalanceUpdate && res.data?.balance != null) {
         onBalanceUpdate((prev) => ({
           ...prev,
           wallet_balance: res.data.balance,
         }));
       }
     } catch (e) {
-      showAlert(
-        "error",
-        "Bet Failed",
-        e?.response?.data?.detail ||
-          "Insufficient funds. Please make a deposit and try again."
-      );
+      const errorMsg = e?.response?.data?.detail || 
+                      e?.response?.data?.error || 
+                      "Failed to place bet";
+      setError(errorMsg);
+      showAlert("error", "Bet Failed", errorMsg);
     }
   };
 
@@ -256,7 +280,13 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
       setActiveBetId(null);
 
-      if (res.data?.balance != null && onBalanceUpdate) {
+      // Update wallet
+      if (refreshWallet) {
+        await refreshWallet();
+      }
+
+      // Also update parent component if needed
+      if (onBalanceUpdate && res.data?.balance != null) {
         onBalanceUpdate((prev) => ({
           ...prev,
           wallet_balance: res.data.balance,
@@ -266,16 +296,21 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
       showAlert(
         "success",
         "Cashout Successful",
-        "Your winnings have been added to your balance."
+        `You cashed out at ${multiplier.toFixed(2)}x!`
       );
-    } catch {
-      showAlert(
-        "error",
-        "Cashout Failed",
-        "Too late to cash out. The round has already crashed."
-      );
+    } catch (e) {
+      const errorMsg = e?.response?.data?.detail || 
+                      "Too late to cash out. The round has already crashed.";
+      showAlert("error", "Cashout Failed", errorMsg);
     }
   };
+
+  /* ---------------- QUICK BET HANDLER ---------------- */
+  const handleQuickBet = (amount) => {
+    setBetAmount(amount.toString());
+  };
+
+  const quickBets = [1000, 2000, 5000, 10000];
 
   /* ---------------- RENDER ---------------- */
   return (
@@ -283,9 +318,15 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
       {/* ---------- HEADER ---------- */}
       <div className="crash-header">
         <div className="brand">
-          <span className="dot" />
+          <button 
+            onClick={() => navigate("/")} 
+            className="back-button"
+            type="button"
+          >
+            ←
+          </button>
           <div>
-            <div className="title">Crash</div>
+            <div className="title">CRASH</div>
             <div className="sub">
               <span
                 className={
@@ -303,15 +344,22 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                   : "OFFLINE"}
               </span>
               <span className="sep">•</span>
-              <span className="muted">mode: {mode}</span>
+              <span className="muted">High Risk, High Reward</span>
             </div>
           </div>
         </div>
 
-        <div className="wallet">
-          <div className="wallet-label">Balance</div>
+        <div className={`wallet ${walletLoading ? 'loading' : ''}`}>
+          <div className="wallet-label">BALANCE</div>
           <div className="wallet-value">
-            ₦{Number(user?.wallet_balance || 0).toLocaleString()}
+            {walletLoading ? (
+              <div className="balance-loading">
+                <span className="loading-spinner-small" />
+                LOADING...
+              </div>
+            ) : (
+              formatNGN(balance)
+            )}
           </div>
         </div>
       </div>
@@ -332,66 +380,131 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
         <div className="panel">
           <div className="panel-card">
-            <div className="panel-title">Bet</div>
+            <div className="panel-title">PLACE YOUR BET</div>
 
             <div className="field">
-              <label>Amount</label>
-              <input
-                type="number"
-                min={MINIMUM_STAKE}
-                value={betAmount}
-                onChange={(e) => setBetAmount(Number(e.target.value))}
-              />
-              <div className="quick">
-                {[1000, 2000, 5000, 10000].map((v) => (
+              <label>Amount (₦)</label>
+              <div className="input-wrapper">
+                <span className="input-prefix">₦</span>
+                <input
+                  type="number"
+                  min={MINIMUM_STAKE}
+                  value={betAmount}
+                  onChange={(e) => setBetAmount(e.target.value.replace(/[^\d.]/g, ''))}
+                  onBlur={() => {
+                    if (betAmount && isStakeValid) {
+                      setBetAmount(numericBet.toFixed(2));
+                    }
+                  }}
+                  disabled={walletLoading}
+                  placeholder={`Min ${formatNGN(MINIMUM_STAKE)}`}
+                  inputMode="decimal"
+                />
+              </div>
+              
+              <div className="quick-bet-container">
+                {quickBets.map((amount) => (
                   <button 
-                    key={v} 
-                    onClick={() => setBetAmount(v)} 
+                    key={amount} 
+                    onClick={() => handleQuickBet(amount)}
+                    className={`quick-bet-btn ${numericBet === amount ? 'active' : ''}`}
+                    disabled={walletLoading || amount > balance}
                     type="button"
-                    className={betAmount === v ? "active" : ""}
                   >
-                    ₦{v.toLocaleString()}
+                    ₦{amount.toLocaleString()}
                   </button>
                 ))}
               </div>
               
               {/* Stake validation message */}
-              {!isStakeValid && betAmount > 0 && (
+              {!isStakeValid && betAmount && (
                 <div className="stake-validation-error">
-                  Minimum bet is ₦{MINIMUM_STAKE.toLocaleString("en-NG")}
+                  Minimum bet is ₦{MINIMUM_STAKE.toLocaleString("en-NG")} – must not exceed balance
                 </div>
               )}
             </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="error-display">
+                <span className="error-icon">⚠️</span>
+                {error}
+              </div>
+            )}
+
             <div className="actions">
               {!activeBetId ? (
                 <button
-                  className="primary"
+                  className={`bet-btn ${!isStakeValid || walletLoading ? 'disabled' : ''}`}
                   onClick={placeBet}
-                  disabled={!connected || phase !== "betting" || !isStakeValid}
+                  disabled={!connected || phase !== "betting" || !isStakeValid || walletLoading}
+                  type="button"
                 >
-                  BET
+                  {walletLoading ? "LOADING..." : "PLACE BET"}
                 </button>
               ) : (
                 <button
-                  className="danger"
+                  className="cashout-btn"
                   onClick={cashOut}
-                  disabled={!connected || phase !== "running"}
+                  disabled={!connected || phase !== "running" || walletLoading}
+                  type="button"
                 >
-                  CASH OUT
+                  CASH OUT AT {multiplier.toFixed(2)}x
                 </button>
               )}
 
-              <div className="hint">
-                {phase === "betting" && 
-                  (isStakeValid 
-                    ? "Place bet before flight starts" 
-                    : `Minimum bet: ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`)}
-                {phase === "running" &&
-                  (activeBetId
-                    ? "Cash out anytime before crash"
-                    : "Flight live")}
-                {phase === "crashed" && "Round Completed — next round soon"}
+              <div className="game-status">
+                {phase === "betting" && (
+                  <div className="status-message">
+                    <span className="status-icon">⏳</span>
+                    <span className="status-text">
+                      {isStakeValid 
+                        ? "Place bet before flight starts" 
+                        : `Minimum bet: ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`}
+                    </span>
+                  </div>
+                )}
+                {phase === "running" && (
+                  <div className="status-message">
+                    <span className="status-icon">🚀</span>
+                    <span className="status-text">
+                      {activeBetId
+                        ? `Flight live! Current: ${multiplier.toFixed(2)}x`
+                        : "Flight live - Watch the multiplier!"}
+                    </span>
+                  </div>
+                )}
+                {phase === "crashed" && (
+                  <div className="status-message">
+                    <span className="status-icon">💥</span>
+                    <span className="status-text">
+                      Round crashed at {history[0]?.toFixed(2)}x — Next round starting soon
+                    </span>
+                  </div>
+                )}
               </div>
+              
+              {/* Active Bet Info */}
+              {activeBetId && (
+                <div className="active-bet-info">
+                  <div className="active-bet-details">
+                    <span className="bet-label">Active Bet:</span>
+                    <span className="bet-amount">{formatNGN(numericBet)}</span>
+                    {useAuto && (
+                      <span className="auto-info">Auto: {autoCashout.toFixed(1)}x</span>
+                    )}
+                  </div>
+                  <div className="current-multiplier">
+                    <span className="multiplier-label">Current:</span>
+                    <span className="multiplier-value">{multiplier.toFixed(2)}x</span>
+                    {useAuto && autoCashout && (
+                      <span className="auto-progress">
+                        {(multiplier / autoCashout * 100).toFixed(0)}% to auto cashout
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
