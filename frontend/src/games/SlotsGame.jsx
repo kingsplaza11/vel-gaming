@@ -7,7 +7,7 @@ import "./SlotsGame.css";
 /* ===============================
    GAME CONSTANTS
 ================================ */
-const MIN_STAKE = 100; // Minimum stake of 100 naira
+const MIN_STAKE = 100;
 
 const SYMBOLS = {
   classic: ["seven", "bar", "bell", "cherry", "orange", "lemon"],
@@ -30,6 +30,65 @@ const THEME_OPTIONS = Object.entries(THEME_INFO).map(([key, value]) => ({
   color: value.color
 }));
 
+const IMAGE_PATHS = {
+  classic: {
+    seven: "/images/slots/classic/seven.png",
+    bar: "/images/slots/classic/bar.png",
+    bell: "/images/slots/classic/bell.png",
+    cherry: "/images/slots/classic/cherry.png",
+    orange: "/images/slots/classic/orange.png",
+    lemon: "/images/slots/classic/lemon.png"
+  },
+  fruit: {
+    watermelon: "/images/slots/fruit/watermelon.png",
+    grapes: "/images/slots/fruit/grapes.png",
+    orange: "/images/slots/fruit/orange.png",
+    cherry: "/images/slots/fruit/cherry.png",
+    lemon: "/images/slots/fruit/lemon.png",
+    plum: "/images/slots/fruit/plum.png"
+  },
+  diamond: {
+    diamond: "/images/slots/diamond/diamond.png",
+    ruby: "/images/slots/diamond/ruby.png",
+    emerald: "/images/slots/diamond/emerald.png",
+    sapphire: "/images/slots/diamond/sapphire.png",
+    gold: "/images/slots/diamond/gold.png",
+    silver: "/images/slots/diamond/silver.png"
+  },
+  ancient: {
+    scarab: "/images/slots/ancient/scarab.png",
+    pyramid: "/images/slots/ancient/pyramid.png",
+    sphinx: "/images/slots/ancient/sphinx.png",
+    ankh: "/images/slots/ancient/ankh.png",
+    eye: "/images/slots/ancient/eye.png",
+    pharaoh: "/images/slots/ancient/pharaoh.png"
+  }
+};
+
+const SYMBOL_EMOJIS = {
+  seven: "7️⃣",
+  bar: "🥇",
+  bell: "🔔",
+  cherry: "🍒",
+  orange: "🍊",
+  lemon: "🍋",
+  watermelon: "🍉",
+  grapes: "🍇",
+  plum: "🫐",
+  diamond: "💎",
+  ruby: "🔴",
+  emerald: "🟢",
+  sapphire: "🔵",
+  gold: "🟡",
+  silver: "⚪",
+  scarab: "🐞",
+  pyramid: "🔺",
+  sphinx: "🦁",
+  ankh: "☥",
+  eye: "👁️",
+  pharaoh: "👑"
+};
+
 /* ===============================
    FORMATTING UTILS
 ================================ */
@@ -38,6 +97,64 @@ const formatNGN = (value) =>
     minimumFractionDigits: 2,
   })}`;
 
+/* ===============================
+   SYMBOL DISPLAY COMPONENT
+================================ */
+const SymbolDisplay = React.memo(({ symbol, theme, isSpinning, themeColor }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Reset states when symbol or theme changes
+  useEffect(() => {
+    setImageError(false);
+    setImageLoaded(false);
+  }, [symbol, theme]);
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
+  const imagePath = IMAGE_PATHS[theme]?.[symbol] || '';
+  const fallbackEmoji = SYMBOL_EMOJIS[symbol] || symbol.charAt(0).toUpperCase();
+
+  if (imageError || !imagePath) {
+    return (
+      <div className="symbol-fallback" style={{ color: themeColor }}>
+        {fallbackEmoji}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {!imageLoaded && (
+        <div className="symbol-loading" style={{ color: themeColor }}>
+          <div className="loading-spinner"></div>
+        </div>
+      )}
+      <img
+        src={imagePath}
+        alt={symbol}
+        className={`symbol ${isSpinning ? 'blur' : ''} ${imageLoaded ? 'loaded' : 'loading'}`}
+        draggable={false}
+        onError={handleImageError}
+        onLoad={handleImageLoad}
+        loading="lazy"
+        style={{ opacity: imageLoaded ? 1 : 0 }}
+      />
+    </>
+  );
+});
+
+SymbolDisplay.displayName = 'SymbolDisplay';
+
+/* ===============================
+   MAIN SLOTS GAME COMPONENT
+================================ */
 const SlotsGame = ({ user }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet } = useWallet();
@@ -50,35 +167,49 @@ const SlotsGame = ({ user }) => {
   const [betAmount, setBetAmount] = useState(MIN_STAKE.toString());
   const [reels, setReels] = useState(Array(12).fill("seven"));
   const [spinning, setSpinning] = useState(false);
+  const [spinningReels, setSpinningReels] = useState([false, false, false, false]);
   const [lastWin, setLastWin] = useState(0);
   const [winAnimation, setWinAnimation] = useState(false);
   const [jackpotPulse, setJackpotPulse] = useState(false);
   const [error, setError] = useState("");
+  const [spinHistory, setSpinHistory] = useState([]);
+  const [failedImages, setFailedImages] = useState({});
 
   const spinSound = useRef(null);
   const winSound = useRef(null);
   const clickSound = useRef(null);
   const reelStopSound = useRef(null);
+  const bigWinSound = useRef(null);
+  const spinTimeoutRef = useRef(null);
+  const spinAnimationRef = useRef(null);
 
   /* ===============================
      SOUND MANAGEMENT
   ================================ */
   useEffect(() => {
     // Initialize sounds
-    spinSound.current = new Audio("/sounds/spin.mp3");
-    winSound.current = new Audio("/sounds/win.mp3");
-    clickSound.current = new Audio("/sounds/click.mp3");
-    reelStopSound.current = new Audio("/sounds/reel-stop.mp3");
+    try {
+      spinSound.current = new Audio("/sounds/spin.mp3");
+      winSound.current = new Audio("/sounds/win.mp3");
+      clickSound.current = new Audio("/sounds/click.mp3");
+      reelStopSound.current = new Audio("/sounds/reel-stop.mp3");
+      bigWinSound.current = new Audio("/sounds/big-win.mp3");
 
-    spinSound.current.loop = true;
-    spinSound.current.volume = 0.3;
-    winSound.current.volume = 0.7;
-    clickSound.current.volume = 0.4;
-    reelStopSound.current.volume = 0.5;
+      spinSound.current.volume = 0.3;
+      winSound.current.volume = 0.7;
+      clickSound.current.volume = 0.4;
+      reelStopSound.current.volume = 0.5;
+      bigWinSound.current.volume = 0.8;
+    } catch (err) {
+      console.log("Audio initialization failed:", err);
+    }
 
     return () => {
-      // Cleanup sounds
-      [spinSound, winSound, clickSound, reelStopSound].forEach(sound => {
+      // Cleanup
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+      if (spinAnimationRef.current) cancelAnimationFrame(spinAnimationRef.current);
+      
+      [spinSound, winSound, clickSound, reelStopSound, bigWinSound].forEach(sound => {
         if (sound.current) {
           sound.current.pause();
           sound.current.currentTime = 0;
@@ -98,37 +229,71 @@ const SlotsGame = ({ user }) => {
 
   const isStakeValid = useCallback(() => {
     const amount = Number(betAmount);
-    return Number.isFinite(amount) && amount >= MIN_STAKE;
-  }, [betAmount]);
+    return Number.isFinite(amount) && amount >= MIN_STAKE && amount <= balance;
+  }, [betAmount, balance]);
 
   const selectedTheme = THEME_INFO[theme];
 
   /* ===============================
-     FRONTEND ANIMATION FUNCTIONS
+     ANIMATION FUNCTIONS
   ================================ */
-  const randomReels = () => {
+  const getRandomSymbol = () => {
     const list = SYMBOLS[theme];
-    return Array.from({ length: 12 }, () =>
-      list[Math.floor(Math.random() * list.length)]
-    );
+    return list[Math.floor(Math.random() * list.length)];
   };
 
-  const playReelStopSequence = async (finalReels) => {
-    const reelsPerRow = 4;
-    for (let row = 0; row < 3; row++) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (reelStopSound.current) {
-        reelStopSound.current.currentTime = 0;
-        reelStopSound.current.play().catch(() => {});
-      }
+  const animateReelSpin = (reelIndex, duration = 2000) => {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
       
-      // Update one row at a time
-      const updatedReels = [...reels];
-      for (let col = 0; col < reelsPerRow; col++) {
-        const index = row * reelsPerRow + col;
-        updatedReels[index] = finalReels[index];
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        if (elapsed < duration) {
+          // Update symbols in this column
+          setReels(prev => {
+            const newReels = [...prev];
+            for (let row = 0; row < 3; row++) {
+              const index = row * 4 + reelIndex;
+              newReels[index] = getRandomSymbol();
+            }
+            return newReels;
+          });
+          
+          spinAnimationRef.current = requestAnimationFrame(animate);
+        } else {
+          resolve();
+        }
+      };
+
+      spinAnimationRef.current = requestAnimationFrame(animate);
+    });
+  };
+
+  const stopReelSequentially = async (finalReels) => {
+    for (let col = 0; col < 4; col++) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Update final symbols for this column
+      setReels(prev => {
+        const newReels = [...prev];
+        for (let row = 0; row < 3; row++) {
+          const index = row * 4 + col;
+          newReels[index] = finalReels[index];
+        }
+        return newReels;
+      });
+
+      // Play stop sound
+      if (reelStopSound.current) {
+        try {
+          reelStopSound.current.currentTime = 0;
+          reelStopSound.current.play().catch(() => {});
+        } catch (err) {
+          console.log("Sound play failed:", err);
+        }
       }
-      setReels(updatedReels);
     }
   };
 
@@ -165,52 +330,90 @@ const SlotsGame = ({ user }) => {
     setSpinning(true);
     setLastWin(0);
     setWinAnimation(false);
+    setJackpotPulse(false);
 
     // Play click sound
     if (clickSound.current) {
-      clickSound.current.currentTime = 0;
-      clickSound.current.play().catch(() => {});
+      try {
+        clickSound.current.currentTime = 0;
+        clickSound.current.play().catch(() => {});
+      } catch (err) {
+        console.log("Click sound failed:", err);
+      }
     }
+
+    // Start all reels spinning
+    setSpinningReels([true, true, true, true]);
 
     // Start spin sound
     if (spinSound.current) {
-      spinSound.current.currentTime = 0;
-      spinSound.current.play().catch(() => {});
+      try {
+        spinSound.current.loop = true;
+        spinSound.current.currentTime = 0;
+        spinSound.current.play().catch(() => {});
+      } catch (err) {
+        console.log("Spin sound failed:", err);
+      }
     }
 
-    // Frontend animation
-    const spinInterval = setInterval(() => {
-      setReels(randomReels());
-    }, 80);
-
     try {
-      // API call
-      const res = await slotsService.spin({
+      // Start spinning animations
+      const spinPromises = [];
+      for (let col = 0; col < 4; col++) {
+        const delay = col * 100;
+        spinPromises.push(
+          new Promise(resolve => {
+            setTimeout(() => animateReelSpin(col, 2000).then(resolve), delay);
+          })
+        );
+      }
+
+      // Make API call
+      const spinPromise = slotsService.spin({
         bet_amount: amount,
         theme,
       });
 
-      clearInterval(spinInterval);
-      
+      // Wait for API response
+      const res = await spinPromise;
+      const finalReels = res.data.reels;
+      const winAmount = res.data.win_amount || 0;
+
+      // Wait for animations to complete
+      await Promise.all(spinPromises);
+
       // Stop spin sound
       if (spinSound.current) {
         spinSound.current.pause();
         spinSound.current.currentTime = 0;
       }
 
-      // Play reel stop sequence
-      await playReelStopSequence(res.data.reels);
+      // Stop reels sequentially with final results
+      await stopReelSequentially(finalReels);
 
-      const winAmount = res.data.win_amount || 0;
+      // Update state with results
       setLastWin(winAmount);
-
-      // Play win sound if won
-      if (winAmount > 0 && winSound.current) {
-        winSound.current.currentTime = 0;
-        winSound.current.play().catch(() => {});
+      
+      if (winAmount > 0) {
+        // Big win celebration
         setWinAnimation(true);
         setJackpotPulse(true);
-        setTimeout(() => setJackpotPulse(false), 2000);
+        
+        // Play win sound
+        try {
+          if (winAmount > amount * 10 && bigWinSound.current) {
+            bigWinSound.current.currentTime = 0;
+            bigWinSound.current.play().catch(() => {});
+          } else if (winSound.current) {
+            winSound.current.currentTime = 0;
+            winSound.current.play().catch(() => {});
+          }
+        } catch (err) {
+          console.log("Win sound failed:", err);
+        }
+
+        // Auto-hide pulse after delay
+        setTimeout(() => setJackpotPulse(false), 3000);
       }
 
       // Update wallet
@@ -218,10 +421,20 @@ const SlotsGame = ({ user }) => {
         await refreshWallet();
       }
 
+      // Add to history
+      setSpinHistory(prev => [{
+        bet: amount,
+        win: winAmount,
+        timestamp: new Date().toLocaleTimeString(),
+        reels: finalReels
+      }, ...prev.slice(0, 9)]);
+
     } catch (err) {
       console.error("Spin failed:", err);
       setError(err.response?.data?.detail || "Spin failed. Please try again.");
-      clearInterval(spinInterval);
+      
+      // Emergency stop
+      setSpinningReels([false, false, false, false]);
       
       if (spinSound.current) {
         spinSound.current.pause();
@@ -229,13 +442,41 @@ const SlotsGame = ({ user }) => {
       }
     } finally {
       setSpinning(false);
+      
+      // Ensure all reels are stopped
+      setTimeout(() => {
+        setSpinningReels([false, false, false, false]);
+      }, 500);
     }
   };
 
   /* ===============================
-     QUICK BET OPTIONS
+     EVENT HANDLERS
   ================================ */
-  const quickBets = [1000, 2000, 5000, 10000];
+  const handleQuickBet = (amount) => {
+    setBetAmount(amount.toString());
+    playClickSound();
+  };
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    // Reset reels to first symbol of new theme
+    setReels(Array(12).fill(SYMBOLS[newTheme][0]));
+    playClickSound();
+  };
+
+  const playClickSound = () => {
+    if (clickSound.current) {
+      try {
+        clickSound.current.currentTime = 0;
+        clickSound.current.play().catch(() => {});
+      } catch (err) {
+        console.log("Click sound failed:", err);
+      }
+    }
+  };
+
+  const quickBets = [100, 500, 1000, 5000];
 
   /* ===============================
      RENDER
@@ -247,20 +488,16 @@ const SlotsGame = ({ user }) => {
         <button 
           onClick={() => navigate("/")} 
           className="arcade-back-btn"
-          onMouseEnter={() => {
-            if (clickSound.current) {
-              clickSound.current.currentTime = 0;
-              clickSound.current.play().catch(() => {});
-            }
-          }}
+          onMouseEnter={playClickSound}
+          type="button"
         >
           <span className="btn-glow">◄</span>
           <span className="btn-text">ARCADE</span>
         </button>
         
         <div className="arcade-title">
-          <div className="title-glow">GOLDEN ARCADE</div>
-          <div className="title-sub">SLOT MASTER 3000</div>
+          <div className="title-glow">NEON SLOTS</div>
+          <div className="title-sub">ARCADE EDITION</div>
         </div>
         
         <div className={`arcade-balance ${walletLoading ? 'loading' : ''}`}>
@@ -291,32 +528,16 @@ const SlotsGame = ({ user }) => {
           <div className="arcade-modal">
             <div className="modal-header">
               <div className="modal-title">
-                <span className="modal-icon">🎮</span>
-                <h2>ARCADE CONFIG</h2>
+                <h2>SLOT MACHINE</h2>
               </div>
-              <div className="modal-subtitle">Configure your gaming session</div>
             </div>
 
             <div className="modal-section">
               <div className="section-header">
                 <span className="section-icon">💰</span>
-                <h3>STAKE SELECTION</h3>
+                <h3>STAKE AMOUNT</h3>
               </div>
               
-              <div className="balance-display-section">
-                <div className="balance-label">Available Credits</div>
-                <div className="balance-amount">
-                  {walletLoading ? (
-                    <div className="loading-inline">
-                      <div className="spinner-small"></div>
-                      <span>LOADING...</span>
-                    </div>
-                  ) : (
-                    formatNGN(balance)
-                  )}
-                </div>
-              </div>
-
               <div className="stake-input-container">
                 <div className="input-label">Enter Stake (₦)</div>
                 <div className="input-wrapper">
@@ -329,29 +550,8 @@ const SlotsGame = ({ user }) => {
                     disabled={walletLoading}
                     placeholder={MIN_STAKE.toString()}
                     className="arcade-input"
+                    inputMode="decimal"
                   />
-                </div>
-
-                {/* Quick bet chips */}
-                <div className="quick-bet-grid">
-                  {quickBets.map((amount) => (
-                    <button
-                      key={amount}
-                      className={`quick-bet-chip ${Number(betAmount) === amount ? 'active' : ''}`}
-                      onClick={() => {
-                        setBetAmount(amount.toString());
-                        if (clickSound.current) {
-                          clickSound.current.currentTime = 0;
-                          clickSound.current.play().catch(() => {});
-                        }
-                      }}
-                      disabled={walletLoading}
-                      type="button"
-                    >
-                      <span className="chip-amount">₦{amount.toLocaleString()}</span>
-                      <span className="chip-glow"></span>
-                    </button>
-                  ))}
                 </div>
 
                 {/* Stake validation */}
@@ -371,40 +571,23 @@ const SlotsGame = ({ user }) => {
               </div>
               
               <div className="theme-select-container">
-                <div className="select-wrapper">
-                  <select
-                    value={theme}
-                    onChange={(e) => {
-                      setTheme(e.target.value);
-                      if (clickSound.current) {
-                        clickSound.current.currentTime = 0;
-                        clickSound.current.play().catch(() => {});
-                      }
-                    }}
-                    disabled={walletLoading}
-                    className="theme-select"
-                    style={{ '--theme-color': selectedTheme.color }}
-                  >
-                    {THEME_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.icon} {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="select-arrow">▼</div>
-                </div>
-                
-                <div className="theme-preview">
-                  <div className="preview-icon">{selectedTheme.icon}</div>
-                  <div className="preview-info">
-                    <div className="preview-name">{selectedTheme.name}</div>
-                    <div className="preview-desc">
-                      {theme === 'classic' && 'Classic casino symbols'}
-                      {theme === 'fruit' && 'Fresh fruit symbols'}
-                      {theme === 'diamond' && 'Precious gemstones'}
-                      {theme === 'ancient' && 'Ancient Egyptian artifacts'}
-                    </div>
-                  </div>
+                <div className="theme-buttons">
+                  {THEME_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      className={`theme-btn ${theme === option.value ? 'active' : ''}`}
+                      onClick={() => handleThemeChange(option.value)}
+                      style={{ 
+                        '--theme-color': option.color,
+                        '--theme-color-rgb': option.color.replace('#', '')
+                      }}
+                      disabled={walletLoading}
+                      type="button"
+                    >
+                      <span className="theme-icon">{option.icon}</span>
+                      <span className="theme-label">{option.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -421,12 +604,8 @@ const SlotsGame = ({ user }) => {
                 className="arcade-btn secondary"
                 onClick={() => navigate("/")}
                 disabled={walletLoading}
-                onMouseEnter={() => {
-                  if (clickSound.current) {
-                    clickSound.current.currentTime = 0;
-                    clickSound.current.play().catch(() => {});
-                  }
-                }}
+                onMouseEnter={playClickSound}
+                type="button"
               >
                 EXIT ARCADE
               </button>
@@ -435,13 +614,11 @@ const SlotsGame = ({ user }) => {
                 onClick={() => {
                   if (isStakeValid()) {
                     setShowSetup(false);
-                    if (clickSound.current) {
-                      clickSound.current.currentTime = 0;
-                      clickSound.current.play().catch(() => {});
-                    }
+                    playClickSound();
                   }
                 }}
                 disabled={walletLoading || !isStakeValid()}
+                type="button"
               >
                 {walletLoading ? (
                   <div className="btn-loading">
@@ -474,12 +651,16 @@ const SlotsGame = ({ user }) => {
                 <div className="stat">
                   <span className="stat-label">THEME</span>
                   <span className="stat-value" style={{ color: selectedTheme.color }}>
-                    {selectedTheme.name}
+                    {selectedTheme.icon} {selectedTheme.name}
                   </span>
                 </div>
                 <div className="stat">
                   <span className="stat-label">STAKE</span>
                   <span className="stat-value">{formatNGN(betAmount)}</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-label">BALANCE</span>
+                  <span className="stat-value">{formatNGN(balance)}</span>
                 </div>
               </div>
             </div>
@@ -488,21 +669,32 @@ const SlotsGame = ({ user }) => {
             <div className="reels-display">
               <div className="display-frame">
                 <div className="reels-grid">
-                  {reels.map((symbol, i) => (
-                    <div key={i} className={`reel-cell ${spinning ? 'spinning' : ''}`}>
-                      <div className="reel-inner">
-                        <div className="reel-content">
-                          <img
-                            src={`/images/slots/${symbol}.png`}
-                            alt={symbol}
-                            className="symbol"
-                            draggable={false}
-                          />
+                  {reels.map((symbol, i) => {
+                    const row = Math.floor(i / 4);
+                    const col = i % 4;
+                    const isSpinning = spinningReels[col];
+                    
+                    return (
+                      <div 
+                        key={i} 
+                        className={`reel-cell ${isSpinning ? 'spinning' : ''} row-${row} col-${col}`}
+                        data-spinning={isSpinning}
+                      >
+                        <div className="reel-inner">
+                          <div className="reel-content">
+                            <SymbolDisplay 
+                              symbol={symbol}
+                              theme={theme}
+                              isSpinning={isSpinning}
+                              themeColor={selectedTheme.color}
+                            />
+                          </div>
+                          <div className="reel-overlay"></div>
+                          {isSpinning && <div className="spin-glow"></div>}
                         </div>
-                        <div className="reel-overlay"></div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
                 {/* Grid Lines */}
@@ -516,6 +708,13 @@ const SlotsGame = ({ user }) => {
                 
                 {/* Frame Glow */}
                 <div className="frame-glow"></div>
+                
+                {/* Win Lines Overlay */}
+                <div className={`win-lines ${winAnimation ? 'visible' : ''}`}>
+                  <div className="win-line line1"></div>
+                  <div className="win-line line2"></div>
+                  <div className="win-line line3"></div>
+                </div>
               </div>
             </div>
 
@@ -527,14 +726,14 @@ const SlotsGame = ({ user }) => {
                     <div className="win-glow"></div>
                     <div className="win-content">
                       <span className="win-icon">💰</span>
-                      <span className="win-text">JACKPOT!</span>
+                      <span className="win-text">Winner!</span>
                       <span className="win-amount">{formatNGN(lastWin)}</span>
                     </div>
                   </div>
                 ) : (
                   <div className="win-placeholder">
-                    <span className="placeholder-text">SPIN TO WIN</span>
-                    <span className="placeholder-sub">Fortunes await!</span>
+                    <div className="placeholder-text">SPIN TO WIN!</div>
+                    <div className="placeholder-sub">Match 3+ symbols</div>
                   </div>
                 )}
               </div>
@@ -544,12 +743,11 @@ const SlotsGame = ({ user }) => {
                   className={`spin-btn ${spinning ? 'spinning' : ''} ${jackpotPulse ? 'jackpot' : ''}`}
                   onClick={handleSpin}
                   disabled={walletLoading || spinning || !isStakeValid()}
-                  onMouseEnter={() => {
-                    if (!spinning && clickSound.current) {
-                      clickSound.current.currentTime = 0;
-                      clickSound.current.play().catch(() => {});
-                    }
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    playClickSound();
                   }}
+                  type="button"
                 >
                   <div className="spin-btn-glow"></div>
                   <div className="spin-btn-content">
@@ -562,41 +760,33 @@ const SlotsGame = ({ user }) => {
                     <div className="light"></div>
                     <div className="light"></div>
                     <div className="light"></div>
+                    <div className="light"></div>
                   </div>
-                </button>
-
-                <button
-                  className="config-btn"
-                  onClick={() => {
-                    setShowSetup(true);
-                    if (clickSound.current) {
-                      clickSound.current.currentTime = 0;
-                      clickSound.current.play().catch(() => {});
-                    }
-                  }}
-                  disabled={spinning}
-                >
-                  <span className="config-icon">⚙️</span>
-                  CONFIG
+                  <div className="spin-btn-pulse"></div>
                 </button>
               </div>
-            </div>
-          </div>
-
-          {/* Arcade Footer */}
-          <div className="arcade-footer">
-            <div className="footer-info">
-              <div className="info-item">
-                <span className="info-icon">🎯</span>
-                <span className="info-text">MIN STAKE: {formatNGN(MIN_STAKE)}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-icon">⚡</span>
-                <span className="info-text">PROVABLY FAIR</span>
-              </div>
-              <div className="info-item">
-                <span className="info-icon">🏆</span>
-                <span className="info-text">HIGH RTP</span>
+              
+              {/* Quick Stats */}
+              <div className="quick-stats">
+                <div className="stat-item">
+                  <span className="stat-icon">🎯</span>
+                  <span className="stat-label">Last Win</span>
+                  <span className="stat-value">{formatNGN(lastWin)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-icon">📈</span>
+                  <span className="stat-label">Spins</span>
+                  <span className="stat-value">{spinHistory.length}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-icon">🏆</span>
+                  <span className="stat-label">Best</span>
+                  <span className="stat-value">
+                    {spinHistory.length > 0 
+                      ? formatNGN(Math.max(...spinHistory.map(s => s.win)))
+                      : formatNGN(0)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

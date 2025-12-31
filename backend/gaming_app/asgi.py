@@ -9,15 +9,13 @@ django.setup()
 
 # Import websocket routes
 import crash.routing
-import fortune.routing
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
 
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            crash.routing.websocket_urlpatterns +
-            fortune.routing.websocket_urlpatterns
+            crash.routing.websocket_urlpatterns
         )
     ),
 })

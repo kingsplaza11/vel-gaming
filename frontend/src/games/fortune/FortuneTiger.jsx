@@ -1,4 +1,3 @@
-// src/games/fortune/FortuneTiger.jsx
 import React, {
   useCallback,
   useEffect,
@@ -7,437 +6,649 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWallet } from "../../contexts/WalletContext"; // Import wallet context
+import { useWallet } from "../../contexts/WalletContext";
+import { fortuneService } from "../../services/api";
+import toast from "react-hot-toast";
 import "./fortune.css";
 
-import { fortuneService } from "../../services/api";
-import { useFortuneWS } from "./useFortuneWS";
-import { createSound } from "./sound";
-import AlertModal from "../../components/ui/AlertModal";
+const GRID_SIZE = 16; // Tiger has smaller grid
+const MINIMUM_STAKE = 500; // Higher minimum for tiger
 
-const MINIMUM_STAKE = 100; // Minimum stake of 1000 naira
-
-/* ============================================================
-   STAKE MODAL (CONSISTENT WITH MOUSE & RABBIT)
-============================================================ */
-function StakeModal({
-  open,
-  walletBalance, // Changed from balance to walletBalance
-  bet,
-  setBet,
-  loading,
-  onStart,
-  onExit,
-  isStakeValid, // New prop to validate stake
-}) {
-  if (!open) return null;
-
-  const quick = ["1500", "2000", "2500", "5000", "10000"]; // Updated quick stakes to start from 1500
-
-  return (
-    <div className="fortune-stake-backdrop" onClick={onExit}>
-      <div
-        className="fortune-stake-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="stake-top">
-          <div className="stake-badge">🐯</div>
-          <div className="stake-title">
-            <div className="t1">Fortune Tiger</div>
-            <div className="t2">Choose your stake to enter the temple</div>
-          </div>
-        </div>
-
-        <div className="stake-balance">
-          <span className="label">Balance</span>
-          <span className="value">
-            {walletBalance === null || walletBalance === undefined ? (
-              <div className="balance-loading">
-                <span className="loading-spinner-small" />
-                Loading...
-              </div>
-            ) : (
-              `₦${Number(walletBalance || 0).toLocaleString("en-NG")}`
-            )}
-          </span>
-        </div>
-
-        <div className="stake-input-row">
-          <div className="stake-currency">₦</div>
-          <input
-            className="stake-input"
-            value={bet}
-            onChange={(e) => setBet(e.target.value)}
-            placeholder="1000"
-            inputMode="decimal"
-            disabled={loading}
-          />
-        </div>
-
-        {/* Stake validation message */}
-        {!isStakeValid && bet.trim() !== "" && (
-          <div className="stake-validation-error">
-            Minimum stake is ₦1,000
-          </div>
-        )}
-
-        <div className="stake-quick">
-          {quick.map((q) => (
-            <button
-              key={q}
-              className="stake-chip"
-              onClick={() => setBet(q)}
-              disabled={loading}
-            >
-              ₦{Number(q).toLocaleString("en-NG")}
-            </button>
-          ))}
-        </div>
-
-        <div className="stake-actions">
-          <button className="stake-btn ghost" onClick={onExit}>
-            Exit
-          </button>
-          <button
-            className={`stake-btn gold ${loading ? "loading" : ""}`}
-            onClick={onStart}
-            disabled={loading || walletBalance === null || walletBalance === undefined || !isStakeValid}
-          >
-            {loading ? "Entering…" : "Start"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   MAIN GAME
-============================================================ */
-export default function FortuneTiger({ user }) {
+export default function FortuneTiger() {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading } = useWallet(); // Get wallet data from context
+  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
 
+  /* =========================
+     STATE
+  ========================= */
   const [stakeOpen, setStakeOpen] = useState(true);
-  const [bet, setBet] = useState("1000"); // Start with minimum stake
+  const [bet, setBet] = useState("");
   const [starting, setStarting] = useState(false);
-  const [startPayload, setStartPayload] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const [gameConfig, setGameConfig] = useState({
+    title: "Fortune Tiger",
+    icon: "🐯",
+    grid_size: GRID_SIZE,
+    min_stake: MINIMUM_STAKE,
+    risk_level: "high",
+  });
 
-  const [state, setState] = useState({
-    status: "idle", // idle | active | lost | cashed_out
+  const [stageEffect, setStageEffect] = useState("");
+  const [shake, setShake] = useState(false);
+  const [tigerRoar, setTigerRoar] = useState(false);
+
+  const [game, setGame] = useState({
+    status: "idle",
     step_index: 0,
     current_multiplier: "1.00",
     payout_amount: "0.00",
-    server_seed_hash: "",
-    revealed_server_seed: null,
+    session_id: null,
+    game_type: "fortune_tiger",
   });
 
-  const [rage, setRage] = useState(0);
-  const tapLock = useRef(false);
-
-  const [alert, setAlert] = useState({
-    open: false,
-    title: "",
-    message: "",
-  });
-
-  /* ------------------ HELPER FUNCTIONS ------------------ */
-  // Get wallet balance with fallback to user.balance
-  const getWalletBalance = () => {
-    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
-  };
-
-  // Validate stake amount
-  const isStakeValid = useMemo(() => {
-    const betAmount = Number(bet);
-    return Number.isFinite(betAmount) && betAmount >= MINIMUM_STAKE;
-  }, [bet]);
-
-  /* ------------------ SOUNDS ------------------ */
-  const sounds = useMemo(
-    () => ({
-      strike: createSound("/static/sfx/strike.mp3", { volume: 0.7 }),
-      rage: createSound("/static/sfx/rage.mp3", { volume: 0.9 }),
-      win: createSound("/static/sfx/win.mp3", { volume: 0.85 }),
-      lose: createSound("/static/sfx/lose.mp3", { volume: 0.85 }),
-    }),
-    []
+  const [tiles, setTiles] = useState(() =>
+    Array.from({ length: GRID_SIZE }, (_, i) => ({
+      id: i,
+      revealed: false,
+      kind: null,
+    }))
   );
 
-  useEffect(() => () => Object.values(sounds).forEach((s) => s.stop()), [sounds]);
+  /* =========================
+     REFS
+  ========================= */
+  const tapLock = useRef(false);
+  const lastTileRef = useRef(null);
+  const unlockTimeoutRef = useRef(null);
 
-  /* ------------------ RESET ------------------ */
-  const resetGame = () => {
-    setState({
+  /* =========================
+     RESET GAME
+  ========================= */
+  const resetGame = useCallback(() => {
+    console.log("[FortuneTiger] Resetting game");
+    setGame({
       status: "idle",
       step_index: 0,
       current_multiplier: "1.00",
       payout_amount: "0.00",
-      server_seed_hash: "",
-      revealed_server_seed: null,
+      session_id: null,
+      game_type: "fortune_tiger",
     });
-    setRage(0);
-    setStartPayload(null);
+
+    setTiles(
+      Array.from({ length: GRID_SIZE }, (_, i) => ({
+        id: i,
+        revealed: false,
+        kind: null,
+      }))
+    );
+
     tapLock.current = false;
-    setStakeOpen(true);
-  };
+    lastTileRef.current = null;
+    setStageEffect("");
+    setShake(false);
+    setTigerRoar(false);
+    setActiveSessionId(null);
+    
+    if (unlockTimeoutRef.current) {
+      clearTimeout(unlockTimeoutRef.current);
+      unlockTimeoutRef.current = null;
+    }
+  }, []);
 
-  /* ------------------ WS EVENTS ------------------ */
-  const onEvent = useCallback(
-    (msg) => {
-      if (msg.type === "joined") {
-        setState((s) => ({
-          ...s,
-          status: msg.status,
-          step_index: msg.step_index,
-          current_multiplier: msg.current_multiplier,
-          server_seed_hash: msg.server_seed_hash,
-        }));
-        return;
-      }
-
-      if (msg.type === "step_result") {
-        tapLock.current = false;
-
-        if (msg.result === "safe") {
-          sounds.strike.play();
-          setRage((r) => Math.min(100, r + 12));
-
-          setState((s) => ({
-            ...s,
-            step_index: msg.step_index,
-            current_multiplier: msg.current_multiplier,
-            status: "active",
-          }));
-        } else {
-          sounds.rage.play();
-          sounds.lose.play();
-          setRage(100);
-
-          setState((s) => ({
-            ...s,
-            status: "lost",
-            revealed_server_seed: msg.revealed_server_seed,
-          }));
-
-          setTimeout(() => {
-            resetGame();
-          }, 1500);
-        }
-      }
-
-      if (msg.type === "cashout_result") {
-        sounds.win.play();
-
-        setState((s) => ({
-          ...s,
-          status: "cashed_out",
-          payout_amount: msg.payout_amount,
-          current_multiplier: msg.current_multiplier,
-          revealed_server_seed: msg.revealed_server_seed,
-        }));
-
-        setTimeout(() => {
-          resetGame();
-        }, 1700);
-      }
-    },
-    [sounds]
-  );
-
-  const { connected, send } = useFortuneWS({
-    wsToken: startPayload?.ws_token,
-    onEvent,
-  });
-
-  /* ------------------ START GAME ------------------ */
+  /* =========================
+     GAME ACTIONS
+  ========================= */
+  
   const startGame = async () => {
+    const walletBalance = Number(wallet?.balance || 0);
     const betAmount = Number(bet);
-    const walletBalance = getWalletBalance();
-    const currentBalance = Number(walletBalance || 0);
 
-    if (!Number.isFinite(betAmount) || betAmount <= 0) {
-      setAlert({
-        open: true,
-        title: "Invalid Stake",
-        message: "Enter a valid stake amount.",
-      });
+    const isStakeValid = (
+      Number.isFinite(betAmount) &&
+      betAmount >= gameConfig.min_stake &&
+      betAmount <= walletBalance
+    );
+
+    if (!isStakeValid || walletLoading) {
+      if (betAmount < gameConfig.min_stake) {
+        toast.error(`Minimum stake is ₦${gameConfig.min_stake.toLocaleString("en-NG")}`);
+      } else if (betAmount > walletBalance) {
+        toast.error("Insufficient balance");
+      }
       return;
     }
 
-    // Check minimum stake
-    if (betAmount < MINIMUM_STAKE) {
-      setAlert({
-        open: true,
-        title: "Minimum Stake Required",
-        message: `Minimum stake is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}.`,
-      });
-      return;
-    }
-
-    if (betAmount > currentBalance) {
-      setAlert({
-        open: true,
-        title: "Insufficient Balance",
-        message: "Fund your account and try again.",
-      });
-      return;
-    }
-
-    // Check if wallet is still loading
-    if (walletLoading) {
-      setAlert({
-        open: true,
-        title: "Loading Balance",
-        message: "Please wait while your balance loads...",
-      });
-      return;
-    }
-
+    console.log("[FortuneTiger] Starting game with bet:", betAmount);
     setStarting(true);
+    
     try {
       const res = await fortuneService.startSession({
         game: "fortune_tiger",
         bet_amount: betAmount.toFixed(2),
-        client_seed: `${user?.id}:${Date.now()}`,
+        client_seed: `fortune_tiger:${Date.now()}:${Math.random()}`,
       });
 
-      setStartPayload(res.data);
-      setStakeOpen(false);
-
-      setState((s) => ({
-        ...s,
+      console.log("[FortuneTiger] Game started:", res.data);
+      
+      resetGame();
+      
+      setGame({
         status: "active",
-        server_seed_hash: res.data.server_seed_hash,
-      }));
-    } catch (e) {
-      setAlert({
-        open: true,
-        title: "Start Failed",
-        message:
-          e?.response?.data?.detail || "Unable to start game. Try again.",
+        step_index: res.data.step_index,
+        current_multiplier: res.data.current_multiplier,
+        payout_amount: "0.00",
+        session_id: res.data.session_id,
+        game_type: "fortune_tiger",
       });
+      
+      setActiveSessionId(res.data.session_id);
+      setStakeOpen(false);
+      
+      setTiles(
+        Array.from({ length: res.data.grid_size || GRID_SIZE }, (_, i) => ({
+          id: i,
+          revealed: false,
+          kind: null,
+        }))
+      );
+      
+      refreshWallet();
+      
+      // Tiger roar effect
+      setTigerRoar(true);
+      setTimeout(() => setTigerRoar(false), 1000);
+      
+      toast.success("Tiger game started! High risk, high reward!");
+    } catch (e) {
+      console.error("[FortuneTiger] Failed to start game:", e);
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      toast.error(`Failed to start game: ${errorMsg}`);
     } finally {
       setStarting(false);
     }
   };
 
-  /* ------------------ ACTIONS ------------------ */
-  const strike = () => {
-    if (!connected || state.status !== "active" || tapLock.current) return;
+  const pickTile = useCallback(async (id) => {
+    if (!activeSessionId) {
+      toast.error("No active game session");
+      return;
+    }
+    
+    if (tapLock.current) {
+      toast.error("Please wait for previous action to complete");
+      return;
+    }
+    
+    if (game.status !== "active") {
+      toast.error("Game is not active");
+      return;
+    }
+    
+    if (tiles[id]?.revealed) {
+      toast.error("This tile has already been revealed");
+      return;
+    }
+
     tapLock.current = true;
+    lastTileRef.current = id;
 
-    send({
-      type: "step",
-      msg_id: crypto.randomUUID(),
-      client_ts_ms: Date.now(),
-      action: "strike",
-      choice: "next",
-    });
-  };
+    console.log("[FortuneTiger] Taking step for tile:", id);
+    
+    try {
+      const res = await fortuneService.takeStep(activeSessionId, {
+        tile_id: id,
+        msg_id: crypto.randomUUID(),
+      });
 
-  const cashout = () => {
-    if (!connected || state.step_index <= 0) return;
-    send({
-      type: "cashout",
-      msg_id: crypto.randomUUID(),
-      client_ts_ms: Date.now(),
-    });
-  };
+      console.log("[FortuneTiger] Step result:", res.data);
+      
+      if (res.data.type === "duplicate") {
+        tapLock.current = false;
+        return;
+      }
+      
+      setTiles(prev =>
+        prev.map((t) =>
+          t.id === id
+            ? { ...t, revealed: true, kind: res.data.result }
+            : t
+        )
+      );
 
-  const rageClass =
-    rage >= 80 ? "rage-high" : rage >= 40 ? "rage-mid" : "rage-low";
+      // Handle game over (trap)
+      if (res.data.result === "trap") {
+        setGame((g) => ({
+          ...g,
+          status: "lost",
+          payout_amount: "0.00",
+          step_index: res.data.step_index,
+          current_multiplier: res.data.current_multiplier,
+        }));
 
-  /* ------------------ UI ------------------ */
+        setStageEffect("effect-game_over");
+        setShake(true);
+        setTigerRoar(true);
+
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.error("Tiger got you! Game Over!");
+        }, 1400);
+        
+        return;
+      }
+      
+      // Handle auto-cashout
+      if (res.data.result === "auto_cashout") {
+        setGame((g) => ({
+          ...g,
+          status: "cashed_out",
+          payout_amount: res.data.payout_amount,
+          current_multiplier: res.data.current_multiplier,
+          step_index: res.data.step_index,
+        }));
+
+        setStageEffect("effect-cashout");
+        refreshWallet();
+
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.success(`Tiger victory! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
+        }, 1500);
+        
+        return;
+      }
+
+      // Handle other results
+      console.log("[FortuneTiger] Tile result:", res.data.result);
+      
+      // Different effects for different results
+      if (res.data.result === "safe") {
+        setStageEffect("effect-big-boost");
+        setTigerRoar(true);
+        setTimeout(() => setTigerRoar(false), 500);
+      } else if (res.data.result === "major_penalty") {
+        setStageEffect("effect-penalty");
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+      } else {
+        setStageEffect("effect-update");
+      }
+      
+      setTimeout(() => setStageEffect(""), 500);
+      
+      setGame((g) => ({
+        ...g,
+        status: res.data.status,
+        step_index: res.data.step_index,
+        current_multiplier: res.data.current_multiplier,
+      }));
+      
+    } catch (e) {
+      console.error("[FortuneTiger] Failed to take step:", e);
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      toast.error(`Failed to reveal tile: ${errorMsg}`);
+      
+      if (e.response?.status === 404) {
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.error("Session expired. Please start a new game.");
+        }, 1000);
+      }
+    } finally {
+      tapLock.current = false;
+    }
+  }, [activeSessionId, game.status, tiles, refreshWallet, resetGame]);
+
+  const cashout = useCallback(async () => {
+    if (!activeSessionId) {
+      toast.error("No active game session");
+      return;
+    }
+    
+    if (game.status !== "active") {
+      toast.error("Cannot cashout: game is not active");
+      return;
+    }
+
+    if (tapLock.current) {
+      toast.error("Please wait for previous action to complete");
+      return;
+    }
+
+    tapLock.current = true;
+    
+    toast.loading("Processing cashout...", { id: "cashout" });
+
+    try {
+      const res = await fortuneService.cashout(activeSessionId);
+      
+      console.log("[FortuneTiger] Cashout successful:", res.data);
+      
+      setGame((g) => ({
+        ...g,
+        status: "cashed_out",
+        payout_amount: res.data.payout_amount,
+        current_multiplier: res.data.current_multiplier,
+        step_index: res.data.step_index,
+      }));
+
+      setStageEffect("effect-cashout");
+      setTigerRoar(true);
+      refreshWallet();
+      
+      toast.dismiss("cashout");
+      toast.success(`Tiger roars with victory! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
+
+      setTimeout(() => {
+        resetGame();
+        setStakeOpen(true);
+      }, 1500);
+      
+    } catch (e) {
+      console.error("[FortuneTiger] Failed to cashout:", e);
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      toast.dismiss("cashout");
+      toast.error(`Failed to cashout: ${errorMsg}`);
+      
+      if (e.response?.status === 404) {
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.error("Session expired. Please start a new game.");
+        }, 1000);
+      }
+    } finally {
+      tapLock.current = false;
+    }
+  }, [activeSessionId, game.status, refreshWallet, resetGame]);
+
+  /* =========================
+     SESSION RECOVERY
+  ========================= */
+  
+  const checkExistingSession = useCallback(async () => {
+    const savedSessionId = localStorage.getItem('fortune_tiger_active_session');
+    if (savedSessionId) {
+      try {
+        const res = await fortuneService.getSessionState(savedSessionId);
+        
+        if (res.data.status === "active" && res.data.game === "fortune_tiger") {
+          setActiveSessionId(savedSessionId);
+          setGame({
+            status: "active",
+            step_index: res.data.step_index,
+            current_multiplier: res.data.current_multiplier,
+            payout_amount: res.data.payout_amount,
+            session_id: savedSessionId,
+            game_type: "fortune_tiger",
+          });
+          setStakeOpen(false);
+          
+          // Load game config
+          try {
+            const configRes = await fortuneService.getGameConfig("fortune_tiger");
+            setGameConfig(prev => ({ ...prev, ...configRes.data }));
+          } catch (e) {
+            console.log("Could not load game config:", e);
+          }
+          
+          toast.success("Recovered Tiger game session");
+        } else {
+          localStorage.removeItem('fortune_tiger_active_session');
+        }
+      } catch (e) {
+        localStorage.removeItem('fortune_tiger_active_session');
+      }
+    }
+  }, []);
+
+  /* =========================
+     EFFECTS
+  ========================= */
+  
+  useEffect(() => {
+    // Load game config
+    const loadConfig = async () => {
+      try {
+        const res = await fortuneService.getGameConfig("fortune_tiger");
+        setGameConfig(prev => ({ ...prev, ...res.data }));
+      } catch (e) {
+        console.log("Could not load game config:", e);
+      }
+    };
+    
+    loadConfig();
+    checkExistingSession();
+    
+    return () => {
+      resetGame();
+    };
+  }, [checkExistingSession, resetGame]);
+
+  useEffect(() => {
+    if (activeSessionId && game.status === "active") {
+      localStorage.setItem('fortune_tiger_active_session', activeSessionId);
+    } else if (game.status !== "active") {
+      localStorage.removeItem('fortune_tiger_active_session');
+    }
+  }, [activeSessionId, game.status]);
+
+  /* =========================
+     RENDER
+  ========================= */
+  const walletBalance = Number(wallet?.balance || 0);
+  const betAmount = Number(bet);
+
+  const isStakeValid = useMemo(() => {
+    return (
+      Number.isFinite(betAmount) &&
+      betAmount >= gameConfig.min_stake &&
+      betAmount <= walletBalance
+    );
+  }, [betAmount, walletBalance, gameConfig.min_stake]);
+
   return (
-    <div className="fortune-stage">
-      <StakeModal
-        open={stakeOpen}
-        walletBalance={getWalletBalance()} // Updated to use wallet balance
-        bet={bet}
-        setBet={setBet}
-        loading={starting}
-        onStart={startGame}
-        onExit={() => navigate("/", { replace: true })} // Fixed navigation
-        isStakeValid={isStakeValid} // Pass stake validation
-      />
-
-      <AlertModal
-        open={alert.open}
-        title={alert.title}
-        message={alert.message}
-        onClose={() => setAlert({ ...alert, open: false })}
-      />
-
+    <div
+      className={`fortune-stage tiger-stage ${game.status} ${stageEffect} ${
+        shake ? "shake" : ""
+      } ${tigerRoar ? "tiger-roar" : ""}`}
+    >
+      {/* HEADER */}
       <div className="fortune-header">
         <div className="fortune-brand">
-          <div className="vault-orb" />
+          <div className="vault-orb tiger pulse" />
           <div className="fortune-brand-text">
             <div className="fortune-name">Fortune Tiger</div>
-            <div className="fortune-sub">
-              Jade Temple Strikes • High Volatility
-            </div>
+            <div className="fortune-sub">High Risk, High Reward</div>
           </div>
         </div>
 
         <div className="fortune-hud">
           <div className="hud-card">
             <div className="hud-label">MULTI</div>
-            <div className="hud-value">{state.current_multiplier}x</div>
+            <div className="hud-value highlight tiger-highlight">
+              {parseFloat(game.current_multiplier).toFixed(2)}x
+            </div>
           </div>
+
           <div className="hud-card">
-            <div className="hud-label">ROUNDS</div>
-            <div className="hud-value">{state.step_index}</div>
+            <div className="hud-label">STEPS</div>
+            <div className="hud-value">{game.step_index}</div>
           </div>
+
           <button
-            className="hud-cashout"
+            className={`hud-cashout tiger-cashout ${
+              !activeSessionId || game.status !== "active" ? "disabled" : ""
+            }`}
             onClick={cashout}
-            disabled={!connected || state.step_index <= 0}
+            disabled={!activeSessionId || game.status !== "active" || tapLock.current}
           >
             CASH OUT
           </button>
-        </div>
-      </div>
 
-      <div className={`fortune-scene ${rageClass}`}>
-        <div className="vault-bg" />
-        <div className="mouse-runner idle">🐯</div>
-
-        <div className="ragebar">
-          <div
-            className="ragebar-fill"
-            style={{ width: `${rage}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="fortune-board">
-        <div className="fortune-board-top">
-          <div className="pill-wrap">
-            {state.status === "active" && (
-              <span className="pill ok">TEMPLE LIVE</span>
-            )}
-            {state.status === "lost" && (
-              <span className="pill bad">RAGE STRIKE</span>
-            )}
-            {state.status === "cashed_out" && (
-              <span className="pill ok">
-                WIN ₦{Number(state.payout_amount).toLocaleString("en-NG")}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ padding: 16, textAlign: "center" }}>
-          <button
-            className="hud-cashout"
-            onClick={strike}
-            disabled={!connected || state.status !== "active"}
-          >
-            STRIKE
+          <button className="hud-exit" onClick={() => navigate("/")}>
+            EXIT
           </button>
         </div>
       </div>
+      {/* BOARD */}
+      <div className="fortune-board tiger-board">
+        <div className="fortune-grid tiger-grid">
+          {tiles.map((tile) => (
+            <button
+              key={tile.id}
+              className={`fortune-tile tiger-tile ${
+                tile.revealed ? tile.kind : ""
+              } ${game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""}`}
+              disabled={tile.revealed || game.status !== "active" || tapLock.current}
+              onClick={() => pickTile(tile.id)}
+            >
+              <div className="tile-face">
+                {!tile.revealed ? (
+                  <span className="tile-glyph">🐾</span>
+                ) : (
+                  <div className="tile-revealed">
+                    <span className="tile-icon">
+                      {tile.kind === "trap" ? "💀" : 
+                       tile.kind === "safe" ? "💰" :
+                       tile.kind === "penalty" ? "⚠️" :
+                       tile.kind === "major_penalty" ? "🔻" :
+                       tile.kind === "reset" ? "🔄" : "?"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        {/* Game status overlays */}
+        {game.status === "lost" && (
+          <div className="game-overlay tiger-lost">
+            <div className="overlay-content">
+              <div className="overlay-icon">💀</div>
+              <div className="overlay-title">Tiger Attack!</div>
+              <div className="overlay-subtitle">Game Over</div>
+              <div className="overlay-multiplier">
+                Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {game.status === "cashed_out" && (
+          <div className="game-overlay tiger-cashed">
+            <div className="overlay-content">
+              <div className="overlay-icon">👑</div>
+              <div className="overlay-title">Tiger Victory!</div>
+              <div className="overlay-subtitle">Won ₦{parseFloat(game.payout_amount).toLocaleString("en-NG")}</div>
+              <div className="overlay-multiplier">
+                Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {tapLock.current && game.status === "active" && (
+          <div className="game-overlay processing">
+            <div className="overlay-content">
+              <div className="spinner large"></div>
+              <div className="overlay-title">Tiger is thinking...</div>
+              <div className="overlay-subtitle">Please wait</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* STAKE MODAL */}
+      {stakeOpen && (
+        <div className="fortune-stake-backdrop">
+          <div className="fortune-stake-modal tiger-modal">
+            <div className="stake-top">
+              <div className="stake-badge">🐯</div>
+              <div className="stake-title">
+                <div className="t1">Fortune Tiger</div>
+                <div className="t2">High stakes adventure</div>
+              </div>
+            </div>
+
+            <div className="stake-balance">
+              <span className="label">Balance</span>
+              <span className="value">
+                ₦{walletBalance.toLocaleString("en-NG")}
+              </span>
+            </div>
+
+            <div className="stake-input-row">
+              <div className="stake-currency">₦</div>
+              <input
+                className={`stake-input ${
+                  bet && !isStakeValid ? "error" : ""
+                }`}
+                value={bet}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d.]/g, '');
+                  setBet(value);
+                }}
+                onBlur={() => {
+                  if (bet && isStakeValid) {
+                    setBet(parseFloat(bet).toFixed(2));
+                  }
+                }}
+                placeholder={`Min ₦${gameConfig.min_stake.toLocaleString("en-NG")}`}
+                type="text"
+                inputMode="decimal"
+                autoFocus
+              />
+            </div>
+
+            {!isStakeValid && bet && (
+              <div className="stake-validation-error">
+                Minimum ₦{gameConfig.min_stake.toLocaleString("en-NG")} – must not exceed balance
+              </div>
+            )}
+
+            <div className="stake-risk-warning">
+              <span className="warning-icon">⚠️</span>
+              <span className="warning-text">HIGH RISK: Bigger rewards but higher chance of traps!</span>
+            </div>
+
+            <div className="stake-actions">
+              <button
+                className={`stake-btn gold tiger-btn ${
+                  starting ? "loading" : ""
+                }`}
+                disabled={!isStakeValid || starting || walletLoading}
+                onClick={startGame}
+              >
+                {starting ? (
+                  <>
+                    <div className="spinner small"></div>
+                    Starting...
+                  </>
+                ) : (
+                  "Start Tiger Game"
+                )}
+              </button>
+              <button
+                className="stake-btn secondary"
+                onClick={() => navigate("/")}
+              >
+                Back to Games
+              </button>
+            </div>
+
+            <div className="stake-footnote">
+              <span className="spark" />
+              High volatility • Big multipliers • Not for the faint-hearted
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

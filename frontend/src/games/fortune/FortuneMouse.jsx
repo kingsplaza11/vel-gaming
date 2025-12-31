@@ -8,7 +8,6 @@ import React, {
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../contexts/WalletContext";
 import { fortuneService } from "../../services/api";
-import { useFortuneWS } from "./useFortuneWS";
 import toast from "react-hot-toast";
 import "./fortune.css";
 
@@ -17,7 +16,7 @@ const MINIMUM_STAKE = 100;
 
 export default function FortuneMouse() {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading } = useWallet();
+  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
 
   /* =========================
      STATE
@@ -25,7 +24,7 @@ export default function FortuneMouse() {
   const [stakeOpen, setStakeOpen] = useState(true);
   const [bet, setBet] = useState("");
   const [starting, setStarting] = useState(false);
-  const [wsToken, setWsToken] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState(null);
 
   const [stageEffect, setStageEffect] = useState("");
   const [shake, setShake] = useState(false);
@@ -35,6 +34,7 @@ export default function FortuneMouse() {
     step_index: 0,
     current_multiplier: "1.00",
     payout_amount: "0.00",
+    session_id: null,
   });
 
   const [tiles, setTiles] = useState(() =>
@@ -51,6 +51,7 @@ export default function FortuneMouse() {
   const tapLock = useRef(false);
   const lastTileRef = useRef(null);
   const unlockTimeoutRef = useRef(null);
+  const gameStateIntervalRef = useRef(null);
 
   /* =========================
      RESET GAME
@@ -62,6 +63,7 @@ export default function FortuneMouse() {
       step_index: 0,
       current_multiplier: "1.00",
       payout_amount: "0.00",
+      session_id: null,
     });
 
     setTiles(
@@ -76,225 +78,35 @@ export default function FortuneMouse() {
     lastTileRef.current = null;
     setStageEffect("");
     setShake(false);
-    setWsToken(null);
+    setActiveSessionId(null);
     
     // Clear any pending timeout
     if (unlockTimeoutRef.current) {
       clearTimeout(unlockTimeoutRef.current);
       unlockTimeoutRef.current = null;
     }
+    
+    // Clear interval
+    if (gameStateIntervalRef.current) {
+      clearInterval(gameStateIntervalRef.current);
+      gameStateIntervalRef.current = null;
+    }
   }, []);
 
   /* =========================
-     WEBSOCKET EVENTS HANDLER
+     GAME ACTIONS
   ========================= */
-  const onEvent = useCallback((msg) => {
-    console.log("[FortuneMouse] WebSocket message:", msg.type, msg);
-    
-    // Handle authentication
-    if (msg.type === "joined") {
-      console.log("[FortuneMouse] Successfully joined game session");
-      setGame(prev => ({
-        ...prev,
-        status: msg.status === "active" ? "active" : prev.status,
-        step_index: msg.step_index || prev.step_index,
-        current_multiplier: msg.current_multiplier || prev.current_multiplier,
-        payout_amount: msg.payout_amount || prev.payout_amount,
-      }));
-      
-      // If reconnected to active game, unlock taps
-      if (msg.status === "active") {
-        tapLock.current = false;
-        if (unlockTimeoutRef.current) {
-          clearTimeout(unlockTimeoutRef.current);
-          unlockTimeoutRef.current = null;
-        }
-      }
-      return;
-    }
-    
-    // Handle step results
-    if (msg.type === "step_result") {
-      // Always unlock tap lock when we get a response
-      tapLock.current = false;
-      if (unlockTimeoutRef.current) {
-        clearTimeout(unlockTimeoutRef.current);
-        unlockTimeoutRef.current = null;
-      }
-      
-      const tileId = lastTileRef.current;
-      if (tileId !== null) {
-        setTiles(prev =>
-          prev.map((t) =>
-            t.id === tileId
-              ? { ...t, revealed: true, kind: msg.result }
-              : t
-          )
-        );
-      }
+  
+  const startGame = async () => {
+    const walletBalance = Number(wallet?.balance || 0);
+    const betAmount = Number(bet);
 
-      // Handle game over (trap)
-      if (msg.result === "trap") {
-        console.log("[FortuneMouse] Game over - hit a trap");
-        setGame((g) => ({
-          ...g,
-          status: "lost",
-          payout_amount: "0.00",
-          step_index: msg.step_index || g.step_index,
-          current_multiplier: msg.current_multiplier || g.current_multiplier,
-        }));
-
-        setStageEffect("effect-game_over");
-        setShake(true);
-
-        // Reset after delay
-        setTimeout(() => {
-          resetGame();
-          setStakeOpen(true);
-        }, 1400);
-
-        return;
-      }
-
-      // Handle safe tile
-      console.log("[FortuneMouse] Safe tile - multiplier updated:", msg.current_multiplier);
-      setStageEffect("effect-boost");
-      setTimeout(() => setStageEffect(""), 500);
-      setGame((g) => ({
-        ...g,
-        status: "active",
-        step_index: msg.step_index || g.step_index,
-        current_multiplier: msg.current_multiplier || g.current_multiplier,
-      }));
-      return;
-    }
-
-    // Handle cashout
-    if (msg.type === "cashout_result") {
-      console.log("[FortuneMouse] Cashout successful:", msg.payout_amount);
-      setGame((g) => ({
-        ...g,
-        status: "cashed_out",
-        payout_amount: msg.payout_amount,
-        current_multiplier: msg.current_multiplier || g.current_multiplier,
-        step_index: msg.step_index || g.step_index,
-      }));
-
-      setStageEffect("effect-cashout");
-      
-      // Dismiss any loading toast
-      toast.dismiss("cashout");
-
-      setTimeout(() => {
-        resetGame();
-        setStakeOpen(true);
-      }, 1500);
-      return;
-    }
-
-    // Handle state updates (for reconnection)
-    if (msg.type === "state") {
-      console.log("[FortuneMouse] State update:", msg.status);
-      setGame((g) => ({
-        ...g,
-        status: msg.status,
-        step_index: msg.step_index || g.step_index,
-        current_multiplier: msg.current_multiplier || g.current_multiplier,
-        payout_amount: msg.payout_amount || g.payout_amount,
-      }));
-      
-      // If reconnected to an active game, unlock taps
-      if (msg.status === "active") {
-        tapLock.current = false;
-        if (unlockTimeoutRef.current) {
-          clearTimeout(unlockTimeoutRef.current);
-          unlockTimeoutRef.current = null;
-        }
-      }
-      return;
-    }
-
-    // Handle errors
-    if (msg.type === "error") {
-      console.error("[FortuneMouse] WebSocket error:", msg);
-      
-      // Always unlock on error
-      tapLock.current = false;
-      if (unlockTimeoutRef.current) {
-        clearTimeout(unlockTimeoutRef.current);
-        unlockTimeoutRef.current = null;
-      }
-      
-      // Show error toast
-      if (msg.message) {
-        toast.error(`Error: ${msg.message}`, {
-          duration: 4000,
-          position: "top-center",
-          id: `error-${msg.code}`,
-        });
-      }
-      
-      // Handle specific error codes
-      if (msg.code === "auth_failed" || msg.code === "session_not_found" || msg.code === "session_inactive") {
-        console.log("[FortuneMouse] Session error, resetting game");
-        setTimeout(() => {
-          resetGame();
-          setStakeOpen(true);
-          toast.error("Session expired or not found. Please start a new game.", {
-            duration: 5000,
-          });
-        }, 1000);
-      }
-      
-      return;
-    }
-    
-    // Handle duplicate messages
-    if (msg.type === "duplicate") {
-      console.log("[FortuneMouse] Duplicate message ignored");
-      tapLock.current = false;
-      if (unlockTimeoutRef.current) {
-        clearTimeout(unlockTimeoutRef.current);
-        unlockTimeoutRef.current = null;
-      }
-      return;
-    }
-    
-    // Handle pong (heartbeat response)
-    if (msg.type === "pong") {
-      return;
-    }
-    
-    // Handle connection established
-    if (msg.type === "connected") {
-      console.log("[FortuneMouse] WebSocket connected");
-      return;
-    }
-  }, [resetGame]);
-
-  /* =========================
-     WEBSOCKET HOOK
-  ========================= */
-  const { connected, authenticated, send, lastError } = useFortuneWS({
-    wsToken,
-    onEvent,
-  });
-
-  /* =========================
-     START GAME
-  ========================= */
-  const walletBalance = Number(wallet?.balance || 0);
-  const betAmount = Number(bet);
-
-  const isStakeValid = useMemo(() => {
-    return (
+    const isStakeValid = (
       Number.isFinite(betAmount) &&
       betAmount >= MINIMUM_STAKE &&
       betAmount <= walletBalance
     );
-  }, [betAmount, walletBalance]);
 
-  const startGame = async () => {
     if (!isStakeValid || walletLoading) {
       console.log("[FortuneMouse] Cannot start game: invalid stake or wallet loading");
       if (betAmount < MINIMUM_STAKE) {
@@ -307,6 +119,7 @@ export default function FortuneMouse() {
 
     console.log("[FortuneMouse] Starting game with bet:", betAmount);
     setStarting(true);
+    
     try {
       const res = await fortuneService.startSession({
         game: "fortune_mouse",
@@ -314,12 +127,21 @@ export default function FortuneMouse() {
         client_seed: `fortune:${Date.now()}:${Math.random()}`,
       });
 
-      console.log("[FortuneMouse] Game started, WS token:", res.data.ws_token);
+      console.log("[FortuneMouse] Game started:", res.data);
       
       // Reset game state
       resetGame();
-      setGame(prev => ({ ...prev, status: "active" }));
-      setWsToken(res.data.ws_token);
+      
+      // Set new game state
+      setGame({
+        status: "active",
+        step_index: res.data.step_index,
+        current_multiplier: res.data.current_multiplier,
+        payout_amount: "0.00",
+        session_id: res.data.session_id,
+      });
+      
+      setActiveSessionId(res.data.session_id);
       setStakeOpen(false);
       
       // Clear any previous tiles
@@ -331,6 +153,9 @@ export default function FortuneMouse() {
         }))
       );
       
+      // Refresh wallet to show updated balance
+      refreshWallet();
+      
       toast.success("Game started! Click tiles to reveal.");
     } catch (e) {
       console.error("[FortuneMouse] Failed to start game:", e);
@@ -341,20 +166,10 @@ export default function FortuneMouse() {
     }
   };
 
-  /* =========================
-     TILE PICK
-  ========================= */
-  const pickTile = useCallback((id) => {
-    console.log("[FortuneMouse] Picking tile:", id, {
-      authenticated,
-      tapLock: tapLock.current,
-      gameStatus: game.status,
-      tileRevealed: tiles[id]?.revealed
-    });
-    
-    if (!authenticated) {
-      console.warn("[FortuneMouse] Cannot pick tile: not authenticated");
-      toast.error("Not connected to game server");
+  const pickTile = useCallback(async (id) => {
+    if (!activeSessionId) {
+      console.warn("[FortuneMouse] Cannot pick tile: no active session");
+      toast.error("No active game session");
       return;
     }
     
@@ -380,45 +195,113 @@ export default function FortuneMouse() {
     tapLock.current = true;
     lastTileRef.current = id;
 
-    console.log("[FortuneMouse] Sending step message for tile:", id);
-    const success = send({
-      type: "step",
-      msg_id: crypto.randomUUID(),
-      action: "tile_pick",
-      choice: String(id),
-      client_ts_ms: Date.now(),
-    });
-
-    if (!success) {
-      console.error("[FortuneMouse] Failed to send step message");
-      tapLock.current = false;
-      toast.error("Failed to send action. Check connection.");
-      return;
-    }
-
-    // Failsafe unlock after timeout
-    if (unlockTimeoutRef.current) {
-      clearTimeout(unlockTimeoutRef.current);
-    }
+    console.log("[FortuneMouse] Taking step for tile:", id);
     
-    unlockTimeoutRef.current = setTimeout(() => {
-      if (tapLock.current) {
-        console.warn("[FortuneMouse] Failsafe: unlocking tap lock");
+    try {
+      const res = await fortuneService.takeStep(activeSessionId, {
+        tile_id: id,
+        msg_id: crypto.randomUUID(),
+      });
+
+      console.log("[FortuneMouse] Step result:", res.data);
+      
+      // Handle duplicate response
+      if (res.data.type === "duplicate") {
+        console.log("[FortuneMouse] Duplicate action ignored");
         tapLock.current = false;
-        toast.error("Server timeout. Please try again.");
+        return;
       }
-    }, 5000);
-  }, [authenticated, game.status, tiles, send]);
+      
+      // Update tile
+      setTiles(prev =>
+        prev.map((t) =>
+          t.id === id
+            ? { ...t, revealed: true, kind: res.data.result }
+            : t
+        )
+      );
 
-  /* =========================
-     CASHOUT
-  ========================= */
-  const cashout = useCallback(() => {
-    console.log("[FortuneMouse] Attempting cashout");
-    
-    if (!authenticated) {
-      console.warn("[FortuneMouse] Cannot cashout: not authenticated");
-      toast.error("Not connected to game server");
+      // Handle game over (trap)
+      if (res.data.result === "trap") {
+        console.log("[FortuneMouse] Game over - hit a trap");
+        setGame((g) => ({
+          ...g,
+          status: "lost",
+          payout_amount: "0.00",
+          step_index: res.data.step_index,
+          current_multiplier: res.data.current_multiplier,
+        }));
+
+        setStageEffect("effect-game_over");
+        setShake(true);
+
+        // Reset after delay
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.error("Game Over! Hit a bomb tile.");
+        }, 1400);
+        
+        return;
+      }
+      
+      // Handle auto-cashout at max steps
+      if (res.data.result === "auto_cashout") {
+        console.log("[FortuneMouse] Auto-cashout at max steps:", res.data.payout_amount);
+        setGame((g) => ({
+          ...g,
+          status: "cashed_out",
+          payout_amount: res.data.payout_amount,
+          current_multiplier: res.data.current_multiplier,
+          step_index: res.data.step_index,
+        }));
+
+        setStageEffect("effect-cashout");
+        refreshWallet();
+
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
+        }, 1500);
+        
+        return;
+      }
+
+      // Handle safe tile
+      console.log("[FortuneMouse] Tile result:", res.data.result, "multiplier:", res.data.current_multiplier);
+      setStageEffect("effect-boost");
+      setTimeout(() => setStageEffect(""), 500);
+      
+      setGame((g) => ({
+        ...g,
+        status: res.data.status,
+        step_index: res.data.step_index,
+        current_multiplier: res.data.current_multiplier,
+      }));
+      
+    } catch (e) {
+      console.error("[FortuneMouse] Failed to take step:", e);
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      toast.error(`Failed to reveal tile: ${errorMsg}`);
+      
+      // If session not found, reset game
+      if (e.response?.status === 404) {
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.error("Session expired. Please start a new game.");
+        }, 1000);
+      }
+    } finally {
+      tapLock.current = false;
+    }
+  }, [activeSessionId, game.status, tiles, refreshWallet, resetGame]);
+
+  const cashout = useCallback(async () => {
+    if (!activeSessionId) {
+      console.warn("[FortuneMouse] Cannot cashout: no active session");
+      toast.error("No active game session");
       return;
     }
     
@@ -436,76 +319,128 @@ export default function FortuneMouse() {
 
     // Lock during cashout
     tapLock.current = true;
+    
+    toast.loading("Processing cashout...", { id: "cashout" });
 
-    const success = send({
-      type: "cashout",
-      msg_id: crypto.randomUUID(),
-      client_ts_ms: Date.now(),
-    });
+    try {
+      const res = await fortuneService.cashout(activeSessionId);
+      
+      console.log("[FortuneMouse] Cashout successful:", res.data);
+      
+      setGame((g) => ({
+        ...g,
+        status: "cashed_out",
+        payout_amount: res.data.payout_amount,
+        current_multiplier: res.data.current_multiplier,
+        step_index: res.data.step_index,
+      }));
 
-    if (!success) {
-      console.error("[FortuneMouse] Failed to send cashout message");
+      setStageEffect("effect-cashout");
+      refreshWallet();
+      
+      toast.dismiss("cashout");
+      toast.success(`Cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
+
+      setTimeout(() => {
+        resetGame();
+        setStakeOpen(true);
+      }, 1500);
+      
+    } catch (e) {
+      console.error("[FortuneMouse] Failed to cashout:", e);
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      toast.dismiss("cashout");
+      toast.error(`Failed to cashout: ${errorMsg}`);
+      
+      // If session not found, reset game
+      if (e.response?.status === 404) {
+        setTimeout(() => {
+          resetGame();
+          setStakeOpen(true);
+          toast.error("Session expired. Please start a new game.");
+        }, 1000);
+      }
+    } finally {
       tapLock.current = false;
-      toast.error("Failed to send cashout request. Check connection.");
-    } else {
-      toast.loading("Processing cashout...", { id: "cashout" });
     }
-  }, [authenticated, game.status, send]);
+  }, [activeSessionId, game.status, refreshWallet, resetGame]);
+
+  /* =========================
+     SESSION RECOVERY
+  ========================= */
+  
+  const checkExistingSession = useCallback(async () => {
+    // Check localStorage for active session
+    const savedSessionId = localStorage.getItem('fortune_active_session');
+    if (savedSessionId) {
+      try {
+        const res = await fortuneService.getSessionState(savedSessionId);
+        console.log("[FortuneMouse] Found existing session:", res.data);
+        
+        if (res.data.status === "active") {
+          // Recover active session
+          setActiveSessionId(savedSessionId);
+          setGame({
+            status: "active",
+            step_index: res.data.step_index,
+            current_multiplier: res.data.current_multiplier,
+            payout_amount: res.data.payout_amount,
+            session_id: savedSessionId,
+          });
+          setStakeOpen(false);
+          toast.success("Recovered previous game session");
+        } else {
+          // Clear expired session
+          localStorage.removeItem('fortune_active_session');
+        }
+      } catch (e) {
+        console.log("[FortuneMouse] Failed to recover session:", e);
+        localStorage.removeItem('fortune_active_session');
+      }
+    }
+  }, []);
 
   /* =========================
      EFFECTS
   ========================= */
   
-  // Reset game when component unmounts
+  // Check for existing session on mount
   useEffect(() => {
+    checkExistingSession();
+    
     return () => {
-      console.log("[FortuneMouse] Component unmounting, cleaning up");
       resetGame();
-      
-      // Clear any active toasts
-      toast.dismiss();
     };
-  }, [resetGame]);
+  }, [checkExistingSession, resetGame]);
+
+  // Save active session ID to localStorage
+  useEffect(() => {
+    if (activeSessionId && game.status === "active") {
+      localStorage.setItem('fortune_active_session', activeSessionId);
+    } else if (game.status !== "active") {
+      localStorage.removeItem('fortune_active_session');
+    }
+  }, [activeSessionId, game.status]);
 
   // Log game state changes
   useEffect(() => {
     console.log("[FortuneMouse] Game state updated:", game);
   }, [game]);
 
-  // Log WebSocket connection status
-  useEffect(() => {
-    console.log("[FortuneMouse] WebSocket status:", {
-      connected,
-      authenticated,
-      lastError,
-      wsToken: wsToken ? "present" : "missing"
-    });
-  }, [connected, authenticated, lastError, wsToken]);
-
-  // Show connection status toasts
-  useEffect(() => {
-    if (wsToken && !connected) {
-      toast.loading("Connecting to game server...", { id: "connecting" });
-    } else if (connected && !authenticated) {
-      toast.loading("Authenticating...", { id: "authenticating" });
-    } else if (connected && authenticated) {
-      toast.success("Connected to game server!", { 
-        id: "connected",
-        duration: 2000 
-      });
-    }
-    
-    if (lastError && wsToken) {
-      toast.error(`Connection error: ${lastError}`, {
-        id: "connection-error",
-        duration: 4000
-      });
-    }
-  }, [connected, authenticated, lastError, wsToken]);
-
   /* =========================
      RENDER
   ========================= */
+  const walletBalance = Number(wallet?.balance || 0);
+  const betAmount = Number(bet);
+
+  const isStakeValid = useMemo(() => {
+    return (
+      Number.isFinite(betAmount) &&
+      betAmount >= MINIMUM_STAKE &&
+      betAmount <= walletBalance
+    );
+  }, [betAmount, walletBalance]);
+
   return (
     <div
       className={`fortune-stage ${game.status} ${stageEffect} ${
@@ -536,9 +471,9 @@ export default function FortuneMouse() {
           </div>
 
           <button
-            className={`hud-cashout ${!authenticated || game.status !== "active" ? "disabled" : ""}`}
+            className={`hud-cashout ${!activeSessionId || game.status !== "active" ? "disabled" : ""}`}
             onClick={cashout}
-            disabled={!authenticated || game.status !== "active" || tapLock.current}
+            disabled={!activeSessionId || game.status !== "active" || tapLock.current}
           >
             CASH OUT
           </button>
@@ -548,40 +483,6 @@ export default function FortuneMouse() {
           </button>
         </div>
       </div>
-
-      {/* SCENE */}
-      <div className="fortune-scene">
-        <div className="vault-bg" />
-        <div className="mouse-runner idle" />
-        
-        {/* Connection status indicator */}
-        <div className="connection-status">
-          {!wsToken ? (
-            <div className="status-idle">Ready to start</div>
-          ) : !connected ? (
-            <div className="status-connecting">
-              <div className="spinner"></div>
-              Connecting...
-            </div>
-          ) : !authenticated ? (
-            <div className="status-authenticating">
-              <div className="spinner"></div>
-              Authenticating...
-            </div>
-          ) : lastError ? (
-            <div className="status-error">
-              <span className="error-icon">⚠️</span>
-              {lastError}
-            </div>
-          ) : (
-            <div className="status-connected">
-              <span className="connected-icon">✓</span>
-              Connected
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* BOARD */}
       <div className="fortune-board">
         <div className="fortune-grid enhanced">
@@ -691,19 +592,6 @@ export default function FortuneMouse() {
                 inputMode="decimal"
                 autoFocus
               />
-              <div className="stake-quick-buttons">
-                {[100, 500, 1000, 5000].map((amount) => (
-                  <button
-                    key={amount}
-                    type="button"
-                    className={`quick-amount ${amount > walletBalance ? "disabled" : ""}`}
-                    onClick={() => setBet(amount.toString())}
-                    disabled={amount > walletBalance}
-                  >
-                    ₦{amount}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {!isStakeValid && bet && (
@@ -736,75 +624,33 @@ export default function FortuneMouse() {
                 Cancel
               </button>
             </div>
-
-            <div className="stake-footnote">
-              <span className="spark" />
-              Provably fair • High risk
-            </div>
           </div>
         </div>
       )}
-
-      {/* Connection error display */}
-      {lastError && !stakeOpen && (
-        <div className="connection-error">
-          <div className="error-icon">⚠️</div>
-          <div className="error-text">
-            Connection issue: {lastError}
-            {lastError.includes("auth") || lastError.includes("session") ? (
-              <button 
-                className="error-retry" 
-                onClick={() => {
-                  resetGame();
-                  setStakeOpen(true);
-                  toast.success("Please start a new game");
-                }}
-              >
-                Start New Game
-              </button>
-            ) : (
-              <button 
-                className="error-retry" 
-                onClick={() => {
-                  setWsToken(null);
-                  setTimeout(() => {
-                    if (wsToken) {
-                      setWsToken(wsToken);
-                    }
-                  }, 1000);
-                }}
-              >
-                Retry Connection
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Game instructions */}
-      {!stakeOpen && game.status === "active" && (
-        <div className="game-instructions">
-          <div className="instruction-text">
-            Click tiles to reveal rewards. Avoid bomb tiles!
-          </div>
-          <div className="instruction-tile-types">
-            <div className="tile-type">
-              <span className="tile-icon">💰</span>
-              <span className="tile-label">Safe (+Multiplier)</span>
-            </div>
-            <div className="tile-type">
-              <span className="tile-icon">⚠️</span>
-              <span className="tile-label">Penalty (×0.5)</span>
-            </div>
-            <div className="tile-type">
-              <span className="tile-icon">🔄</span>
-              <span className="tile-label">Reset (0.45x)</span>
-            </div>
-            <div className="tile-type">
-              <span className="tile-icon">💣</span>
-              <span className="tile-label">Bomb (Game Over)</span>
-            </div>
-          </div>
+      
+      {/* Provably Fair Button */}
+      {game.status === "cashed_out" && (
+        <div className="provably-fair-section">
+          <button 
+            className="provably-fair-btn"
+            onClick={async () => {
+              try {
+                const res = await fortuneService.revealSeed(activeSessionId);
+                toast.success(
+                  <div>
+                    <div>Server Seed: {res.data.server_seed}</div>
+                    <div>Client Seed: {res.data.client_seed}</div>
+                    <div>Hash: {res.data.server_seed_hash}</div>
+                  </div>,
+                  { duration: 10000 }
+                );
+              } catch (e) {
+                toast.error("Failed to reveal seeds");
+              }
+            }}
+          >
+            Verify Fairness
+          </button>
         </div>
       )}
     </div>

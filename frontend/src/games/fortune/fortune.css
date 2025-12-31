@@ -1,1887 +1,865 @@
-/* src/games/fortune/fortune.css */
+/* =========================
+   FORTUNE GAMES MASTER CSS
+   ========================= */
 
 /* =========================
-   ROOT
-========================= */
-.fortune-stage{
+   BASE STYLES & RESETS
+   ========================= */
+.fortune-stage {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0a0a0f 0%, #151522 100%);
   min-height: 100vh;
-  background: radial-gradient(1200px 700px at 20% 10%, rgba(255,215,120,.08), transparent 55%),
-              radial-gradient(900px 600px at 90% 20%, rgba(130,220,255,.10), transparent 55%),
-              linear-gradient(180deg, #05060a, #090a12 40%, #04040a);
-  color: #f5f3ea;
-  padding: 16px;
-  padding-bottom: 28px;
+  color: #fff;
   position: relative;
-  overflow: hidden;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-}
-
-.fortune-stage.shake{
-  animation: screenShake .45s ease-in-out;
-}
-
-@keyframes screenShake{
-  0%{ transform: translate(0,0); }
-  20%{ transform: translate(6px,-3px); }
-  40%{ transform: translate(-5px,3px); }
-  60%{ transform: translate(4px,2px); }
-  80%{ transform: translate(-3px,-2px); }
-  100%{ transform: translate(0,0); }
+  overflow-x: hidden;
 }
 
 /* =========================
-   HEADER / HUD
-========================= */
-.fortune-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 14px;
-  margin: 10px auto 14px;
-  max-width: 980px;
+   SHARED COMPONENTS
+   ========================= */
+
+/* HEADER */
+.fortune-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
-}
-
-.fortune-brand{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  min-width: 260px;
-}
-
-.vault-orb{
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #fff6cc, #ffcc4a 35%, #8a5a00 75%);
-  box-shadow: 0 0 0 1px rgba(255,214,128,.18),
-              0 10px 30px rgba(255,200,60,.12);
-  position: relative;
-  overflow:hidden;
-}
-
-.vault-orb::after{
-  content:"";
-  position:absolute;
-  inset:-40%;
-  background: conic-gradient(from 0deg, rgba(255,255,255,.0), rgba(255,255,255,.35), rgba(255,255,255,.0));
-  animation: orbSpin 4.2s linear infinite;
-}
-@keyframes orbSpin{ to{ transform: rotate(360deg);} }
-
-.vault-orb.pulse{
-  box-shadow: 0 0 0 1px rgba(255,214,128,.22),
-              0 14px 42px rgba(255,200,60,.18);
-}
-
-.fortune-brand-text .fortune-name{
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: .4px;
-  text-transform: uppercase;
-}
-.fortune-brand-text .fortune-sub{
-  font-size: 12px;
-  opacity: .82;
-  letter-spacing: .2px;
-}
-
-/* Sound Controls */
-.sound-controls {
-  position: absolute;
-  top: 0;
-  right: 0;
   z-index: 100;
 }
 
-.sound-toggle {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.fortune-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vault-orb {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: white;
-}
-
-.sound-toggle:hover {
-  background: rgba(0, 0, 0, 0.5);
-  border-color: #f1c40f;
-  transform: scale(1.1);
-}
-
-.fortune-hud{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.hud-card{
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px;
-  padding: 10px 12px;
-  min-width: 86px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.28);
-}
-.hud-label{
-  font-size: 10px;
-  opacity: .75;
-  letter-spacing: .18em;
-}
-.hud-value{
-  font-size: 16px;
-  font-weight: 800;
-  margin-top: 2px;
-}
-
-.hud-value.highlight {
-  color: #f1c40f;
-  text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+  font-size: 1.8rem;
   animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.8; }
-  100% { opacity: 1; }
+.vault-orb.rabbit {
+  background: linear-gradient(135deg, #10b981, #059669);
 }
 
-.hud-cashout{
-  border: 0;
-  border-radius: 14px;
-  padding: 12px 14px;
-  font-weight: 900;
-  letter-spacing: .12em;
-  background: linear-gradient(180deg, #ffd86a, #ffb300);
-  color: #1b1202;
+.vault-orb.tiger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.fortune-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.fortune-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.fortune-name.rabbit {
+  background: linear-gradient(135deg, #10b981, #059669);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.fortune-name.tiger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.fortune-sub {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.2rem;
+}
+
+/* HUD */
+.fortune-hud {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.hud-card {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 100px;
+  text-align: center;
+}
+
+.hud-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.3rem;
+}
+
+.hud-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.hud-value.highlight {
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.hud-value.rabbit-highlight {
+  color: #10b981;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.hud-value.tiger-highlight {
+  color: #ef4444;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.carrot-count {
+  color: #10b981;
+}
+
+/* BUTTONS */
+.hud-cashout,
+.hud-exit,
+.stake-btn,
+.quick-amount,
+.provably-fair-btn {
+  padding: 0.8rem 1.8rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
   cursor: pointer;
-  box-shadow: 0 10px 26px rgba(255,190,60,.22);
-  transition: transform .15s ease, filter .15s ease, opacity .15s ease;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
-.hud-cashout:hover{ transform: translateY(-1px); filter: brightness(1.05); }
-.hud-cashout:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
 
-.hud-exit{
-  border-radius: 14px;
-  padding: 12px 14px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.10);
-  color: rgba(255,255,255,.9);
-  cursor:pointer;
-  transition: transform .15s ease, filter .15s ease;
+.hud-cashout {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #000;
+  min-width: 140px;
 }
-.hud-exit:hover{ transform: translateY(-1px); filter: brightness(1.1); }
+
+.hud-cashout:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.4);
+}
+
+.hud-cashout.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hud-cashout.rabbit-cashout {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.hud-cashout.tiger-cashout {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.hud-exit {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hud-exit:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
 
 /* =========================
-   SCENE
-========================= */
-.fortune-scene{
-  max-width: 980px;
-  margin: 0 auto 14px;
-  border-radius: 18px;
+   SCENE AREA
+   ========================= */
+.fortune-scene {
+  height: 200px;
   position: relative;
-  overflow:hidden;
-  height: 120px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  overflow: hidden;
+  background: linear-gradient(to bottom, #0a0a0f 0%, #151522 100%);
 }
 
-.vault-bg{
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(400px 200px at 20% 60%, rgba(255,210,90,.16), transparent 60%),
-    radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
-  opacity: .95;
+.vault-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a0a0f"/><path d="M20,20 L80,20 L80,80 L20,80 Z" fill="none" stroke="%23fbbf24" stroke-width="0.5" stroke-dasharray="2,2"/></svg>');
+  opacity: 0.3;
 }
 
-.vault-shimmer{
-  position:absolute;
-  inset:-30%;
-  background: conic-gradient(from 180deg, rgba(255,255,255,0), rgba(255,255,255,.14), rgba(255,255,255,0));
-  transform: rotate(0deg);
-  opacity: 0;
-  pointer-events:none;
-}
-.vault-shimmer.on{
-  opacity: .8;
-  animation: shimmerSpin 1.2s ease-in-out;
-}
-@keyframes shimmerSpin{
-  from{ transform: rotate(0deg); }
-  to{ transform: rotate(180deg); }
+.rabbit-scene .garden-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, #1a472a 0%, #0f2d1a 100%);
+  opacity: 0.3;
 }
 
-.mouse-runner{
-  position:absolute;
-  bottom: 18px;
-  left: 10px;
-  width: 54px;
-  height: 54px;
-  border-radius: 14px;
-  background:
-    radial-gradient(circle at 35% 35%, rgba(255,255,255,.35), transparent 45%),
-    radial-gradient(circle at 65% 70%, rgba(255,214,128,.22), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 16px 40px rgba(0,0,0,.35);
-  backdrop-filter: blur(10px);
-  animation: mouseRun 1.1s ease-in-out infinite;
-}
-.mouse-runner::after{
-  content:"🐭";
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size: 28px;
-  filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
+.tiger-scene .jungle-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, #450a0a 0%, #1f2937 100%);
+  opacity: 0.3;
 }
 
-.mouse-runner.idle{
-  animation: mouseIdle 1.8s ease-in-out infinite;
-}
-@keyframes mouseRun{
-  0%{ transform: translateX(0) rotate(-1deg); }
-  50%{ transform: translateX(22px) rotate(1deg); }
-  100%{ transform: translateX(0) rotate(-1deg); }
-}
-@keyframes mouseIdle{
-  0%{ transform: translateY(0); }
-  50%{ transform: translateY(-6px); }
-  100%{ transform: translateY(0); }
-}
-
-/* Coin rain when safe / cashout */
-.coin-rain{
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  opacity:0;
-}
-.coin-rain.on{
-  opacity:1;
-}
-.coin{
-  position:absolute;
-  top:-20px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #fff7ce, #ffd25b 40%, #b56a00 80%);
-  box-shadow: 0 10px 18px rgba(255,200,60,.22);
-  animation: coinFall .9s ease-in-out forwards;
-  opacity:.9;
-}
-.coin.c1{ left: 20%; animation-delay: 0ms; }
-.coin.c2{ left: 35%; animation-delay: 70ms; }
-.coin.c3{ left: 50%; animation-delay: 120ms; }
-.coin.c4{ left: 65%; animation-delay: 40ms; }
-.coin.c5{ left: 80%; animation-delay: 90ms; }
-.coin.c6{ left: 90%; animation-delay: 140ms; }
-@keyframes coinFall{
-  to{ transform: translateY(150px); opacity: 0; }
+.session-status {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(16, 185, 129, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* Special Effects */
-.special-effect {
+.connected-icon {
+  font-size: 1rem;
+}
+
+.rabbit-status {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.tiger-status {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.risk-indicator {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  background: rgba(239, 68, 68, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.carrot-bonus-indicator {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 48px;
-  font-weight: bold;
-  z-index: 1000;
-  animation: effectPop 1s ease-out forwards;
-  text-shadow: 0 0 20px currentColor;
-  pointer-events: none;
-}
-
-.special-effect.boost {
-  color: #9b59b6;
-}
-
-.special-effect.steal {
-  color: #e74c3c;
-}
-
-.special-effect.reduce {
-  color: #e67e22;
-}
-
-.special-effect.bomb {
-  color: #2c3e50;
-}
-
-.special-effect.cashout {
-  color: #f1c40f;
-}
-
-.special-effect.game_over {
-  color: #c0392b;
-}
-
-@keyframes effectPop {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.5);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Game State Effects */
-.fortune-stage.effect-boost .vault-bg {
-  background: radial-gradient(400px 200px at 20% 60%, rgba(155, 89, 182, 0.3), transparent 60%),
-              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
-              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
-}
-
-.fortune-stage.effect-steal .vault-bg {
-  background: radial-gradient(400px 200px at 20% 60%, rgba(231, 76, 60, 0.3), transparent 60%),
-              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
-              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
-}
-
-.fortune-stage.effect-bomb .vault-bg {
-  background: radial-gradient(400px 200px at 20% 60%, rgba(44, 62, 80, 0.3), transparent 60%),
-              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
-              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
-}
-
-.fortune-stage.effect-game_over .vault-bg {
-  background: radial-gradient(400px 200px at 20% 60%, rgba(192, 57, 43, 0.3), transparent 60%),
-              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
-              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
+  background: linear-gradient(135deg, #10b981, #059669);
+  padding: 1rem 2rem;
+  border-radius: 15px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  animation: pulse 1s infinite;
+  z-index: 10;
 }
 
 /* =========================
-   BOARD
-========================= */
-.fortune-board{
-  max-width: 980px;
-  margin: 0 auto;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-  box-shadow: 0 22px 60px rgba(0,0,0,.40);
-  overflow:hidden;
-}
-
-.fortune-board-top{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-}
-
-.pill-wrap{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-}
-
-.pill{
-  padding: 8px 10px;
-  border-radius: 999px;
-  font-weight: 800;
-  letter-spacing: .12em;
-  font-size: 11px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.05);
-}
-.pill.ok{
-  background: rgba(30,255,160,.10);
-  border-color: rgba(30,255,160,.25);
-}
-.pill.warn{
-  background: rgba(255,200,60,.10);
-  border-color: rgba(255,200,60,.25);
-}
-.pill.bad{
-  background: rgba(255,70,90,.10);
-  border-color: rgba(255,70,90,.28);
-}
-
-/* Multiplier History */
-.multiplier-history {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-
-.history-label {
-  font-size: 11px;
-  color: #f1c40f;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.history-items {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 0;
-}
-
-.history-item {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: bold;
-  white-space: nowrap;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.history-item.boost {
-  background: rgba(155, 89, 182, 0.2);
-  border-color: #9b59b6;
-}
-
-.history-item.steal {
-  background: rgba(231, 76, 60, 0.2);
-  border-color: #e74c3c;
-}
-
-.history-item.reduce {
-  background: rgba(230, 126, 34, 0.2);
-  border-color: #e67e22;
-}
-
-.history-item.bomb {
-  background: rgba(44, 62, 80, 0.2);
-  border-color: #2c3e50;
-}
-
-.history-item.trap {
-  background: rgba(192, 57, 43, 0.2);
-  border-color: #c0392b;
-}
-
-.provably{
-  text-align:right;
-  max-width: 55%;
-}
-.prov-label{
-  display:block;
-  font-size: 10px;
-  opacity: .7;
-  letter-spacing: .12em;
-  margin-bottom: 4px;
-}
-.prov-mono{
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
-  opacity: .85;
-  word-break: break-all;
-}
-
-/* Enhanced Grid */
-.fortune-grid.enhanced{
-  display:grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  margin: 10px auto;
-  padding: 14px;
-}
-
-.fortune-tile{
+   GAME BOARD & GRID
+   ========================= */
+.fortune-board {
+  padding: 2rem;
   position: relative;
-  height: 64px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-  cursor:pointer;
-  transition: transform .12s ease, filter .12s ease;
-  overflow:hidden;
-  box-shadow: 0 12px 24px rgba(0,0,0,.28);
-}
-.fortune-tile:hover{
-  transform: translateY(-2px);
-  filter: brightness(1.06);
-}
-.fortune-tile:disabled{
-  opacity:.55;
-  cursor:not-allowed;
-  transform:none;
-  filter:none;
 }
 
-/* Tile Variations */
-.fortune-tile.safe {
-  background: linear-gradient(135deg, #27ae60, #2ecc71);
-  border-color: #27ae60;
+.fortune-grid {
+  display: grid;
+  gap: 10px;
+  justify-content: center;
+  margin: 0 auto;
+  max-width: 1200px;
 }
 
-.fortune-tile.super_safe {
-  background: linear-gradient(135deg, #2980b9, #3498db);
-  border-color: #2980b9;
+/* DESKTOP GRID LAYOUTS */
+.fortune-grid.enhanced {
+  grid-template-columns: repeat(5, 1fr);
+  max-width: 800px;
 }
 
-.fortune-tile.multiplier_boost {
-  background: linear-gradient(135deg, #8e44ad, #9b59b6);
-  border-color: #8e44ad;
+.rabbit-grid {
+  grid-template-columns: repeat(5, 1fr);
+  max-width: 900px;
 }
 
-.fortune-tile.multiplier_steal {
-  background: linear-gradient(135deg, #c0392b, #e74c3c);
-  border-color: #c0392b;
+.tiger-grid {
+  grid-template-columns: repeat(4, 1fr);
+  max-width: 700px;
 }
 
-.fortune-tile.multiplier_reduce {
-  background: linear-gradient(135deg, #d35400, #e67e22);
-  border-color: #d35400;
+.fortune-tile {
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.fortune-tile.bomb {
-  background: linear-gradient(135deg, #2c3e50, #34495e);
-  border-color: #2c3e50;
+.fortune-tile:hover:not(.disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.3);
+  border-color: rgba(251, 191, 36, 0.6);
 }
 
-.fortune-tile.trap {
-  background: linear-gradient(135deg, #c0392b, #e74c3c);
-  border-color: #c0392b;
+.rabbit-tile {
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
-.fortune-tile.mystery {
-  background: linear-gradient(135deg, #f39c12, #f1c40f);
-  border-color: #f39c12;
+.rabbit-tile:hover:not(.disabled) {
+  box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.6);
 }
 
-.tile-face{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  transform-style: preserve-3d;
+.tiger-tile {
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
-.tile-glyph{
-  font-size: 20px;
-  filter: drop-shadow(0 12px 18px rgba(0,0,0,.35));
-  animation: glyphFloat 1.5s ease-in-out infinite;
-}
-@keyframes glyphFloat{
-  0%{ transform: translateY(0); }
-  50%{ transform: translateY(-4px); }
-  100%{ transform: translateY(0); }
+.tiger-tile:hover:not(.disabled) {
+  box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
 }
 
-/* Tile Revealed Content */
-.tile-revealed {
+.fortune-tile.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tile-face {
+  width: 100%;
+  height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  font-size: 2rem;
+}
+
+.tile-glyph {
+  opacity: 0.8;
+}
+
+.tile-revealed {
+  animation: reveal 0.5s ease;
 }
 
 .tile-icon {
-  font-size: 24px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  font-size: 2.5rem;
+  display: block;
 }
 
-.tile-multiplier {
-  font-size: 10px;
-  color: white;
-  background: rgba(0,0,0,0.5);
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-weight: bold;
+/* Tile States */
+.fortune-tile.safe {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.1));
+  border-color: rgba(251, 191, 36, 0.6);
 }
 
-/* Tile Preview */
-.tile-preview {
+.fortune-tile.trap,
+.fortune-tile.major_penalty {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.fortune-tile.penalty,
+.fortune-tile.reset {
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.2), rgba(156, 163, 175, 0.1));
+  border-color: rgba(156, 163, 175, 0.6);
+}
+
+.fortune-tile.carrot_bonus {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.2));
+  border-color: rgba(16, 185, 129, 0.8);
+  animation: glow 2s infinite;
+}
+
+.has-carrot .tile-glyph {
+  animation: float 3s infinite ease-in-out;
+}
+
+.carrot-glow {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 12px;
-  opacity: 0.6;
-  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
-}
-
-.fortune-tile.glow{
-  animation: tileGlow .42s ease-in-out;
-}
-@keyframes tileGlow{
-  0%{ box-shadow: 0 12px 24px rgba(0,0,0,.28); }
-  50%{ box-shadow: 0 12px 28px rgba(255,200,60,.25); }
-  100%{ box-shadow: 0 12px 24px rgba(0,0,0,.28); }
-}
-
-.tile-glowline{
-  position:absolute;
-  inset:-40%;
-  background: conic-gradient(from 90deg, rgba(255,255,255,0), rgba(255,255,255,.20), rgba(255,255,255,0));
-  opacity:.0;
-  pointer-events:none;
-}
-.fortune-tile:hover .tile-glowline{
-  opacity:.55;
-  animation: glowSpin 1.6s linear infinite;
-}
-@keyframes glowSpin{ to{ transform: rotate(360deg);} }
-
-/* Tile Legend */
-.tile-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  margin: 15px 0;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.legend-title {
-  width: 100%;
-  text-align: center;
-  color: #f1c40f;
-  font-size: 12px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-  border: 1px solid var(--legend-color);
-  cursor: help;
-  transition: transform 0.2s;
-}
-
-.legend-item:hover {
-  transform: translateY(-2px);
-}
-
-.legend-icon {
-  font-size: 14px;
-}
-
-.legend-name {
-  font-size: 10px;
-  color: #ecf0f1;
-  white-space: nowrap;
-}
-
-.fortune-audit{
-  padding: 10px 14px 14px;
-  border-top: 1px solid rgba(255,255,255,.08);
-}
-.audit-row{
-  margin-top: 8px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, transparent 70%);
+  animation: pulse 2s infinite;
+  border-radius: 50%;
 }
 
 /* =========================
    STAKE MODAL
-========================= */
-.fortune-stake-backdrop{
+   ========================= */
+.fortune-stake-backdrop {
   position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.72);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index: 9999;
-  padding: 18px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
 
-.fortune-stake-modal{
-  width: min(520px, 100%);
+.fortune-stake-modal {
+  background: linear-gradient(135deg, #1e1e2e, #2d2d44);
   border-radius: 20px;
-  border: 1px solid rgba(255,255,255,.10);
-  background:
-    radial-gradient(500px 250px at 20% 10%, rgba(255,210,90,.18), transparent 60%),
-    radial-gradient(420px 240px at 90% 30%, rgba(120,220,255,.14), transparent 65%),
-    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-  box-shadow: 0 30px 90px rgba(0,0,0,.55);
-  padding: 16px;
-  position: relative;
-  overflow:hidden;
+  padding: 2.5rem;
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  animation: modalAppear 0.3s ease;
 }
 
-.fortune-stake-modal::after{
-  content:"";
-  position:absolute;
-  inset:-40%;
-  background: conic-gradient(from 180deg, rgba(255,255,255,0), rgba(255,255,255,.12), rgba(255,255,255,0));
-  animation: shimmerSpin 4.8s linear infinite;
-  opacity: .9;
-  pointer-events:none;
+.rabbit-modal {
+  background: linear-gradient(135deg, #1e2e2a, #2d443f);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.stake-top{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  position: relative;
-  z-index: 2;
-}
-.stake-badge{
-  width: 46px;
-  height: 46px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius: 14px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  font-size: 24px;
-}
-.stake-title .t1{
-  font-weight: 900;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-.stake-title .t2{
-  font-size: 12px;
-  opacity: .82;
-  margin-top: 2px;
+.tiger-modal {
+  background: linear-gradient(135deg, #2e1e1e, #442d2d);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-/* Stake Info Box */
-.stake-info {
-  margin: 12px 0;
-  padding: 12px;
-  background: rgba(0,0,0,0.2);
+.stake-top {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stake-badge {
+  font-size: 3rem;
+  width: 80px;
+  height: 80px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(251, 191, 36, 0.3);
+}
+
+.rabbit-modal .stake-badge {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.tiger-modal .stake-badge {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.stake-title .t1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rabbit-modal .t1 {
+  background: linear-gradient(135deg, #10b981, #059669);
+  -webkit-background-clip: text;
+}
+
+.tiger-modal .t1 {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  -webkit-background-clip: text;
+}
+
+.stake-title .t2 {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stake-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.1);
-  position: relative;
-  z-index: 2;
+  margin-bottom: 1.5rem;
 }
 
-.info-box h4 {
-  color: #f1c40f;
-  margin: 0 0 8px 0;
-  font-size: 14px;
+.stake-balance .label {
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.info-box ul {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.8);
+.stake-balance .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fbbf24;
 }
 
-.info-box li {
-  margin-bottom: 4px;
+.stake-input-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.stake-balance{
-  display:flex;
-  justify-content:space-between;
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.18);
-  position: relative;
-  z-index: 2;
+.stake-currency {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fbbf24;
+  min-width: 40px;
 }
-.stake-balance .label{ opacity:.75; font-size: 12px; }
-.stake-balance .value{ font-weight: 900; letter-spacing:.04em; }
 
-.stake-input-row{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-top: 12px;
-  position: relative;
-  z-index: 2;
+.stake-input {
+  flex: 1;
+  padding: 1rem;
+  font-size: 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: white;
+  text-align: center;
 }
-.stake-currency{
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  font-weight: 900;
+
+.stake-input:focus {
+  outline: none;
+  border-color: #fbbf24;
 }
-.stake-input{
-  flex:1;
-  height: 44px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.22);
-  color: #fff;
-  padding: 0 12px;
-  font-size: 16px;
-  outline:none;
+
+.stake-input.error {
+  border-color: #ef4444;
 }
-.stake-input:focus{
-  border-color: rgba(255,200,60,.35);
-  box-shadow: 0 0 0 3px rgba(255,200,60,.10);
+
+.stake-quick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.quick-amount {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.quick-amount:hover:not(.disabled) {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: #fbbf24;
+}
+
+.quick-amount.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .stake-validation-error {
-  margin-top: 8px;
-  padding: 8px 12px;
-  background: rgba(255, 59, 48, 0.1);
-  border: 1px solid rgba(255, 59, 48, 0.3);
-  border-radius: 8px;
-  color: #ff3b30;
-  font-size: 12px;
-  font-weight: 500;
+  color: #ef4444;
+  font-size: 0.9rem;
   text-align: center;
-  animation: fadeIn 0.2s ease;
-  position: relative;
-  z-index: 2;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.stake-quick{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-top: 12px;
-  position: relative;
-  z-index: 2;
-}
-.stake-chip{
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.92);
-  border-radius: 999px;
-  padding: 8px 10px;
-  font-weight: 800;
-  cursor:pointer;
-  transition: transform .12s ease, filter .12s ease;
-}
-.stake-chip:hover{ transform: translateY(-1px); filter: brightness(1.06); }
-.stake-chip:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
-
-.stake-actions{
-  display:flex;
-  gap:10px;
-  margin-top: 14px;
-  position: relative;
-  z-index: 2;
-}
-.stake-btn{
-  flex:1;
-  height: 46px;
-  border-radius: 14px;
-  font-weight: 900;
-  letter-spacing: .12em;
-  cursor:pointer;
-  border: 1px solid rgba(255,255,255,.12);
-}
-.stake-btn.ghost{
-  background: rgba(255,255,255,.05);
-  color: rgba(255,255,255,.92);
-}
-.stake-btn.gold{
-  background: linear-gradient(180deg, #ffd86a, #ffb300);
-  color: #1b1202;
-  border: 0;
-  box-shadow: 0 12px 30px rgba(255,190,60,.25);
-}
-.stake-btn:disabled{ opacity:.55; cursor:not-allowed; }
-
-/* Update stake input placeholder */
-.stake-input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-/* Disabled state for invalid stake */
-.stake-btn.gold:disabled:not(.loading) {
-  background: linear-gradient(135deg, #444 0%, #333 100%);
-  color: rgba(255, 255, 255, 0.5);
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.stake-footnote{
-  margin-top: 12px;
-  font-size: 11px;
-  opacity:.75;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  position: relative;
-  z-index: 2;
-}
-.stake-footnote .spark{
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #fff7ce, #ffd25b 40%, #b56a00 80%);
-  box-shadow: 0 8px 16px rgba(255,200,60,.25);
-  animation: sparkPulse 1.2s ease-in-out infinite;
-}
-@keyframes sparkPulse{
-  0%{ transform: scale(1); opacity:.7; }
-  50%{ transform: scale(1.35); opacity:1; }
-  100%{ transform: scale(1); opacity:.7; }
-}
-
-/* =========================
-   TILE INFO MODAL
-========================= */
-.tile-info-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 20px;
-}
-
-.tile-info-modal {
-  width: min(400px, 100%);
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.1);
-  padding: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-}
-
-.tile-info-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 15px;
-}
-
-.tile-info-icon {
-  font-size: 32px;
-}
-
-.tile-info-header h3 {
-  margin: 0;
-  color: white;
-  font-size: 18px;
-}
-
-.tile-info-body {
-  color: rgba(255,255,255,0.8);
-  line-height: 1.5;
-  margin-bottom: 20px;
-}
-
-.tile-info-stats {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-}
-
-.stat-label {
-  color: #f1c40f;
-  font-size: 12px;
-}
-
-.stat-value {
-  color: white;
-  font-size: 12px;
-  font-family: monospace;
-}
-
-.tile-info-close {
-  width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #ffd86a, #ffb300);
-  color: #1b1202;
-  border: none;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: rgba(239, 68, 68, 0.1);
   border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: transform 0.2s;
 }
 
-.tile-info-close:hover {
+.stake-bonus-info,
+.stake-risk-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  color: #10b981;
+}
+
+.stake-risk-warning {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.bonus-icon,
+.warning-icon {
+  font-size: 1.2rem;
+}
+
+.stake-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stake-btn {
+  flex: 1;
+  padding: 1rem;
+}
+
+.stake-btn.gold {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #000;
+}
+
+.stake-btn.gold:hover:not(:disabled) {
   transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.4);
 }
 
-/* =========================
-   RESPONSIVE
-========================= */
-@media (max-width: 560px){
-  .fortune-header{
-    flex-direction: column;
-    align-items:flex-start;
-  }
-  .fortune-hud{
-    width: 100%;
-    justify-content:flex-start;
-  }
-  .fortune-grid.enhanced{
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .fortune-tile{
-    height: 60px;
-  }
-  .sound-controls {
-    position: relative;
-    top: auto;
-    right: auto;
-    margin-top: 10px;
-    align-self: flex-start;
-  }
-  .tile-legend {
-    gap: 6px;
-  }
-  .legend-item {
-    padding: 3px 6px;
-  }
-  .legend-name {
-    font-size: 9px;
-  }
-  .multiplier-history {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-  .history-items {
-    width: 100%;
-  }
+.stake-btn.rabbit-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
 }
 
-@media (max-width: 400px){
-  .fortune-grid.enhanced {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.stake-btn.tiger-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
-/* =========================================================
-   CONNECTION / STATUS FEEDBACK
-========================================================= */
-.ws-error,
-.pill.error {
-  background: rgba(255, 80, 80, 0.14);
-  border: 1px solid rgba(255, 80, 80, 0.35);
-  color: #ffb3b3;
-  font-weight: 800;
+.stake-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* =========================================================
-   GAME STATE OVERLAYS
-========================================================= */
-.fortune-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(5, 6, 10, 0.88);
-  backdrop-filter: blur(6px);
+.stake-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.stake-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.stake-footnote {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
+  gap: 0.5rem;
 }
 
-.fortune-overlay-card {
-  padding: 22px 26px;
-  border-radius: 18px;
-  background:
-    radial-gradient(400px 200px at 20% 10%, rgba(255,210,90,.22), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-  border: 1px solid rgba(255,255,255,.12);
-  box-shadow: 0 30px 80px rgba(0,0,0,.6);
-  text-align: center;
-  max-width: 320px;
-}
-
-.fortune-overlay-title {
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: .12em;
-  margin-bottom: 8px;
-}
-
-.fortune-overlay-sub {
-  font-size: 13px;
-  opacity: .8;
-}
-
-/* =========================================================
-   TILE DISABLED STATE (IMPORTANT)
-========================================================= */
-.fortune-tile:disabled .tile-glyph {
-  animation: none;
-  opacity: .6;
-}
-
-/* =========================================================
-   WIN / LOSS VISUAL EMPHASIS
-========================================================= */
-.fortune-stage.win {
-  animation: winGlow 0.8s ease-in-out;
-}
-@keyframes winGlow {
-  0% { box-shadow: inset 0 0 0 rgba(255,215,120,0); }
-  50% { box-shadow: inset 0 0 80px rgba(255,215,120,.12); }
-  100% { box-shadow: inset 0 0 0 rgba(255,215,120,0); }
-}
-
-.fortune-stage.lost {
-  animation: lossPulse .6s ease-in-out;
-}
-@keyframes lossPulse {
-  0% { filter: brightness(1); }
-  50% { filter: brightness(.85); }
-  100% { filter: brightness(1); }
-}
-
-/* =========================================================
-   BET INPUT ERROR STATE
-========================================================= */
-.stake-input.error {
-  border-color: rgba(255,70,90,.45);
-  box-shadow: 0 0 0 3px rgba(255,70,90,.15);
-}
-
-/* =========================================================
-   BET BUTTON LOADING STATE
-========================================================= */
-.stake-btn.gold.loading {
-  pointer-events: none;
-  opacity: .7;
-  position: relative;
-}
-
-.stake-btn.gold.loading::after {
-  content: "";
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
+.spark {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #fbbf24;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: sparkle 2s infinite;
 }
 
-/* Loading spinner for balance */
-.balance-loading {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #aaa;
-    font-size: 0.9rem;
-}
-
-.loading-spinner-small {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Update stake balance display */
-.stake-balance .value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #2ecc71;
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-}
-
-/* Disable button when balance is loading */
-.stake-btn.gold:disabled:not(.loading) {
-    background-color: #666;
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-/* Loading state for start button */
-.stake-btn.gold.loading {
-    position: relative;
-    color: transparent;
-}
-
-/* =========================================================
-   ACCESSIBILITY / POLISH
-========================================================= */
-.fortune-tile:focus-visible {
-  outline: 2px solid rgba(255,210,90,.6);
-  outline-offset: 2px;
-}
-
-/* =========================================================
-   EXTRA THEMES: DRAGON / TOTEMS / LADDER
-========================================================= */
-
-.fortune-setup-grid{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-  position: relative;
-  z-index: 2;
-}
-.fortune-setup-card{
-  text-align: left;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.18);
-  padding: 10px 10px 12px;
-  cursor: pointer;
-  transition: transform .12s ease, filter .12s ease, border-color .12s ease;
-}
-.fortune-setup-card:hover{
-  transform: translateY(-1px);
-  filter: brightness(1.05);
-}
-.fortune-setup-card.active{
-  border-color: rgba(255,200,60,.35);
-  box-shadow: 0 0 0 3px rgba(255,200,60,.08);
-}
-.fortune-setup-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-.fortune-setup-name{
-  font-weight: 900;
-  letter-spacing: .02em;
-}
-.fortune-setup-tag{
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .14em;
-  padding: 6px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-}
-.fortune-setup-tag.low{ background: rgba(30,255,160,.10); border-color: rgba(30,255,160,.22); }
-.fortune-setup-tag.mid{ background: rgba(255,200,60,.10); border-color: rgba(255,200,60,.22); }
-.fortune-setup-tag.high{ background: rgba(255,70,90,.10); border-color: rgba(255,70,90,.24); }
-.fortune-setup-desc{
-  opacity: .82;
-  font-size: 12px;
-  margin-top: 8px;
-  line-height: 1.25rem;
-}
-
-@media (max-width: 560px){
-  .fortune-setup-grid{ grid-template-columns: 1fr; }
-}
-
-/* ----- DRAGON SCENE ----- */
-.fortune-scene--dragon{ height: 140px; }
-.dragon-sky{
-  position:absolute; inset:0;
-  background:
-    radial-gradient(400px 200px at 25% 25%, rgba(160,220,255,.14), transparent 60%),
-    radial-gradient(500px 260px at 80% 30%, rgba(255,120,80,.12), transparent 60%);
-  opacity: .9;
-}
-.dragon-temple{
-  position:absolute; left:0; right:0; bottom:0; height: 56%;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.35)),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.06) 2px, transparent 2px, transparent 14px);
-  opacity:.8;
-}
-.dragon{
-  position:absolute;
-  right: 16px;
-  bottom: 18px;
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.10);
-  background:
-    radial-gradient(circle at 35% 35%, rgba(255,255,255,.22), transparent 55%),
-    radial-gradient(circle at 75% 65%, rgba(255,120,80,.18), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
-  box-shadow: 0 18px 44px rgba(0,0,0,.35);
-  backdrop-filter: blur(10px);
-  animation: dragonFloat 1.6s ease-in-out infinite;
-}
-.dragon::after{
-  content:"🐉";
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  font-size: 34px;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-}
-.dragon.idle{ animation: dragonIdle 2.2s ease-in-out infinite; }
-@keyframes dragonFloat{
-  0%{ transform: translateY(0); }
-  50%{ transform: translateY(-7px); }
-  100%{ transform: translateY(0); }
-}
-@keyframes dragonIdle{
-  0%{ transform: translateY(0) scale(1); }
-  50%{ transform: translateY(-4px) scale(1.02); }
-  100%{ transform: translateY(0) scale(1); }
-}
-.dragon-eye{
-  position:absolute;
-  top: 10px;
-  left: 12px;
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #fff, #ffcf6a 30%, #b10000 90%);
-  box-shadow: 0 0 22px rgba(255,120,80,.20);
-  opacity: calc(.25 + (var(--heat, 0) / 100) * .75);
-}
-.dragon-breath{
-  position:absolute;
-  left: -18px;
-  bottom: 18px;
-  width: 22px; height: 12px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, rgba(255,200,60,.65), rgba(255,120,80,.0));
-  filter: blur(1px);
-  opacity: calc((var(--heat, 0) / 100) * .9);
-  animation: breath 1.1s ease-in-out infinite;
-}
-@keyframes breath{
-  0%{ transform: translateX(0) scaleX(1); }
-  50%{ transform: translateX(-6px) scaleX(1.25); }
-  100%{ transform: translateX(0) scaleX(1); }
-}
-.fortune-dragon-controls{
-  padding: 16px;
-  display:flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.fortune-dragon-orbBtn{
-  position: relative;
-  height: 64px;
-  border-radius: 18px;
-  border: 1px solid rgba(255,200,60,.25);
-  background:
-    radial-gradient(420px 160px at 20% 20%, rgba(255,210,90,.22), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-  color: rgba(255,255,255,.95);
-  cursor: pointer;
-  font-weight: 900;
-  letter-spacing: .14em;
-  overflow:hidden;
-  box-shadow: 0 18px 40px rgba(0,0,0,.35);
-}
-.fortune-dragon-orbBtn:disabled{ opacity:.55; cursor:not-allowed; }
-.fortune-dragon-orbBtn .orbGlow{
-  position:absolute; inset:-40%;
-  background: conic-gradient(from 180deg, rgba(255,255,255,0), rgba(255,255,255,.20), rgba(255,255,255,0));
-  opacity:.65;
-  animation: glowSpin 1.8s linear infinite;
-}
-.fortune-dragon-orbBtn .orbIcon{
-  position: relative;
-  display:inline-flex;
-  margin-right: 10px;
-  font-size: 22px;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-}
-.fortune-dragon-orbBtn .orbText{ position: relative; }
-.fortune-dragon-tip{
-  opacity: .82;
-  font-size: 12px;
-  line-height: 1.2rem;
-}
-
-/* ----- TOTEMS SCENE ----- */
-.fortune-scene--totems{ height: 130px; }
-.totems-fog{
-  position:absolute; inset:0;
-  background:
-    radial-gradient(420px 220px at 30% 60%, rgba(140,255,200,.10), transparent 60%),
-    radial-gradient(520px 240px at 80% 40%, rgba(180,120,255,.10), transparent 65%);
-  opacity: .95;
-}
-.totems-vines{
-  position:absolute; inset:0;
-  background: repeating-linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.04) 2px, transparent 2px, transparent 18px);
-  opacity: .55;
-}
-.totems-eye{
-  position:absolute;
-  right: 14px;
-  top: 16px;
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fff, rgba(180,120,255,.85) 35%, rgba(0,0,0,.0) 70%);
-  filter: blur(.2px);
-  opacity: .25;
-}
-.totems-eye.watch{
-  opacity: .8;
-  animation: eyePulse 1.4s ease-in-out infinite;
-}
-@keyframes eyePulse{
-  0%{ transform: scale(1); }
-  50%{ transform: scale(1.25); }
-  100%{ transform: scale(1); }
-}
-.fortune-grid--totems{
-  grid-template-columns: repeat(4, 1fr);
-}
-.fortune-tile--totem.blessed{
-  background: radial-gradient(circle at 30% 30%, rgba(140,255,200,.16), transparent 55%),
-              linear-gradient(180deg, rgba(140,255,200,.12), rgba(255,255,255,.03));
-  border-color: rgba(140,255,200,.22);
-}
-.fortune-tile--totem.cursed{
-  background: radial-gradient(circle at 30% 30%, rgba(180,120,255,.16), transparent 55%),
-              linear-gradient(180deg, rgba(180,120,255,.12), rgba(255,255,255,.03));
-  border-color: rgba(180,120,255,.22);
-}
-
-/* ----- LADDER SCENE ----- */
-.fortune-scene--ladder{ height: 140px; }
-.ladder-nebula{
-  position:absolute; inset:0;
-  background:
-    radial-gradient(420px 220px at 20% 35%, rgba(120,220,255,.14), transparent 65%),
-    radial-gradient(520px 240px at 80% 30%, rgba(255,210,90,.10), transparent 70%);
-  opacity: .95;
-}
-.ladder-shards{
-  position:absolute; inset:0;
-  background: repeating-linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 14px);
-  opacity: .55;
-}
-.ladder-avatar{
-  position:absolute;
-  left: 14px;
-  bottom: 18px;
-  width: 56px; height: 56px;
-  border-radius: 16px;
-  display:flex; align-items:center; justify-content:center;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.06);
-  box-shadow: 0 18px 44px rgba(0,0,0,.35);
-  backdrop-filter: blur(10px);
-  animation: avatarFloat 1.6s ease-in-out infinite;
-  font-size: 26px;
-}
-.ladder-avatar.idle{ animation: avatarIdle 2.2s ease-in-out infinite; }
-@keyframes avatarFloat{
-  0%{ transform: translateY(0); }
-  50%{ transform: translateY(-7px); }
-  100%{ transform: translateY(0); }
-}
-@keyframes avatarIdle{
-  0%{ transform: translateY(0) scale(1); }
-  50%{ transform: translateY(-4px) scale(1.02); }
-  100%{ transform: translateY(0) scale(1); }
-}
-.fortune-ladder-controls{
-  padding: 16px;
-  display:grid;
-  grid-template-columns: 1fr 220px;
-  gap: 12px;
-  align-items:center;
-}
-@media (max-width: 560px){
-  .fortune-ladder-controls{ grid-template-columns: 1fr; }
-}
-.fortune-ladder-climbBtn{
-  position: relative;
-  height: 64px;
-  border-radius: 18px;
-  border: 1px solid rgba(120,220,255,.22);
-  background:
-    radial-gradient(420px 160px at 20% 20%, rgba(120,220,255,.18), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-  color: rgba(255,255,255,.95);
-  cursor: pointer;
-  font-weight: 900;
-  letter-spacing: .14em;
-  overflow:hidden;
-  box-shadow: 0 18px 40px rgba(0,0,0,.35);
-}
-.fortune-ladder-climbBtn:disabled{ opacity:.55; cursor:not-allowed; }
-.fortune-ladder-climbBtn .ladderGlow{
-  position:absolute; inset:-40%;
-  background: conic-gradient(from 90deg, rgba(255,255,255,0), rgba(255,255,255,.18), rgba(255,255,255,0));
-  opacity:.65;
-  animation: glowSpin 2.0s linear infinite;
-}
-.fortune-ladder-climbBtn .ladderIcon{
-  position: relative;
-  display:inline-flex;
-  margin-right: 10px;
-  font-size: 22px;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-}
-.fortune-ladder-climbBtn .ladderText{ position: relative; }
-
-.fortune-ladder-mini{
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.18);
-  padding: 12px;
-}
-.fortune-ladder-bar{
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  overflow:hidden;
-}
-.fortune-ladder-fill{
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(120,220,255,.9), rgba(255,210,90,.75));
-  box-shadow: 0 10px 20px rgba(120,220,255,.12);
-  transition: width .22s ease;
-}
-.fortune-ladder-label{
-  margin-top: 8px;
-  font-size: 11px;
-  opacity: .78;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .balance-loading {
-        font-size: 0.8rem;
-    }
-    
-    .loading-spinner-small {
-        width: 14px;
-        height: 14px;
-    }
-    
-    .stake-balance .value {
-        font-size: 1.2rem;
-    }
-}
-
-/* Connection status */
-.connection-status {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #fff;
-  z-index: 10;
-}
-
-.status-idle {
-  color: #999;
-}
-
-.status-connecting {
-  color: #ffa500;
-  animation: pulse 1.5s infinite;
-}
-
-.status-authenticating {
-  color: #ffa500;
-}
-
-.status-connected {
-  color: #4caf50;
-}
-
-/* Game overlays */
+/* =========================
+   GAME OVERLAYS
+   ========================= */
 .game-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
-  animation: fadeIn 0.3s ease;
+  z-index: 50;
 }
 
 .overlay-content {
   text-align: center;
-  padding: 40px;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border-radius: 20px;
-  border: 2px solid #ffd700;
-  max-width: 400px;
-  width: 90%;
+  animation: overlayAppear 0.5s ease;
 }
 
 .overlay-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-  animation: bounce 1s ease infinite;
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  animation: bounce 1s infinite;
 }
 
 .overlay-title {
-  font-size: 32px;
+  font-size: 2.5rem;
   font-weight: 700;
-  color: #fff;
-  margin-bottom: 10px;
-}
-
-.overlay-subtitle {
-  font-size: 18px;
-  color: #aaa;
-}
-
-.game-overlay.lost .overlay-content {
-  border-color: #ff4444;
+  margin-bottom: 0.5rem;
 }
 
 .game-overlay.lost .overlay-title {
-  color: #ff4444;
-}
-
-.game-overlay.cashed .overlay-content {
-  border-color: #4caf50;
+  color: #ef4444;
 }
 
 .game-overlay.cashed .overlay-title {
-  color: #4caf50;
+  color: #fbbf24;
 }
 
-/* Connection error */
-.connection-error {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #ff4444;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 10px;
+.rabbit-lost .overlay-title {
+  color: #ef4444;
+}
+
+.rabbit-cashed .overlay-title {
+  color: #10b981;
+}
+
+.tiger-lost .overlay-title {
+  color: #ef4444;
+}
+
+.tiger-cashed .overlay-title {
+  color: #fbbf24;
+}
+
+.overlay-subtitle {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1rem;
+}
+
+.overlay-multiplier {
+  font-size: 1.5rem;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.overlay-carrots {
+  font-size: 1.2rem;
+  color: #10b981;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+/* =========================
+   INSTRUCTIONS & MISC
+   ========================= */
+.game-instructions {
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  margin: 2rem auto;
+  max-width: 900px;
+}
+
+.instruction-text {
+  text-align: center;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.instruction-tile-types {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 100;
-  animation: slideUp 0.3s ease;
-  max-width: 400px;
-  width: 90%;
-}
-
-.error-icon {
-  font-size: 20px;
-}
-
-.error-text {
-  flex: 1;
-  font-size: 14px;
-}
-
-.error-retry {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  margin-left: 10px;
-  transition: background 0.2s;
-}
-
-.error-retry:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Debug info (development only) */
-.debug-info {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  background: rgba(0, 0, 0, 0.8);
-  color: #0f0;
-  padding: 10px;
-  border-radius: 5px;
-  font-family: monospace;
-  font-size: 12px;
-  z-index: 1000;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 5px;
-}
-
-/* Animations */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-  to { transform: translateX(-50%) translateY(0); opacity: 1; }
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* Tile updates */
-.fortune-tile.disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.fortune-tile:not(.disabled):hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-}
-
-/* Quick amount buttons */
-.stake-quick-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
   flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
 }
 
-.quick-amount {
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  color: #ffd700;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-amount:hover:not(:disabled) {
-  background: rgba(255, 215, 0, 0.2);
-  border-color: #ffd700;
-}
-
-.quick-amount:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-/* Connection status */
-.connection-status {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.7);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  color: white;
+.tile-type {
   display: flex;
   align-items: center;
-  gap: 8px;
-  z-index: 10;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 0.5rem;
+  padding: 0.8rem 1.2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  min-width: 180px;
 }
 
-.status-idle {
-  color: #aaa;
+.tile-icon {
+  font-size: 1.5rem;
 }
 
-.status-connecting,
-.status-authenticating {
-  color: #ffd166;
+.tile-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.status-connected {
-  color: #06d6a0;
+.provably-fair-section {
+  text-align: center;
+  padding: 2rem;
 }
 
-.status-error {
-  color: #ef476f;
+.provably-fair-btn {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
-.error-icon,
-.connected-icon {
-  font-size: 14px;
+.provably-fair-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
 }
 
+/* =========================
+   SPINNERS
+   ========================= */
 .spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 3px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  display: inline-block;
 }
 
 .spinner.small {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
 }
 
 .spinner.large {
-  width: 40px;
-  height: 40px;
-  border-width: 3px;
-  margin-bottom: 16px;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 1rem;
+}
+
+/* =========================
+   ANIMATIONS
+   ========================= */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes spin {
@@ -1890,142 +868,430 @@
   }
 }
 
-/* Connection error display */
-.connection-error {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(239, 71, 111, 0.9);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 100;
-  max-width: 400px;
-  width: 90%;
-  backdrop-filter: blur(10px);
+@keyframes reveal {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
-.error-text {
-  flex: 1;
-  font-size: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+@keyframes modalAppear {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.error-retry {
-  background: white;
-  color: #ef476f;
-  border: none;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  align-self: flex-start;
-  transition: all 0.2s;
+@keyframes overlayAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-.error-retry:hover {
-  background: #f8f9fa;
-  transform: translateY(-1px);
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
-/* Game overlay */
-.game-overlay.processing {
-  background: rgba(0, 0, 0, 0.85);
-  z-index: 20;
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
-.game-overlay .overlay-content {
-  text-align: center;
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
+  }
 }
 
-.overlay-multiplier {
-  margin-top: 8px;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
-/* Game instructions */
-.game-instructions {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.7);
-  padding: 16px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 5;
-  max-width: 500px;
-  width: 90%;
+/* Stage Effects */
+.fortune-stage.shake {
+  animation: shake 0.5s ease-in-out;
 }
 
-.instruction-text {
-  text-align: center;
-  color: white;
-  font-size: 14px;
-  margin-bottom: 12px;
-  font-weight: 500;
+.fortune-stage.effect-boost {
+  animation: boostEffect 0.5s ease;
 }
 
-.instruction-tile-types {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
+.fortune-stage.effect-cashout {
+  animation: cashoutEffect 0.5s ease;
 }
 
-.tile-type {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.9);
+.fortune-stage.effect-game_over {
+  animation: gameOverEffect 0.5s ease;
 }
 
-.tile-type .tile-icon {
-  font-size: 16px;
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
 }
 
-.tile-type .tile-label {
-  white-space: nowrap;
+@keyframes boostEffect {
+  0% { background: linear-gradient(135deg, #0a0a0f, #151522); }
+  50% { background: linear-gradient(135deg, #1a0f0a, #221515); }
+  100% { background: linear-gradient(135deg, #0a0a0f, #151522); }
 }
 
-/* Loading states */
-.stake-btn.loading {
-  opacity: 0.8;
-  cursor: not-allowed;
+@keyframes cashoutEffect {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.5); }
+  100% { filter: brightness(1); }
 }
 
-.stake-btn.loading .spinner {
-  display: inline-block;
+@keyframes gameOverEffect {
+  0% { filter: hue-rotate(0); }
+  50% { filter: hue-rotate(90deg) brightness(0.8); }
+  100% { filter: hue-rotate(0); }
 }
 
-/* Tile disabled state */
-.fortune-tile.disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-  transform: none !important;
+/* Game-specific effect classes */
+.carrot-bonus-active .fortune-tile:not(.revealed) {
+  animation: carrotGlow 2s infinite;
 }
 
-.fortune-tile.disabled:hover {
-  transform: none !important;
+@keyframes carrotGlow {
+  0%, 100% {
+    box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.6);
+  }
 }
 
-/* Quick amount disabled */
-.quick-amount.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.tiger-roar .tiger-scene {
+  animation: tigerRoarEffect 1s ease;
 }
 
-.quick-amount.disabled:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: none;
+@keyframes tigerRoarEffect {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.02);
+    filter: brightness(1.3) hue-rotate(-10deg);
+  }
+}
+
+/* =========================
+   RESPONSIVE DESIGN
+   ========================= */
+
+/* TABLET BREAKPOINT (1024px and below) */
+@media (max-width: 1024px) {
+  .fortune-grid.enhanced,
+  .rabbit-grid {
+    grid-template-columns: repeat(4, 1fr) !important; /* Force 4 columns on tablet */
+    max-width: 600px;
+  }
+  
+  .tiger-grid {
+    grid-template-columns: repeat(4, 1fr) !important; /* Force 4 columns on tablet */
+    max-width: 500px;
+  }
+  
+  .instruction-tile-types {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .tile-type {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+/* MOBILE BREAKPOINT (768px and below) */
+@media (max-width: 768px) {
+  /* Force 4 columns per row on mobile for all games */
+  .fortune-grid.enhanced,
+  .rabbit-grid,
+  .tiger-grid {
+    grid-template-columns: repeat(4, 1fr) !important; /* Always 4 columns on mobile */
+    gap: 8px;
+  }
+  
+  /* Adjust tile sizes for mobile */
+  .tile-face {
+    font-size: 1.5rem;
+  }
+  
+  .tile-icon {
+    font-size: 2rem;
+  }
+  
+  /* Adjust layout for mobile */
+  .fortune-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .fortune-hud {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .hud-card {
+    min-width: 70px;
+    padding: 0.5rem 0.8rem;
+  }
+  
+  .hud-label {
+    font-size: 0.7rem;
+  }
+  
+  .hud-value {
+    font-size: 1.1rem;
+  }
+  
+  .hud-cashout,
+  .hud-exit {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+  }
+  
+  .fortune-board {
+    padding: 1rem;
+  }
+  
+  .fortune-stake-modal {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+  
+  .stake-top {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .stake-input-row {
+    flex-direction: column;
+  }
+  
+  .stake-quick-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .stake-actions {
+    flex-direction: column;
+  }
+  
+  .overlay-title {
+    font-size: 1.8rem;
+  }
+  
+  .overlay-icon {
+    font-size: 3rem;
+  }
+  
+  .overlay-subtitle {
+    font-size: 1rem;
+  }
+  
+  .overlay-multiplier {
+    font-size: 1.2rem;
+  }
+  
+  .instruction-text {
+    font-size: 1rem;
+  }
+  
+  .tile-type {
+    min-width: auto;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* SMALL MOBILE BREAKPOINT (480px and below) */
+@media (max-width: 480px) {
+  /* Still maintain 4 columns but adjust spacing */
+  .fortune-grid.enhanced,
+  .rabbit-grid,
+  .tiger-grid {
+    grid-template-columns: repeat(4, 1fr) !important; /* Always 4 columns */
+    gap: 6px;
+  }
+  
+  /* Further reduce tile sizes */
+  .tile-face {
+    font-size: 1.2rem;
+  }
+  
+  .tile-icon {
+    font-size: 1.8rem;
+  }
+  
+  /* Adjust header for very small screens */
+  .fortune-brand {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .vault-orb {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+  
+  .fortune-name {
+    font-size: 1.5rem;
+  }
+  
+  .fortune-sub {
+    font-size: 0.8rem;
+  }
+  
+  /* Stack HUD cards vertically on very small screens */
+  .fortune-hud {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .hud-card {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Adjust stake modal */
+  .stake-badge {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+  }
+  
+  .stake-title .t1 {
+    font-size: 1.5rem;
+  }
+  
+  .stake-title .t2 {
+    font-size: 0.9rem;
+  }
+  
+  .stake-input {
+    font-size: 1.2rem;
+    padding: 0.8rem;
+  }
+  
+  .stake-currency {
+    font-size: 1.2rem;
+  }
+  
+  /* Adjust game instructions */
+  .game-instructions {
+    padding: 1rem;
+    margin: 1rem;
+  }
+  
+  .instruction-tile-types {
+    gap: 0.5rem;
+  }
+  
+  .tile-type {
+    padding: 0.5rem 0.8rem;
+  }
+  
+  .tile-icon {
+    font-size: 1.2rem;
+  }
+  
+  .tile-label {
+    font-size: 0.8rem;
+  }
+}
+
+/* EXTRA SMALL SCREENS (360px and below) */
+@media (max-width: 360px) {
+  /* Maintain 4 columns but reduce gap further */
+  .fortune-grid.enhanced,
+  .rabbit-grid,
+  .tiger-grid {
+    grid-template-columns: repeat(4, 1fr) !important; /* Still 4 columns */
+    gap: 4px;
+  }
+  
+  .tile-face {
+    font-size: 1rem;
+  }
+  
+  .tile-icon {
+    font-size: 1.5rem;
+  }
+  
+  .fortune-board {
+    padding: 0.5rem;
+  }
+}
+
+/* =========================
+   ACCESSIBILITY
+   ========================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .fortune-stage {
+    background: #000;
+  }
+  
+  .fortune-tile {
+    border-width: 3px;
+  }
+  
+  .stake-btn,
+  .hud-cashout,
+  .hud-exit {
+    border: 2px solid currentColor;
+  }
 }

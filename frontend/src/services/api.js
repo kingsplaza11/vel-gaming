@@ -58,7 +58,6 @@ export const referralService = {
     }),
 };
 
-
 /* ======================================================
    RESPONSE INTERCEPTOR (AUTH SAFE)
 ====================================================== */
@@ -167,22 +166,6 @@ export const supportService = {
 };
 
 /* ======================================================
-   FORTUNE
-====================================================== */
-export const fortuneService = {
-  startSession: (data) =>
-    api.post("/fortune/start/", data),
-
-  getSession: (id) =>
-    api.get(`/fortune/session/${id}/`, {
-      skipAuthRedirect: true,
-    }),
-
-  cashOut: (id) =>
-    api.post(`/fortune/session/${id}/cashout/`),
-};
-
-/* ======================================================
    SLOTS
 ====================================================== */
 export const slotsService = {
@@ -210,7 +193,69 @@ export const crashService = {
 };
 
 /* ======================================================
-   GENERIC GAME SERVICES
+   FORTUNE GAMES (MOUSE, TIGER, RABBIT)
+====================================================== */
+export const fortuneService = {
+  // Get game configuration
+  getGameConfig: (gameType) => 
+    api.get(`/fortune/config/${gameType}/`),
+
+  // Start a new game session
+  startSession: (data) => 
+    api.post("/fortune/start/", data),
+
+  // Get active sessions
+  getActiveSessions: () =>
+    api.get("/fortune/sessions/active/"),
+
+  // Get session state
+  getSessionState: (sessionId) =>
+    api.get(`/fortune/session/${sessionId}/`),
+
+  // Take a step (reveal a tile)
+  takeStep: (sessionId, data) =>
+    api.post(`/fortune/session/${sessionId}/step/`, data),
+
+  // Cash out
+  cashout: (sessionId) =>
+    api.post(`/fortune/session/${sessionId}/cashout/`),
+
+  // Abandon session (forfeit)
+  abandonSession: (sessionId) =>
+    api.post(`/fortune/session/${sessionId}/abandon/`),
+
+  // Reveal server seed for provable fairness
+  revealSeed: (sessionId) =>
+    api.post(`/fortune/session/${sessionId}/reveal-seed/`),
+
+  // Helper method for starting specific games
+  startMouseGame: (betAmount, clientSeed = null) => {
+    return fortuneService.startSession({
+      game: "fortune_mouse",
+      bet_amount: betAmount,
+      client_seed: clientSeed || `mouse_${Date.now()}_${Math.random()}`,
+    });
+  },
+
+  startTigerGame: (betAmount, clientSeed = null) => {
+    return fortuneService.startSession({
+      game: "fortune_tiger",
+      bet_amount: betAmount,
+      client_seed: clientSeed || `tiger_${Date.now()}_${Math.random()}`,
+    });
+  },
+
+  startRabbitGame: (betAmount, clientSeed = null) => {
+    return fortuneService.startSession({
+      game: "fortune_rabbit",
+      bet_amount: betAmount,
+      client_seed: clientSeed || `rabbit_${Date.now()}_${Math.random()}`,
+    });
+  },
+};
+
+/* ======================================================
+   OTHER GAME SERVICES
 ====================================================== */
 export const fishingService = {
   castLine: (data) => api.post("/fishing/cast-line/", data),
@@ -236,12 +281,11 @@ export const heistService = {
   startHeist: (data) => api.post("/heist/start-heist/", data),
 };
 
-// Example API service structure - make sure it looks like this
 export const minesweeperService = {
   start: async (data) => {
     console.log("API Request to /minesweeper/start/:", data);
     try {
-      const response = await api.post('/minesweeper/start/', data);
+      const response = await api.post("/minesweeper/start/", data);
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -249,32 +293,31 @@ export const minesweeperService = {
       throw error;
     }
   },
+  
   reveal: async (data) => {
     console.log("API Request to /minesweeper/reveal/:", data);
-    return api.post('/minesweeper/reveal/', data);
+    return api.post("/minesweeper/reveal/", data);
   },
+  
   cashout: async (data) => {
     console.log("API Request to /minesweeper/cashout/:", data);
-    return api.post('/minesweeper/cashout/', data);
-  }
+    return api.post("/minesweeper/cashout/", data);
+  },
 };
 
-// Tower Builder Service - FIXED NAMES
 export const towerService = {
-  startTower: (data) => api.post('/tower/start/', data),
-  buildLevel: (data) => api.post('/tower/build/', data),
-  cashOut: (data) => api.post('/tower/cashout/', data),
-  // Add these for stats if needed
-  getStats: () => api.get('/tower/stats/'),
-  getHistory: () => api.get('/tower/history/'),
+  startTower: (data) => api.post("/tower/start/", data),
+  buildLevel: (data) => api.post("/tower/build/", data),
+  cashOut: (data) => api.post("/tower/cashout/", data),
+  getStats: () => api.get("/tower/stats/"),
+  getHistory: () => api.get("/tower/history/"),
 };
 
 export const cardService = {
-  // Start a new card game
   startGame: async (data) => {
     console.log("API Request to /cards/start-game/:", data);
     try {
-      const response = await api.post('/cards/start-game/', data);
+      const response = await api.post("/cards/start-game/", data);
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -283,11 +326,10 @@ export const cardService = {
     }
   },
 
-  // Reveal a card - Make sure this matches what you're calling
-  revealCard: async (data) => {  // This is the function name you're calling
+  revealCard: async (data) => {
     console.log("API Request to /cards/reveal-card/:", data);
     try {
-      const response = await api.post('/cards/reveal-card/', data);
+      const response = await api.post("/cards/reveal-card/", data);
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -296,11 +338,10 @@ export const cardService = {
     }
   },
 
-  // Cash out early - Make sure this matches what you're calling
-  cashOut: async (data) => {  // This is the function name you're calling
+  cashOut: async (data) => {
     console.log("API Request to /cards/cash-out/:", data);
     try {
-      const response = await api.post('/cards/cash-out/', data);
+      const response = await api.post("/cards/cash-out/", data);
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -309,11 +350,10 @@ export const cardService = {
     }
   },
 
-  // Get stats
   getStats: async () => {
     console.log("API Request to /cards/stats/");
     try {
-      const response = await api.get('/cards/stats/');
+      const response = await api.get("/cards/stats/");
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -322,11 +362,10 @@ export const cardService = {
     }
   },
 
-  // Get game history
   getHistory: async () => {
     console.log("API Request to /cards/history/");
     try {
-      const response = await api.get('/cards/history/');
+      const response = await api.get("/cards/history/");
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -336,7 +375,6 @@ export const cardService = {
   },
 };
 
-// services/api.js
 export const guessingService = {
   startGame: (data) => api.post("/guessing/start/", data),
   makeGuess: (data) => api.post("/guessing/guess/", data),
@@ -349,7 +387,7 @@ export const colorSwitchService = {
   startGame: async (data) => {
     console.log("API Request to /colorswitch/start/:", data);
     try {
-      const response = await api.post('/colorswitch/start/', data);
+      const response = await api.post("/colorswitch/start/", data);
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -357,11 +395,11 @@ export const colorSwitchService = {
       throw error;
     }
   },
-  
+
   submitSequence: async (data) => {
     console.log("API Request to /colorswitch/submit/:", data);
     try {
-      const response = await api.post('/colorswitch/submit/', data);
+      const response = await api.post("/colorswitch/submit/", data);
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -369,11 +407,11 @@ export const colorSwitchService = {
       throw error;
     }
   },
-  
+
   cashOut: async (data) => {
     console.log("API Request to /colorswitch/cashout/:", data);
     try {
-      const response = await api.post('/colorswitch/cashout/', data);
+      const response = await api.post("/colorswitch/cashout/", data);
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -381,11 +419,11 @@ export const colorSwitchService = {
       throw error;
     }
   },
-  
+
   getStats: async () => {
     console.log("API Request to /colorswitch/stats/");
     try {
-      const response = await api.get('/colorswitch/stats/');
+      const response = await api.get("/colorswitch/stats/");
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
@@ -393,18 +431,21 @@ export const colorSwitchService = {
       throw error;
     }
   },
-  
+
   getHistory: async () => {
     console.log("API Request to /colorswitch/history/");
     try {
-      const response = await api.get('/colorswitch/history/');
+      const response = await api.get("/colorswitch/history/");
       console.log("API Response:", response.data);
       return response;
     } catch (error) {
       console.error("API Error:", error);
       throw error;
     }
-  }
+  },
 };
 
+/* ======================================================
+   EXPORT DEFAULT
+====================================================== */
 export default api;
