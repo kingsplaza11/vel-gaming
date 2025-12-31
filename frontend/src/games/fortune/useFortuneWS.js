@@ -18,14 +18,14 @@ function deriveWsBase() {
   }
   
   // 2️⃣ Derive from API URL or default
-  const api = process.env.REACT_APP_API_URL || "http://localhost:8001/api/";
+  const api = process.env.REACT_APP_API_URL || "https://veltoragames.com/api/";
   try {
     const url = new URL(api);
     const protocol = url.protocol === "https:" ? "wss:" : "ws:";
     return `${protocol}//${url.host}`;
   } catch {
     // Default to localhost with ws protocol
-    return "ws://localhost:8001";
+    return "ws://veltoragames.com";
   }
 }
 
