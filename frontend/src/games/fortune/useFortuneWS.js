@@ -37,6 +37,8 @@ export function useFortuneWS({ wsToken, onEvent }) {
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const aliveRef = useRef(true);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 5;
 
   const [connected, setConnected] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
@@ -47,7 +49,9 @@ export function useFortuneWS({ wsToken, onEvent }) {
 
   /* ------------------ CONNECTION MANAGEMENT ------------------ */
 
-  const closeSocket = useCallback(() => {
+  const closeSocket = useCallback((code = 1000, reason = "Normal closure") => {
+    console.log(`[FortuneWS] Closing socket: code=${code}, reason=${reason}`);
+    
     if (wsRef.current) {
       wsRef.current.onopen = null;
       wsRef.current.onmessage = null;
@@ -55,10 +59,11 @@ export function useFortuneWS({ wsToken, onEvent }) {
       wsRef.current.onclose = null;
       
       if (wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.close(1000, "Normal closure");
+        wsRef.current.close(code, reason);
       }
       wsRef.current = null;
     }
+    
     setConnected(false);
     setAuthenticated(false);
   }, []);
@@ -77,7 +82,9 @@ export function useFortuneWS({ wsToken, onEvent }) {
     }
     
     try {
-      ws.send(JSON.stringify(payload));
+      const messageStr = JSON.stringify(payload);
+      console.log("[FortuneWS] Sending message:", payload.type, payload);
+      ws.send(messageStr);
       return true;
     } catch (err) {
       console.error("[FortuneWS] Send error:", err);
@@ -104,6 +111,7 @@ export function useFortuneWS({ wsToken, onEvent }) {
         console.log("[FortuneWS] Connected successfully");
         setConnected(true);
         setLastError(null);
+        reconnectAttemptsRef.current = 0;
         
         // Send join message immediately after connection
         if (wsToken) {
@@ -136,7 +144,8 @@ export function useFortuneWS({ wsToken, onEvent }) {
             
             // If auth error, don't try to reconnect
             if (message.code === "auth_failed" || message.code === "session_not_found") {
-              closeSocket();
+              console.log("[FortuneWS] Auth error, closing connection");
+              closeSocket(4001, "Authentication failed");
             }
           }
           
@@ -159,13 +168,36 @@ export function useFortuneWS({ wsToken, onEvent }) {
         setConnected(false);
         setAuthenticated(false);
         
+        // Clear reconnect timer if exists
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
+        
         // Reconnect logic (only for unexpected closures)
-        if (aliveRef.current && wsToken && event.code !== 1000 && event.code !== 4001 && event.code !== 4002) {
-          const delay = 2000; // 2 seconds
+        if (
+          aliveRef.current && 
+          wsToken && 
+          event.code !== 1000 &&   // Normal closure
+          event.code !== 4001 &&   // Auth failed
+          event.code !== 4002 &&   // Session not found
+          event.code !== 1011 &&   // Internal error
+          reconnectAttemptsRef.current < maxReconnectAttempts
+        ) {
+          reconnectAttemptsRef.current += 1;
+          const delay = Math.min(2000 * reconnectAttemptsRef.current, 10000); // Exponential backoff
+          
+          console.log(`[FortuneWS] Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
+          
           reconnectTimerRef.current = setTimeout(() => {
             console.log("[FortuneWS] Attempting to reconnect...");
             connect();
           }, delay);
+        } else if (event.code === 1011) {
+          // Server internal error
+          setLastError("Server error occurred. Please refresh the page.");
+        } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+          setLastError("Failed to reconnect after multiple attempts. Please refresh the page.");
         }
       };
     } catch (error) {
@@ -197,6 +229,8 @@ export function useFortuneWS({ wsToken, onEvent }) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
+      
+      reconnectAttemptsRef.current = 0;
     };
   }, [wsToken, connect, closeSocket]);
 
@@ -207,6 +241,7 @@ export function useFortuneWS({ wsToken, onEvent }) {
     
     const interval = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
+        console.log("[FortuneWS] Sending ping");
         wsRef.current.send(JSON.stringify({ type: "ping" }));
       }
     }, 30000); // Every 30 seconds
@@ -222,5 +257,6 @@ export function useFortuneWS({ wsToken, onEvent }) {
     lastError,
     send,
     wsUrl,
+    reconnectAttempts: reconnectAttemptsRef.current,
   };
 }
