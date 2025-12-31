@@ -95,7 +95,7 @@ class GameSession(models.Model):
 
     bet_amount = models.DecimalField(max_digits=14, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_ACTIVE, db_index=True)
-
+    version = models.PositiveIntegerField(default=0)
     # Server-committed ladder state
     step_index = models.PositiveIntegerField(default=0)  # 0 means not started, 1..N steps taken
     survival_prob = models.DecimalField(max_digits=18, decimal_places=12, default=Decimal("1.0"))
