@@ -216,48 +216,6 @@ const WithdrawalForm = () => {
         Back to Games
       </Button>
 
-      {/* Header Section */}
-      <Paper 
-        elevation={3} 
-        sx={{ 
-          p: 4, 
-          mb: 4, 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          borderRadius: 2
-        }}
-      >
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          💰 Withdraw Your Winnings
-        </Typography>
-        <Typography variant="h6" sx={{ mb: 2, opacity: 0.9 }}>
-          Your game earnings are ready to cash out! Follow these simple steps:
-        </Typography>
-        
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          {withdrawalSteps.map((step, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Box sx={{ 
-                  mr: 2, 
-                  background: 'rgba(255,255,255,0.2)',
-                  borderRadius: '50%',
-                  p: 1
-                }}>
-                  {step.icon}
-                </Box>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  {step.title}
-                </Typography>
-              </Box>
-              <Typography variant="body2" sx={{ opacity: 0.9, pl: 6 }}>
-                {step.description}
-              </Typography>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
-
       {/* Balance Summary */}
       {wallet && (
         <Card sx={{ mb: 4 }}>
@@ -280,26 +238,7 @@ const WithdrawalForm = () => {
                     ₦{wallet.spot_balance?.toLocaleString() || '0'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Available to use in games
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ 
-                  p: 2, 
-                  background: '#e8f5e9', 
-                  borderRadius: 1,
-                  textAlign: 'center',
-                  border: '2px solid #4caf50'
-                }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Main Balance (Withdrawable)
-                  </Typography>
-                  <Typography variant="h4" color="primary" fontWeight="bold">
-                    ₦{wallet.balance?.toLocaleString() || '0'}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Ready to withdraw
+                    Available to use in withdraw
                   </Typography>
                 </Box>
               </Grid>
@@ -307,59 +246,13 @@ const WithdrawalForm = () => {
             
             {wallet.spot_balance > 0 && (
               <Alert severity="info" sx={{ mt: 2 }}>
-                💡 You have ₦{wallet.spot_balance?.toLocaleString()} in your spot balance. 
-                Play more games to convert these winnings to your main balance for withdrawal!
+                💡 You have ₦{wallet.balance?.toLocaleString()} in your deposit balance. 
+                Play more games to convert these winnings to your main spot balance for withdrawal!
               </Alert>
             )}
           </CardContent>
         </Card>
       )}
-
-      {/* Quick Info Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <CheckCircle color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Instant Verification</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                We automatically verify your account name when you enter bank details. 
-                No manual verification needed!
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Security color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">100% Secure</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Your banking information is encrypted and secure. 
-                We use bank-level security for all transactions.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AccessTime color="warning" sx={{ mr: 1 }} />
-                <Typography variant="h6">Fast Processing</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Most withdrawals are processed within a few hours during business days. 
-                Weekends may take up to 24 hours.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
 
       {/* Withdrawal Form */}
       <Card sx={{ maxWidth: 600, mx: "auto", mt: 4 }}>
