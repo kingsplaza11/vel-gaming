@@ -270,7 +270,7 @@ const ColorSwitchGame = ({ user }) => {
         <div className="modal-overlay stake-modal-overlay">
           <div className="stake-modal animated-slideUp">
             <div className="modal-header">
-              <h3>🎨 Color Switch Challenge</h3>
+              <h3>🎨 Color Switch</h3>
             </div>
 
             <div className="balance-summary">
@@ -291,7 +291,7 @@ const ColorSwitchGame = ({ user }) => {
               <div className="setting-group">
                 <label>Sequence Length</label>
                 <div className="option-buttons">
-                  {[3, 4, 5, 6, 7].map(length => (
+                  {[5, 6, 7].map(length => (
                     <button
                       key={length}
                       className={sequenceLength === length ? "active" : ""}
@@ -302,9 +302,6 @@ const ColorSwitchGame = ({ user }) => {
                     </button>
                   ))}
                 </div>
-                <small className="risk-indicator">
-                  Difficulty: {sequenceLength >= 6 ? "High" : sequenceLength >= 5 ? "Medium" : "Low"}
-                </small>
               </div>
             </div>
 
@@ -318,19 +315,6 @@ const ColorSwitchGame = ({ user }) => {
                 onChange={(e) => setStake(Number(e.target.value))}
                 disabled={walletLoading}
               />
-            </div>
-
-            <div className="quick-stakes">
-              {[100, 500, 1000, 2500, 5000].map((v) => (
-                <button 
-                  key={v} 
-                  className={stake === v ? "active" : ""}
-                  onClick={() => !walletLoading && setStake(v)}
-                  disabled={walletLoading}
-                >
-                  ₦{v.toLocaleString()}
-                </button>
-              ))}
             </div>
 
             {error && <div className="error-banner">{error}</div>}

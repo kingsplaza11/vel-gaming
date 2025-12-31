@@ -123,6 +123,7 @@ class GameSession(models.Model):
         return f"{self.game} {self.id} ({self.status})"
 
 
+# fortune/models.py - Update GameRound model
 class GameRound(models.Model):
     RESULT_SAFE = "safe"
     RESULT_TRAP = "trap"
@@ -130,14 +131,14 @@ class GameRound(models.Model):
     id = models.BigAutoField(primary_key=True)
     session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="rounds")
     step = models.PositiveIntegerField()
-    client_action = models.CharField(max_length=32)  # "tile_pick", "strike", "hop"
-    client_choice = models.CharField(max_length=64, default="")  # tile index / button / etc.
-    safe_prob = models.DecimalField(max_digits=6, decimal_places=4)
-    result = models.CharField(max_length=8, choices=[(RESULT_SAFE, "Safe"), (RESULT_TRAP, "Trap")])
+    client_action = models.CharField(max_length=32, default="")  # Add default
+    client_choice = models.CharField(max_length=64, default="")
+    safe_prob = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0.55"))  # Add default
+    result = models.CharField(max_length=8, choices=[(RESULT_SAFE, "Safe"), (RESULT_TRAP, "Trap")], default=RESULT_SAFE)  # Add default
 
-    rng_u = models.DecimalField(max_digits=18, decimal_places=12)  # random in [0,1)
-    multiplier_after = models.DecimalField(max_digits=18, decimal_places=8)
-    survival_prob_after = models.DecimalField(max_digits=18, decimal_places=12)
+    rng_u = models.DecimalField(max_digits=18, decimal_places=12, default=Decimal("0.0"))  # Add default
+    multiplier_after = models.DecimalField(max_digits=18, decimal_places=8, default=Decimal("1.0"))  # Add default
+    survival_prob_after = models.DecimalField(max_digits=18, decimal_places=12, default=Decimal("1.0"))  # Add default
 
     created_at = models.DateTimeField(auto_now_add=True)
 

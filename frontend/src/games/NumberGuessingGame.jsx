@@ -46,8 +46,6 @@ const NumberGuessingGame = ({ user }) => {
   const [gameHistory, setGameHistory] = useState([]);
 
   const difficulties = [
-    { label: "Easy", maxNumber: 50, maxAttempts: 10, description: "1-50, 10 attempts" },
-    { label: "Medium", maxNumber: 100, maxAttempts: 10, description: "1-100, 10 attempts" },
     { label: "Hard", maxNumber: 200, maxAttempts: 8, description: "1-200, 8 attempts" },
     { label: "Expert", maxNumber: 500, maxAttempts: 6, description: "1-500, 6 attempts" },
     { label: "Master", maxNumber: 1000, maxAttempts: 5, description: "1-1000, 5 attempts" },
@@ -344,19 +342,6 @@ const NumberGuessingGame = ({ user }) => {
                 onChange={(e) => setStake(e.target.value)}
                 disabled={walletLoading || refreshing}
               />
-            </div>
-
-            <div className="quick-stakes">
-              {[100, 500, 1000, 2500, 5000].map(v => (
-                <button 
-                  key={v} 
-                  className={numericStake === v ? "active" : ""}
-                  onClick={() => !walletLoading && !refreshing && setStake(v)}
-                  disabled={walletLoading || refreshing}
-                >
-                  ₦{v.toLocaleString()}
-                </button>
-              ))}
             </div>
 
             <button

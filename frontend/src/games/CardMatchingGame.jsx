@@ -351,7 +351,6 @@ const CardMatchingGame = ({ user }) => {
 
             <div className="game-description">
               <p>Match all card pairs before running out of attempts!</p>
-              <p className="description-tip">Higher difficulty = Better rewards!</p>
             </div>
 
             <div className="game-settings">
@@ -386,19 +385,6 @@ const CardMatchingGame = ({ user }) => {
                 min={MIN_BET}
                 step={100}
               />
-            </div>
-
-            <div className="quick-stakes">
-              {[100, 500, 1000, 2500, 5000].map((amount) => (
-                <button
-                  key={amount}
-                  className={`quick-bet-btn ${numericBet === amount ? 'active' : ''}`}
-                  onClick={() => setBetAmount(amount.toString())}
-                  disabled={walletLoading || refreshing}
-                >
-                  ₦{amount.toLocaleString()}
-                </button>
-              ))}
             </div>
 
             {!isStakeValid() && betAmount.trim() !== '' && (
@@ -444,9 +430,6 @@ const CardMatchingGame = ({ user }) => {
             <div className="action-buttons">
               <button className="cashout-btn" onClick={cashOutEarly}>
                 💰 Cash Out Early
-                <span className="cashout-amount">
-                  Current: {formatNGN(numericBet * multiplier)}
-                </span>
               </button>
             </div>
           )}

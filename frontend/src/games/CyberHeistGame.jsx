@@ -329,21 +329,6 @@ const CyberHeistGame = ({ user }) => {
                 />
                 <div className="input-glow"></div>
               </div>
-              
-              {/* Quick bet options */}
-              <div className="cyber-quick-bet-row">
-                {[1000, 5000, 10000, 25000, 50000].map((amount) => (
-                  <button
-                    key={amount}
-                    className={`cyber-quick-bet-btn ${betAmount === amount ? 'active' : ''}`}
-                    onClick={() => !refreshing && setBetAmount(amount)}
-                    disabled={walletLoading || refreshing}
-                    type="button"
-                  >
-                    ₦{amount.toLocaleString()}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {error && <div className="cyber-error-banner animated-shake">{error}</div>}

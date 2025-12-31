@@ -1607,3 +1607,216 @@
         font-size: 1.2rem;
     }
 }
+
+/* Connection status */
+.connection-status {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  z-index: 10;
+}
+
+.status-idle {
+  color: #999;
+}
+
+.status-connecting {
+  color: #ffa500;
+  animation: pulse 1.5s infinite;
+}
+
+.status-authenticating {
+  color: #ffa500;
+}
+
+.status-connected {
+  color: #4caf50;
+}
+
+/* Game overlays */
+.game-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  animation: fadeIn 0.3s ease;
+}
+
+.overlay-content {
+  text-align: center;
+  padding: 40px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 20px;
+  border: 2px solid #ffd700;
+  max-width: 400px;
+  width: 90%;
+}
+
+.overlay-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: bounce 1s ease infinite;
+}
+
+.overlay-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.overlay-subtitle {
+  font-size: 18px;
+  color: #aaa;
+}
+
+.game-overlay.lost .overlay-content {
+  border-color: #ff4444;
+}
+
+.game-overlay.lost .overlay-title {
+  color: #ff4444;
+}
+
+.game-overlay.cashed .overlay-content {
+  border-color: #4caf50;
+}
+
+.game-overlay.cashed .overlay-title {
+  color: #4caf50;
+}
+
+/* Connection error */
+.connection-error {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff4444;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 100;
+  animation: slideUp 0.3s ease;
+  max-width: 400px;
+  width: 90%;
+}
+
+.error-icon {
+  font-size: 20px;
+}
+
+.error-text {
+  flex: 1;
+  font-size: 14px;
+}
+
+.error-retry {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: background 0.2s;
+}
+
+.error-retry:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Debug info (development only) */
+.debug-info {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #0f0;
+  padding: 10px;
+  border-radius: 5px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Tile updates */
+.fortune-tile.disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.fortune-tile:not(.disabled):hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* Quick amount buttons */
+.stake-quick-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.quick-amount {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  color: #ffd700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-amount:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+}
+
+.quick-amount:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+

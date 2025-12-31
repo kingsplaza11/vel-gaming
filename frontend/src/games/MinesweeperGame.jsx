@@ -297,20 +297,6 @@ const MinesweeperGame = ({ user }) => {
             <h3>💣 Minesweeper</h3>
             <p className="game-description">Avoid mines, reveal cells, cash out for winnings! First click can be a mine!</p>
 
-            <div className="balance-summary">
-              <span className="balance-label">Available Balance:</span>
-              <span className="balance-amount">
-                {walletLoading ? (
-                  <div className="balance-loading-inline">
-                    <span className="loading-spinner-small" />
-                    Loading...
-                  </div>
-                ) : (
-                  formatNGN(combinedBalance)
-                )}
-              </span>
-            </div>
-
             <div className="game-settings">
               <div className="setting-group">
                 <label>Grid Size</label>
@@ -359,20 +345,6 @@ const MinesweeperGame = ({ user }) => {
                 disabled={walletLoading || isProcessing}
               />
             </div>
-
-            <div className="quick-stakes">
-              {[100, 500, 1000, 2500, 5000].map((v) => (
-                <button 
-                  key={v} 
-                  className={betAmount === v ? "active" : ""}
-                  onClick={() => !walletLoading && !isProcessing && setBetAmount(v)}
-                  disabled={walletLoading || isProcessing}
-                >
-                  ₦{v.toLocaleString()}
-                </button>
-              ))}
-            </div>
-
             <button
               className="start-btn"
               disabled={betAmount > combinedBalance || walletLoading || isProcessing || minesCount >= gridSize * gridSize}

@@ -1,57 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-/*
-============================================================
- Fortune WebSocket Hook (FINAL, STABLE)
-------------------------------------------------------------
- ✔ Requires a valid wsToken
- ✔ Auto-reconnect with backoff
- ✔ Safe cleanup on unmount
- ✔ Works on localhost + production
- ✔ Explicit logging for debugging
-============================================================
-*/
-
 /* ------------------ URL HELPERS ------------------ */
-
-function normalizeWsBase(input) {
-  if (!input) return null;
-
-  let s = String(input).trim();
-
-  // If missing scheme (localhost:8001)
-  if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(s)) {
-    s = `ws://${s}`;
-  }
-
-  // Convert http → ws
-  if (s.startsWith("http://")) s = s.replace("http://", "ws://");
-  if (s.startsWith("https://")) s = s.replace("https://", "wss://");
-
-  // Remove trailing slash
-  s = s.replace(/\/+$/, "");
-
-  try {
-    const u = new URL(s);
-    if (u.protocol !== "ws:" && u.protocol !== "wss:") return null;
-    return `${u.protocol}//${u.host}`;
-  } catch {
-    return null;
-  }
-}
 
 function deriveWsBase() {
   // 1️⃣ Explicit WS URL
-  const explicit = normalizeWsBase(process.env.REACT_APP_WS_URL);
-  if (explicit) return explicit;
-
-  // 2️⃣ Derive from API URL
-  const api = process.env.REACT_APP_API_URL || "http://veltoragames.com/api/";
+  const explicit = process.env.REACT_APP_WS_URL;
+  if (explicit) {
+    // Ensure it has a protocol
+    let url = explicit.trim();
+    if (!url.startsWith('ws://') && !url.startsWith('wss://') && !url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `ws://${url}`;
+    }
+    // Convert http/https to ws/wss
+    url = url.replace(/^http/, 'ws');
+    // Remove trailing slash
+    return url.replace(/\/+$/, '');
+  }
+  
+  // 2️⃣ Derive from API URL or default
+  const api = process.env.REACT_APP_API_URL || "https://veltoragames.com/api/";
   try {
-    const u = new URL(api);
-    const proto = u.protocol === "https:" ? "wss:" : "ws:";
-    return `${proto}//${u.host}`;
+    const url = new URL(api);
+    const protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${url.host}`;
   } catch {
+    // Default to localhost with ws protocol
     return "ws://veltoragames.com";
   }
 }
@@ -64,169 +37,190 @@ export function useFortuneWS({ wsToken, onEvent }) {
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const aliveRef = useRef(true);
-  const joinSentRef = useRef(false);
-  const reconnectAttemptRef = useRef(0);
 
   const [connected, setConnected] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [lastError, setLastError] = useState(null);
 
   const wsBase = useMemo(() => deriveWsBase(), []);
   const wsUrl = useMemo(() => `${wsBase}/ws/fortune/`, [wsBase]);
 
-  /* ------------------ CLEANUP HELPERS ------------------ */
-
-  const clearTimers = useCallback(() => {
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
-  }, []);
+  /* ------------------ CONNECTION MANAGEMENT ------------------ */
 
   const closeSocket = useCallback(() => {
-    try {
-      const ws = wsRef.current;
-      if (ws) {
-        ws.onopen = null;
-        ws.onmessage = null;
-        ws.onerror = null;
-        ws.onclose = null;
-        ws.close();
+    if (wsRef.current) {
+      wsRef.current.onopen = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onclose = null;
+      
+      if (wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close(1000, "Normal closure");
       }
-    } catch (_) {}
-    wsRef.current = null;
-    joinSentRef.current = false;
+      wsRef.current = null;
+    }
+    setConnected(false);
+    setAuthenticated(false);
   }, []);
-
-  /* ------------------ SEND SAFE ------------------ */
 
   const send = useCallback((payload) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.warn("[FortuneWS] Send failed: socket not open");
+      console.warn("[FortuneWS] Cannot send: WebSocket not open");
       return false;
     }
-    ws.send(JSON.stringify(payload));
-    return true;
-  }, []);
-
-  /* ------------------ CONNECT ------------------ */
+    
+    // For non-ping messages, require authentication
+    if (payload.type !== "ping" && !authenticated) {
+      console.warn("[FortuneWS] Cannot send: not authenticated");
+      return false;
+    }
+    
+    try {
+      ws.send(JSON.stringify(payload));
+      return true;
+    } catch (err) {
+      console.error("[FortuneWS] Send error:", err);
+      return false;
+    }
+  }, [authenticated]);
 
   const connect = useCallback(() => {
-    if (!wsToken) {
-      console.warn("[FortuneWS] wsToken missing, abort connect");
+    if (!wsToken || !aliveRef.current) {
+      console.log("[FortuneWS] No wsToken or not alive, skipping connect");
       return;
     }
-    if (!aliveRef.current) return;
 
-    clearTimers();
+    // Clear any existing connection
     closeSocket();
 
-    let ws;
+    console.log("[FortuneWS] Connecting to:", wsUrl);
+    
     try {
-      ws = new WebSocket(wsUrl);
-    } catch (e) {
-      console.error("[FortuneWS] Invalid WS URL", wsUrl);
-      setLastError("Invalid WebSocket URL");
-      setConnected(false);
-      return;
-    }
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    wsRef.current = ws;
-
-    console.info("[FortuneWS] Connecting →", wsUrl);
-
-    ws.onopen = () => {
-      reconnectAttemptRef.current = 0;
-      setConnected(true);
-      setLastError(null);
-
-      console.info("[FortuneWS] Connected");
-
-      if (!joinSentRef.current) {
-        joinSentRef.current = true;
-        ws.send(
-          JSON.stringify({
+      ws.onopen = () => {
+        console.log("[FortuneWS] Connected successfully");
+        setConnected(true);
+        setLastError(null);
+        
+        // Send join message immediately after connection
+        if (wsToken) {
+          console.log("[FortuneWS] Sending join message with token");
+          ws.send(JSON.stringify({
             type: "join",
             ws_token: wsToken,
-          })
-        );
-        console.info("[FortuneWS] Join sent");
-      }
-    };
+          }));
+        }
+      };
 
-    ws.onmessage = (ev) => {
-      try {
-        const msg = JSON.parse(ev.data);
-        onEvent?.(msg);
-      } catch (err) {
-        console.warn("[FortuneWS] Invalid message", ev.data);
-      }
-    };
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log("[FortuneWS] Received message type:", message.type, message);
+          
+          // Handle authentication
+          if (message.type === "joined") {
+            setAuthenticated(true);
+            console.log("[FortuneWS] Authenticated successfully");
+          }
+          
+          if (message.type === "connected") {
+            console.log("[FortuneWS] WebSocket connection established");
+          }
+          
+          if (message.type === "error") {
+            console.error("[FortuneWS] Server error:", message);
+            setLastError(message.message || message.code || "Unknown error");
+            
+            // If auth error, don't try to reconnect
+            if (message.code === "auth_failed" || message.code === "session_not_found") {
+              closeSocket();
+            }
+          }
+          
+          // Pass to parent handler
+          if (onEvent) {
+            onEvent(message);
+          }
+        } catch (err) {
+          console.warn("[FortuneWS] Failed to parse message:", err, event.data);
+        }
+      };
 
-    ws.onerror = (err) => {
-      console.error("[FortuneWS] Socket error", err);
-      setLastError("WebSocket error");
-    };
+      ws.onerror = (error) => {
+        console.error("[FortuneWS] WebSocket error event:", error);
+        setLastError("Connection error");
+      };
 
-    ws.onclose = (ev) => {
-      console.warn(
-        `[FortuneWS] Closed (${ev.code}) ${ev.reason || ""}`
-      );
-      setConnected(false);
+      ws.onclose = (event) => {
+        console.log(`[FortuneWS] Connection closed (${event.code}): ${event.reason || 'No reason provided'}`);
+        setConnected(false);
+        setAuthenticated(false);
+        
+        // Reconnect logic (only for unexpected closures)
+        if (aliveRef.current && wsToken && event.code !== 1000 && event.code !== 4001 && event.code !== 4002) {
+          const delay = 2000; // 2 seconds
+          reconnectTimerRef.current = setTimeout(() => {
+            console.log("[FortuneWS] Attempting to reconnect...");
+            connect();
+          }, delay);
+        }
+      };
+    } catch (error) {
+      console.error("[FortuneWS] Failed to create WebSocket:", error);
+      setLastError(`Failed to create connection: ${error.message}`);
+    }
+  }, [wsToken, wsUrl, closeSocket, onEvent]);
 
-      if (!aliveRef.current) return;
-
-      reconnectAttemptRef.current += 1;
-      const attempt = reconnectAttemptRef.current;
-
-      const delay = Math.min(3000, 500 + attempt * 400);
-
-      reconnectTimerRef.current = setTimeout(() => {
-        connect();
-      }, delay);
-    };
-  }, [wsToken, wsUrl, clearTimers, closeSocket, onEvent]);
-
-  /* ------------------ EFFECT ------------------ */
+  /* ------------------ EFFECTS ------------------ */
 
   useEffect(() => {
     aliveRef.current = true;
-
-    if (!wsToken) {
+    
+    console.log("[FortuneWS] Effect triggered, wsToken:", wsToken ? "present" : "missing");
+    
+    if (wsToken) {
+      connect();
+    } else {
       closeSocket();
-      clearTimers();
-      setConnected(false);
-      setLastError(null);
-      return;
     }
 
-    connect();
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible" && wsToken) {
-        console.info("[FortuneWS] Visibility restore → reconnect");
-        connect();
+    // Cleanup
+    return () => {
+      console.log("[FortuneWS] Cleanup triggered");
+      aliveRef.current = false;
+      closeSocket();
+      
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
       }
     };
+  }, [wsToken, connect, closeSocket]);
 
-    document.addEventListener("visibilitychange", onVisibility);
+  /* ------------------ PING INTERVAL ------------------ */
 
-    return () => {
-      aliveRef.current = false;
-      document.removeEventListener("visibilitychange", onVisibility);
-      clearTimers();
-      closeSocket();
-      setConnected(false);
-    };
-  }, [wsToken, connect, clearTimers, closeSocket]);
+  useEffect(() => {
+    if (!connected || !authenticated) return;
+    
+    const interval = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "ping" }));
+      }
+    }, 30000); // Every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [connected, authenticated]);
 
-  /* ------------------ EXPORT ------------------ */
+  /* ------------------ RETURN ------------------ */
 
   return {
     connected,
+    authenticated,
     lastError,
     send,
     wsUrl,
-    wsBase,
   };
 }

@@ -254,25 +254,12 @@ const TowerGame = ({ user }) => {
             <h3>🏗️ Tower Builder</h3>
             <p className="game-description">Build your tower, avoid crashes, reach new heights!</p>
 
-            <div className="balance-summary">
-              <span className="balance-label">Available Balance:</span>
-              <span className="balance-amount">
-                {walletLoading ? (
-                  <div className="balance-loading-inline">
-                    <span className="loading-spinner-small" />
-                    Loading...
-                  </div>
-                ) : (
-                  formatNGN(combinedBalance)
-                )}
-              </span>
-            </div>
 
             <div className="game-settings">
               <div className="setting-group">
                 <label>Target Height</label>
                 <div className="option-buttons">
-                  {[5, 8, 10, 15, 20].map(height => (
+                  {[8, 10, 15, 20].map(height => (
                     <button
                       key={height}
                       className={targetHeight === height ? "active" : ""}
@@ -300,19 +287,6 @@ const TowerGame = ({ user }) => {
                 disabled={walletLoading}
               />
             </div>
-
-            <div className="quick-stakes">
-              {[100, 500, 1000, 2500, 5000].map((v) => (
-                <button 
-                  key={v} 
-                  className={stake === v ? "active" : ""}
-                  onClick={() => !walletLoading && setStake(v)}
-                  disabled={walletLoading}
-                >
-                  ₦{v.toLocaleString()}
-                </button>
-              ))}
-            </div>
             <button
               className="start-btn"
               disabled={walletLoading || stake < 100 || stake > combinedBalance}
@@ -332,12 +306,6 @@ const TowerGame = ({ user }) => {
               <span>Current Height</span>
               <strong className="height-display">
                 {game.height} / {targetHeight}
-              </strong>
-            </div>
-            <div className="info-item">
-              <span>Multiplier</span>
-              <strong className="multiplier-display">
-                {game.multiplier.toFixed(2)}x
               </strong>
             </div>
             <div className="info-item">
@@ -414,9 +382,6 @@ const TowerGame = ({ user }) => {
                 disabled={game.height === 0}
               >
                 💰 CASH OUT
-                <span className="cashout-amount">
-                  {formatNGN(stake * game.multiplier)}
-                </span>
               </button>
             </div>
           )}
