@@ -32,7 +32,7 @@ const Support = () => {
     {
       icon: "mdi:whatsapp",
       title: "WhatsApp Chat",
-      details: "+234 800 123 4567",
+      details: "+1 (825) 572-0351",
       description: "Live chat support",
     },
     {

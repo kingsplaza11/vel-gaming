@@ -1,35 +1,59 @@
-// File: src/contexts/WalletContext.js
-
 import React, {
   createContext,
   useState,
   useContext,
   useEffect,
+  useRef,
+  useCallback,
 } from "react";
+import api from "../services/api";
 
-import api from "../services/api"; // ✅ SINGLE axios instance (CSRF + session)
-
-// ======================================================
-// CONTEXT
-// ======================================================
 const WalletContext = createContext();
 
-// ======================================================
-// PROVIDER
-// ======================================================
+/* ======================================================
+   NORMALIZER (CRITICAL)
+   Prevents spot_balance from being wiped
+====================================================== */
+const normalizeWallet = (data, prev = {}) => {
+  if (!data) return prev || null;
+
+  const balance = Number(
+    data.balance ?? prev?.balance ?? 0
+  );
+
+  const spot_balance = Number(
+    data.spot_balance ?? prev?.spot_balance ?? 0
+  );
+
+  const locked_balance = Number(
+    data.locked_balance ?? prev?.locked_balance ?? 0
+  );
+
+  return {
+    balance,
+    spot_balance,
+    locked_balance,
+    total_balance: balance + spot_balance,
+  };
+};
+
 export const WalletProvider = ({ children, user }) => {
   const [wallet, setWallet] = useState(null);
-  const [transactions, setTransactions] = useState([]); // ALWAYS ARRAY
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ======================================================
-  // HELPERS
-  // ======================================================
+  const intervalRef = useRef(null);
+
+  /* ======================================================
+     HELPERS
+  ====================================================== */
   const normalizeTransactions = (data) => {
     if (Array.isArray(data)) return data;
-    if (data?.results && Array.isArray(data.results)) return data.results;
-    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (data?.results && Array.isArray(data.results))
+      return data.results;
+    if (data?.data && Array.isArray(data.data))
+      return data.data;
     return [];
   };
 
@@ -40,16 +64,30 @@ export const WalletProvider = ({ children, user }) => {
     setLoading(false);
   };
 
-  // ======================================================
-  // FETCH WALLET BALANCE
-  // ======================================================
+  /* ======================================================
+     SILENT WALLET FETCH (NO UI LOADING)
+  ====================================================== */
+  const fetchWalletBalanceSilent = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const res = await api.get("/wallet/balance/");
+      setWallet((prev) => normalizeWallet(res.data, prev));
+    } catch (err) {
+      console.warn("Silent wallet refresh failed");
+    }
+  }, [user]);
+
+  /* ======================================================
+     NORMAL WALLET FETCH (MANUAL)
+  ====================================================== */
   const fetchWalletBalance = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
       const res = await api.get("/wallet/balance/");
-      setWallet(res.data || null);
+      setWallet((prev) => normalizeWallet(res.data, prev));
       setError(null);
     } catch (err) {
       console.error("Wallet fetch failed:", err);
@@ -59,9 +97,9 @@ export const WalletProvider = ({ children, user }) => {
     }
   };
 
-  // ======================================================
-  // FETCH TRANSACTIONS
-  // ======================================================
+  /* ======================================================
+     FETCH TRANSACTIONS
+  ====================================================== */
   const fetchTransactions = async () => {
     if (!user) return;
 
@@ -70,13 +108,13 @@ export const WalletProvider = ({ children, user }) => {
       setTransactions(normalizeTransactions(res.data));
     } catch (err) {
       console.error("Transactions fetch failed:", err);
-      setTransactions([]); // HARD FAIL SAFE
+      setTransactions([]);
     }
   };
 
-  // ======================================================
-  // VERIFY FUNDING (PAYSTACK)
-  // ======================================================
+  /* ======================================================
+     VERIFY FUNDING
+  ====================================================== */
   const verifyTransaction = async (reference) => {
     if (!reference) {
       return { success: false, message: "Invalid reference" };
@@ -107,9 +145,9 @@ export const WalletProvider = ({ children, user }) => {
     }
   };
 
-  // ======================================================
-  // WITHDRAW FUNDS (PAYSTACK TRANSFER)
-  // ======================================================
+  /* ======================================================
+     WITHDRAW FUNDS
+  ====================================================== */
   const withdrawFunds = async (payload) => {
     setLoading(true);
     setError(null);
@@ -128,8 +166,6 @@ export const WalletProvider = ({ children, user }) => {
         message: res.data?.message || "Withdrawal failed",
       };
     } catch (err) {
-      console.error("Withdrawal error:", err);
-
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
@@ -142,29 +178,39 @@ export const WalletProvider = ({ children, user }) => {
     }
   };
 
-  // ======================================================
-  // MANUAL REFRESH
-  // ======================================================
+  /* ======================================================
+     MANUAL REFRESH (FOR GAMES)
+  ====================================================== */
   const refreshWallet = async () => {
     await fetchWalletBalance();
     await fetchTransactions();
   };
 
-  // ======================================================
-  // AUTO LOAD ON LOGIN / LOGOUT
-  // ======================================================
+  /* ======================================================
+     INITIAL LOAD + BACKGROUND POLLING
+  ====================================================== */
   useEffect(() => {
-    if (user) {
-      fetchWalletBalance();
-      fetchTransactions();
-    } else {
+    if (!user) {
       resetState();
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
     }
-  }, [user]);
 
-  // ======================================================
-  // PROVIDER EXPORT
-  // ======================================================
+    fetchWalletBalance();
+    fetchTransactions();
+
+    intervalRef.current = setInterval(() => {
+      fetchWalletBalanceSilent();
+    }, 5000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [user, fetchWalletBalanceSilent]);
+
+  /* ======================================================
+     PROVIDER
+  ====================================================== */
   return (
     <WalletContext.Provider
       value={{
@@ -182,9 +228,9 @@ export const WalletProvider = ({ children, user }) => {
   );
 };
 
-// ======================================================
-// HOOK
-// ======================================================
+/* ======================================================
+   HOOK
+====================================================== */
 export const useWallet = () => {
   const context = useContext(WalletContext);
   if (!context) {

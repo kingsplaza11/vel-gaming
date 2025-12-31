@@ -17,7 +17,6 @@ class Wallet(models.Model):
         return f"Wallet({self.user_id})"
 
 
-
 class WalletTransaction(models.Model):
     DEBIT = "DEBIT"
     CREDIT = "CREDIT"

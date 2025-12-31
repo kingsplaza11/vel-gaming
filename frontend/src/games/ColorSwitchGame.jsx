@@ -1,51 +1,75 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWallet } from "../contexts/WalletContext"; // Import wallet context
+import { useWallet } from "../contexts/WalletContext";
 import { colorSwitchService } from "../services/api";
 import "./ColorSwitchGame.css";
 
-const MAX_PROFIT_RATIO = 0.4; // 30%
-
-const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
+const ColorSwitchGame = ({ user }) => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet(); // Get wallet data
+  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
 
   /* -------------------- HELPER FUNCTIONS -------------------- */
-  // Get wallet balance with fallback to user.balance
-  const getWalletBalance = () => {
-    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
+  const getCombinedBalance = () => {
+    if (!wallet) return user?.balance || 0;
+    const balance = wallet.balance || 0;
+    const spot_balance = wallet.spot_balance || 0;
+    return balance + spot_balance;
   };
 
-  const balance = Number(getWalletBalance() || 0);
+  const getSpotBalance = () => {
+    if (!wallet) return 0;
+    return wallet.spot_balance || 0;
+  };
 
-  const [stake, setStake] = useState(1000);
-  const [sequenceLength, setSequenceLength] = useState(5);
-
-  const [gameId, setGameId] = useState(null);
-  const [sequence, setSequence] = useState([]);
-  const [playerSequence, setPlayerSequence] = useState([]);
-
-  const [multiplier, setMultiplier] = useState(1);
-  const [status, setStatus] = useState("idle"); 
-  // idle | showing | playing | lost | cashed
-
-  const [showModal, setShowModal] = useState(true);
-  const [showSequence, setShowSequence] = useState(false);
-  const [error, setError] = useState("");
+  const combinedBalance = Number(getCombinedBalance() || 0);
+  const spotBalance = Number(getSpotBalance() || 0);
 
   const formatNaira = (v) => `₦${Number(v || 0).toLocaleString()}`;
 
   const COLORS = [
-    { key: "red", emoji: "🔴", className: "color-red" },
-    { key: "blue", emoji: "🔵", className: "color-blue" },
-    { key: "green", emoji: "🟢", className: "color-green" },
-    { key: "yellow", emoji: "🟡", className: "color-yellow" },
-    { key: "purple", emoji: "🟣", className: "color-purple" },
-    { key: "orange", emoji: "🟠", className: "color-orange" },
+    { key: "red", emoji: "🔴", className: "color-red", color: "#EF4444" },
+    { key: "blue", emoji: "🔵", className: "color-blue", color: "#3B82F6" },
+    { key: "green", emoji: "🟢", className: "color-green", color: "#10B981" },
+    { key: "yellow", emoji: "🟡", className: "color-yellow", color: "#F59E0B" },
+    { key: "purple", emoji: "🟣", className: "color-purple", color: "#8B5CF6" },
+    { key: "orange", emoji: "🟠", className: "color-orange", color: "#F97316" },
   ];
 
-  /* ---------------- START GAME ---------------- */
+  /* -------------------- STATE -------------------- */
+  const [stake, setStake] = useState(1000);
+  const [sequenceLength, setSequenceLength] = useState(5);
+  const [gameId, setGameId] = useState(null);
+  const [sequence, setSequence] = useState([]);
+  const [playerSequence, setPlayerSequence] = useState([]);
+  const [multiplier, setMultiplier] = useState(1);
+  const [potentialWinRatio, setPotentialWinRatio] = useState(0);
+  const [potentialWinTier, setPotentialWinTier] = useState("playing");
+  const [status, setStatus] = useState("idle");
+  const [showModal, setShowModal] = useState(true);
+  const [showSequence, setShowSequence] = useState(false);
+  const [error, setError] = useState("");
+  const [lastWin, setLastWin] = useState(null);
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [showLossModal, setShowLossModal] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
+  /* -------------------- DEEP REFRESH -------------------- */
+  const deepRefresh = async () => {
+    setShowModal(true);
+    setStatus("idle");
+    setSequence([]);
+    setPlayerSequence([]);
+    setGameId(null);
+    setLastWin(null);
+    setShowWinModal(false);
+    setShowLossModal(false);
+    
+    if (refreshWallet) {
+      await refreshWallet();
+    }
+  };
+
+  /* -------------------- START GAME -------------------- */
   const startGame = async () => {
     setError("");
 
@@ -54,57 +78,71 @@ const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
       return;
     }
 
-    if (stake > balance) {
-      setError("Insufficient wallet balance");
+    if (stake > combinedBalance) {
+      setError("Insufficient balance");
       return;
     }
 
-    // Check if wallet is still loading
     if (walletLoading) {
       setError("Please wait while your balance loads...");
       return;
     }
 
     try {
+      console.log("Starting game with:", {
+        bet_amount: stake,
+        sequence_length: sequenceLength,
+        combinedBalance,
+        spotBalance,
+        walletBalance: wallet?.balance
+      });
+
       const res = await colorSwitchService.startGame({
         bet_amount: stake,
         sequence_length: sequenceLength,
       });
 
-      const data = res.data;
+      console.log("Game started successfully:", res.data);
 
-      setGameId(data.game_id);
-      setSequence(data.sequence);
+      setGameId(res.data.game_id);
+      setSequence(res.data.sequence);
       setPlayerSequence([]);
       setMultiplier(1);
+      setPotentialWinRatio(0);
+      setPotentialWinTier("playing");
       setStatus("showing");
       setShowModal(false);
 
-      // Update wallet balance
       if (refreshWallet) {
         await refreshWallet();
       }
 
-      onBalanceUpdate({
-        ...user,
-        balance: data.new_balance || (balance - stake),
-      });
-
       // Show animated sequence
       setShowSequence(true);
+      setIsAnimating(true);
       setTimeout(() => {
         setShowSequence(false);
+        setIsAnimating(false);
         setStatus("playing");
-      }, data.sequence.length * 700 + 800);
+      }, res.data.sequence.length * 700 + 800);
     } catch (err) {
-      setError(err.response?.data?.error || "Unable to start game");
+      console.error("Game start error:", err);
+      console.error("Error response:", err.response);
+      console.error("Error data:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          "Failed to start game";
+      
+      setError(`Error: ${errorMessage}\n\nCheck console for details (F12 → Console)`);
     }
   };
 
-  /* ---------------- COLOR CLICK ---------------- */
-
+  /* -------------------- COLOR CLICK -------------------- */
   const handleColorClick = (color) => {
-    if (status !== "playing") return;
+    if (status !== "playing" || isAnimating) return;
 
     const next = [...playerSequence, color];
     setPlayerSequence(next);
@@ -114,8 +152,7 @@ const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
     }
   };
 
-  /* ---------------- SUBMIT ---------------- */
-
+  /* -------------------- SUBMIT SEQUENCE -------------------- */
   const submitSequence = async (playerSeq) => {
     try {
       const res = await colorSwitchService.submitSequence({
@@ -125,92 +162,116 @@ const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
 
       const data = res.data;
 
-      if (!data.correct) {
+      if (data.status === "lost" || !data.correct) {
         setStatus("lost");
+        setTimeout(() => {
+          setShowLossModal(true);
+        }, 1000);
         return;
       }
 
-      // Calculate capped multiplier
-      const maxProfit = stake * MAX_PROFIT_RATIO;
-      const rawMultiplier = data.multiplier;
-      const cappedMultiplier = Math.min(
-        rawMultiplier,
-        1 + MAX_PROFIT_RATIO
-      );
-
-      setMultiplier(cappedMultiplier);
+      setMultiplier(data.multiplier);
+      setPotentialWinRatio(data.potential_win_ratio || 0);
+      setPotentialWinTier(data.potential_win_tier || "playing");
       setSequence(data.next_sequence);
       setPlayerSequence([]);
       setStatus("showing");
 
       setShowSequence(true);
+      setIsAnimating(true);
       setTimeout(() => {
         setShowSequence(false);
+        setIsAnimating(false);
         setStatus("playing");
       }, data.next_sequence.length * 700 + 800);
     } catch (err) {
       setStatus("lost");
+      setTimeout(() => {
+        setShowLossModal(true);
+      }, 1000);
     }
   };
 
-  /* ---------------- CASH OUT ---------------- */
-
+  /* -------------------- CASH OUT -------------------- */
   const cashOut = async () => {
     try {
       const res = await colorSwitchService.cashOut({
         game_id: gameId,
       });
 
-      // Update wallet balance
+      setLastWin({
+        win_amount: res.data.win_amount,
+        win_ratio: res.data.win_ratio,
+        win_tier: res.data.win_tier,
+        multiplier: res.data.multiplier,
+        sequence_length: res.data.sequence_length,
+      });
+
       if (refreshWallet) {
         await refreshWallet();
       }
 
-      onBalanceUpdate({
-        ...user,
-        balance: res.data.new_balance || (balance - stake + (stake * (multiplier - 1))),
-      });
+      // Show win modal for big wins
+      if (res.data.win_ratio > 0.5) {
+        setTimeout(() => {
+          setShowWinModal(true);
+        }, 500);
+      }
 
-      setStatus("cashed");
-    } catch {
-      setStatus("lost");
+      setStatus("cashed_out");
+    } catch (err) {
+      console.error("Cash out error:", err);
+      alert("Cash out failed");
     }
   };
 
-  const resetGame = () => {
-    setGameId(null);
-    setSequence([]);
-    setPlayerSequence([]);
-    setMultiplier(1);
-    setSequenceLength(5);
-    setStatus("idle");
-    setShowModal(true);
+  /* -------------------- GET WIN TIER COLOR -------------------- */
+  const getWinTierColor = (tier) => {
+    switch(tier) {
+      case "low": return "#FFA726";
+      case "normal": return "#4CAF50";
+      case "high": return "#2196F3";
+      case "jackpot": return "#9C27B0";
+      case "mega_jackpot": return "#F44336";
+      default: return "#666";
+    }
   };
 
-  /* ---------------- UI ---------------- */
-
+  /* -------------------- RENDER -------------------- */
   return (
     <div className="color-switch-game">
+      {/* HEADER */}
       <header className="game-header">
-        <button onClick={() => navigate("/")}>←</button>
-        <span>🎨 Color Switch</span>
-        <span className="balance-display">
-          {walletLoading ? (
-            <div className="balance-loading">
-              <span className="loading-spinner-small" />
-              Loading...
-            </div>
-          ) : (
-            formatNaira(balance)
-          )}
-        </span>
+        <button onClick={() => navigate("/")}>← Back</button>
+        <div className="game-title">
+          <span className="game-icon">🎨</span>
+          <h2>Color Switch</h2>
+        </div>
+        <div className="balance-details">
+          <div className="balance-total">
+            {walletLoading ? (
+              <div className="balance-loading">
+                <span className="loading-spinner-small" />
+                Loading...
+              </div>
+            ) : (
+              formatNaira(combinedBalance)
+            )}
+          </div>
+          <div className="balance-breakdown">
+            <span className="balance-main">Main: {formatNaira(wallet?.balance || 0)}</span>
+            <span className="balance-spot">Spot: {formatNaira(spotBalance)}</span>
+          </div>
+        </div>
       </header>
 
-      {/* -------- STAKE / TARGET MODAL -------- */}
+      {/* STAKE MODAL */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal stake-modal">
-            <h3>Set Your Challenge</h3>
+        <div className="modal-overlay stake-modal-overlay">
+          <div className="stake-modal animated-slideUp">
+            <div className="modal-header">
+              <h3>🎨 Color Switch Challenge</h3>
+            </div>
 
             <div className="balance-summary">
               <span className="balance-label">Available Balance:</span>
@@ -221,128 +282,313 @@ const ColorSwitchGame = ({ user, onBalanceUpdate }) => {
                     Loading...
                   </div>
                 ) : (
-                  formatNaira(balance)
+                  formatNaira(combinedBalance)
                 )}
               </span>
             </div>
 
-            <label>Stake (₦)</label>
-            <input
-              type="number"
-              value={stake}
-              min="1000"
-              step="500"
-              onChange={(e) => setStake(Number(e.target.value))}
-              disabled={walletLoading}
-            />
+            <div className="game-settings">
+              <div className="setting-group">
+                <label>Sequence Length</label>
+                <div className="option-buttons">
+                  {[3, 4, 5, 6, 7].map(length => (
+                    <button
+                      key={length}
+                      className={sequenceLength === length ? "active" : ""}
+                      onClick={() => setSequenceLength(length)}
+                      disabled={walletLoading}
+                    >
+                      {length} Colors
+                    </button>
+                  ))}
+                </div>
+                <small className="risk-indicator">
+                  Difficulty: {sequenceLength >= 6 ? "High" : sequenceLength >= 5 ? "Medium" : "Low"}
+                </small>
+              </div>
+            </div>
 
-            <div className="quick-row">
-              {[1000, 2000, 5000, 10000].map((v) => (
+            <div className="stake-input-group">
+              <label>Stake Amount (₦)</label>
+              <input
+                type="number"
+                value={stake}
+                min={100}
+                step={100}
+                onChange={(e) => setStake(Number(e.target.value))}
+                disabled={walletLoading}
+              />
+            </div>
+
+            <div className="quick-stakes">
+              {[100, 500, 1000, 2500, 5000].map((v) => (
                 <button 
                   key={v} 
-                  onClick={() => setStake(v)}
+                  className={stake === v ? "active" : ""}
+                  onClick={() => !walletLoading && setStake(v)}
                   disabled={walletLoading}
                 >
-                  {formatNaira(v)}
+                  ₦{v.toLocaleString()}
                 </button>
               ))}
             </div>
 
-            <label>Target Sequence Length</label>
-            <select
-              value={sequenceLength}
-              onChange={(e) => setSequenceLength(Number(e.target.value))}
-              disabled={walletLoading}
-            >
-              {[5, 6, 7, 8].map((n) => (
-                <option key={n} value={n}>
-                  {n} Colors
-                </option>
-              ))}
-            </select>
+            {error && <div className="error-banner">{error}</div>}
 
-            {error && <p className="error">{error}</p>}
-
-            <button 
-              className="primary" 
+            <button
+              className="start-btn animated-pulse"
               onClick={startGame}
-              disabled={walletLoading}
+              disabled={walletLoading || stake > combinedBalance}
             >
-              {walletLoading ? "LOADING..." : "START GAME"}
+              {walletLoading ? "LOADING..." : "🎮 START CHALLENGE"}
             </button>
           </div>
         </div>
       )}
 
-      {/* -------- GAME AREA -------- */}
+      {/* GAME AREA */}
       {!showModal && (
         <div className="game-area">
-          <div className="multiplier">
-            {multiplier.toFixed(2)}x
+          <div className="game-info-bar">
+            <div className="info-item">
+              <span>Multiplier</span>
+              <strong className="multiplier-display">{multiplier.toFixed(2)}x</strong>
+            </div>
+            <div className="info-item">
+              <span>Sequence</span>
+              <strong>{sequence.length} Colors</strong>
+            </div>
+            <div className="info-item">
+              <span>Potential Win</span>
+              <strong style={{color: getWinTierColor(potentialWinTier)}}>
+                {potentialWinTier === "playing" ? "Calculating..." : 
+                 `${(potentialWinRatio * 100).toFixed(1)}%`}
+              </strong>
+            </div>
           </div>
 
           {showSequence && (
-            <div className="sequence-show">
-              {sequence.map((c, i) => {
-                const color = COLORS.find((x) => x.key === c);
-                return (
-                  <div key={i} className={`seq-dot ${color.className}`}>
-                    {color.emoji}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {status === "playing" && (
-            <div className="color-grid">
-              {COLORS.map((c) => (
-                <button
-                  key={c.key}
-                  className={`color-btn ${c.className}`}
-                  onClick={() => handleColorClick(c.key)}
-                >
-                  {c.emoji}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {(status === "playing" || status === "showing") && (
-            <button className="cashout-btn" onClick={cashOut}>
-              CASH OUT {formatNaira(stake * (multiplier - 1))}
-            </button>
-          )}
-
-          {status === "lost" && (
-            <div className="result lost">
-              <h2>💀 You Lost</h2>
-              <button onClick={resetGame}>PLAY AGAIN</button>
-            </div>
-          )}
-
-          {status === "cashed" && (
-            <div className="result win">
-              <h2>💰 Cashed Out</h2>
-              <p>
-                Profit: {formatNaira(stake * (multiplier - 1))}
-              </p>
-              <div className="new-balance">
-                <span>New Balance:</span>
-                <span className="balance-amount">
-                  {walletLoading ? (
-                    <div className="balance-loading-inline">
-                      <span className="loading-spinner-small" />
-                      Updating...
+            <div className="sequence-show animated-fadeIn">
+              <h3>Memorize This Sequence:</h3>
+              <div className="sequence-display">
+                {sequence.map((colorKey, index) => {
+                  const color = COLORS.find(c => c.key === colorKey);
+                  return (
+                    <div 
+                      key={index} 
+                      className={`sequence-color animated-bounceIn`}
+                      style={{
+                        animationDelay: `${index * 0.3}s`,
+                        backgroundColor: color?.color,
+                        borderColor: color?.color
+                      }}
+                    >
+                      {color?.emoji}
                     </div>
-                  ) : (
-                    formatNaira(getWalletBalance())
-                  )}
+                  );
+                })}
+              </div>
+              <p className="sequence-hint">Watch carefully, then repeat!</p>
+            </div>
+          )}
+
+          {status === "playing" && !showSequence && (
+            <div className="game-play-area">
+              <h3>Your Turn: Repeat the Sequence</h3>
+              <div className="player-progress">
+                <div className="progress-text">
+                  {playerSequence.length} / {sequence.length} Colors
+                </div>
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill"
+                    style={{width: `${(playerSequence.length / sequence.length) * 100}%`}}
+                  />
+                </div>
+              </div>
+              
+              <div className="color-grid">
+                {COLORS.map((color) => (
+                  <button
+                    key={color.key}
+                    className={`color-btn ${color.className} animated-pulse`}
+                    style={{backgroundColor: color.color}}
+                    onClick={() => handleColorClick(color.key)}
+                    disabled={isAnimating}
+                  >
+                    <span className="color-emoji">{color.emoji}</span>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="player-sequence">
+                <h4>Your Sequence:</h4>
+                <div className="sequence-preview">
+                  {playerSequence.map((colorKey, index) => {
+                    const color = COLORS.find(c => c.key === colorKey);
+                    return (
+                      <div 
+                        key={index} 
+                        className="sequence-preview-color"
+                        style={{backgroundColor: color?.color}}
+                      >
+                        {color?.emoji}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(status === "playing" || status === "showing") && !showSequence && (
+            <div className="action-buttons">
+              <button className="cashout-btn animated-pulse-glow" onClick={cashOut}>
+                💰 CASH OUT 
+                <span className="cashout-amount">
+                  {formatNaira(stake * multiplier)}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {(status === "lost" || status === "cashed_out") && !showSequence && (
+            <div className="result-section animated-fadeIn">
+              <div className="result-message">
+                {status === "lost" ? (
+                  <>
+                    <div className="result-icon">💥</div>
+                    <h3>Sequence Wrong!</h3>
+                    <p>You made a mistake in the sequence.</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="result-icon">💰</div>
+                    <h3>Cashed Out Successfully!</h3>
+                    <p>Winnings added to your spot balance</p>
+                  </>
+                )}
+              </div>
+              
+              {lastWin && status === "cashed_out" && (
+                <div className="win-details">
+                  <div className="win-amount-display">
+                    <span className="win-label">You Won</span>
+                    <span className="win-amount">{formatNaira(lastWin.win_amount)}</span>
+                    <span className="win-ratio">
+                      ({lastWin.win_ratio > 0 ? (lastWin.win_ratio * 100).toFixed(1) : '0'}% of stake)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <button className="restart-btn" onClick={deepRefresh}>
+                🔁 PLAY AGAIN
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* WIN MODAL */}
+      {showWinModal && lastWin && (
+        <div className="modal-overlay win-modal-overlay">
+          <div className="win-modal-content animated-slideUp">
+            <div className="win-modal-header">
+              <div className="win-icon">🏆</div>
+              <h2>Color Master!</h2>
+              <p className="win-subtitle">Perfect memory skills!</p>
+            </div>
+            
+            <div className="win-amount-display">
+              <span className="win-amount-label">You won</span>
+              <span className="win-amount" style={{color: getWinTierColor(lastWin.win_tier)}}>
+                {formatNaira(lastWin.win_amount)}
+              </span>
+              <p className="win-note">
+                {lastWin.win_tier === "mega_jackpot" ? "MEGA COLOR JACKPOT!" : 
+                 lastWin.win_tier === "jackpot" ? "COLOR JACKPOT!" : 
+                 "Amazing memory!"}
+              </p>
+            </div>
+            
+            <div className="win-stats">
+              <div className="stat-item">
+                <span>Win Ratio:</span>
+                <span>{(lastWin.win_ratio * 100).toFixed(1)}%</span>
+              </div>
+              <div className="stat-item">
+                <span>Multiplier:</span>
+                <span>{lastWin.multiplier.toFixed(2)}x</span>
+              </div>
+              <div className="stat-item">
+                <span>Sequence Length:</span>
+                <span>{lastWin.sequence_length} Colors</span>
+              </div>
+              <div className="stat-item">
+                <span>Win Tier:</span>
+                <span style={{color: getWinTierColor(lastWin.win_tier), textTransform: 'capitalize'}}>
+                  {lastWin.win_tier.replace('_', ' ')}
                 </span>
               </div>
-              <button onClick={resetGame}>PLAY AGAIN</button>
             </div>
-          )}
+            
+            <button
+              className="continue-button"
+              onClick={() => {
+                setShowWinModal(false);
+                deepRefresh();
+              }}
+            >
+              🎮 Play Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* LOSS MODAL */}
+      {showLossModal && (
+        <div className="modal-overlay loss-modal-overlay">
+          <div className="loss-modal-content animated-slideUp">
+            <div className="loss-modal-header">
+              <div className="loss-icon">💔</div>
+              <h2>Memory Failed</h2>
+              <p className="loss-subtitle">Wrong sequence!</p>
+            </div>
+            
+            <div className="loss-message">
+              <p className="loss-encouragement">
+                Color sequences can be tricky!
+                <br />
+                <span className="loss-tip">Try shorter sequences first!</span>
+              </p>
+            </div>
+            
+            <div className="loss-stats">
+              <div className="stat-item">
+                <span>Stake:</span>
+                <span>{formatNaira(stake)}</span>
+              </div>
+              <div className="stat-item">
+                <span>Sequence Length:</span>
+                <span>{sequence.length} Colors</span>
+              </div>
+              <div className="stat-item">
+                <span>Multiplier:</span>
+                <span>{multiplier.toFixed(2)}x</span>
+              </div>
+            </div>
+            
+            <button
+              className="try-again-button"
+              onClick={() => {
+                setShowLossModal(false);
+                deepRefresh();
+              }}
+            >
+              🔁 Try Again
+            </button>
+          </div>
         </div>
       )}
     </div>

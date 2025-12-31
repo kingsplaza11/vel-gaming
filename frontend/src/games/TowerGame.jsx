@@ -1,144 +1,311 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWallet } from "../contexts/WalletContext"; // Import wallet context
+import { useWallet } from "../contexts/WalletContext";
 import { towerService } from "../services/api";
 import "./TowerGame.css";
 
-const MIN_STAKE = 100;
-
 const TowerGame = ({ user }) => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet(); // Get wallet data
+  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
 
-  // Get wallet balance with fallback to user.balance
-  const getWalletBalance = () => {
-    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
+  /* -------------------- HELPER FUNCTIONS -------------------- */
+  const getCombinedBalance = () => {
+    if (!wallet) return user?.balance || 0;
+    const balance = wallet.balance || 0;
+    const spot_balance = wallet.spot_balance || 0;
+    return balance + spot_balance;
   };
 
-  const balance = Number(getWalletBalance() || 0);
+  const getSpotBalance = () => {
+    if (!wallet) return 0;
+    return wallet.spot_balance || 0;
+  };
 
-  const [stake, setStake] = useState(MIN_STAKE);
+  const combinedBalance = Number(getCombinedBalance() || 0);
+  const spotBalance = Number(getSpotBalance() || 0);
+
+  const formatNGN = (v) =>
+    `₦${Number(v || 0).toLocaleString("en-NG", {
+      minimumFractionDigits: 2,
+    })}`;
+
+  /* -------------------- STATE -------------------- */
+  const [showStakeModal, setShowStakeModal] = useState(true);
+  const [stake, setStake] = useState(1000);
   const [targetHeight, setTargetHeight] = useState(10);
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(true);
+  const [crashChance, setCrashChance] = useState(15);
+  const [potentialWinRatio, setPotentialWinRatio] = useState(0);
+  const [potentialWinTier, setPotentialWinTier] = useState("building");
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [showLossModal, setShowLossModal] = useState(false);
+  const [lastWin, setLastWin] = useState(null);
 
-  const format = (v) => `₦${Number(v || 0).toLocaleString()}`;
+  /* -------------------- DEEP REFRESH -------------------- */
+  const deepRefresh = async () => {
+    setShowStakeModal(true);
+    setGame(null);
+    setLastWin(null);
+    setShowWinModal(false);
+    setShowLossModal(false);
+    
+    if (refreshWallet) {
+      await refreshWallet();
+    }
+  };
 
+  /* -------------------- START GAME -------------------- */
   const startGame = async () => {
-    if (stake < MIN_STAKE || stake > balance) return;
+    if (stake < 100) {
+      alert("Minimum stake is ₦100");
+      return;
+    }
 
-    // Check if wallet is still loading
+    if (stake > combinedBalance) {
+      alert("Insufficient balance");
+      return;
+    }
+
     if (walletLoading) {
       alert("Please wait while your balance loads...");
       return;
     }
 
     try {
+      console.log("Starting tower game:", {
+        bet_amount: stake,
+        target_height: targetHeight,
+        combinedBalance,
+        spotBalance,
+        walletBalance: wallet?.balance
+      });
+
       const res = await towerService.startTower({
         bet_amount: stake,
         target_height: targetHeight,
       });
+
+      console.log("Game started:", res.data);
 
       setGame({
         id: res.data.game_id,
         height: 0,
         multiplier: 1,
         status: "building",
+        targetHeight: targetHeight,
       });
 
-      // Update wallet balance
+      setCrashChance(15);
+      setPotentialWinRatio(0);
+      setPotentialWinTier("building");
+
       if (refreshWallet) {
         await refreshWallet();
       }
 
-      setShowModal(false);
-    } catch (e) {
-      alert(e.response?.data?.error || "Failed to start");
+      setShowStakeModal(false);
+    } catch (err) {
+      console.error("Game start error:", err);
+      console.error("Error response:", err.response?.data);
+      
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          "Failed to start game";
+      
+      alert(`Error: ${errorMessage}\n\nCheck console for details (F12 → Console)`);
     }
   };
 
+  /* -------------------- BUILD LEVEL -------------------- */
   const buildNext = async () => {
-    if (!game || loading) return;
+    if (!game || loading || game.status !== "building") return;
     setLoading(true);
 
     try {
+      console.log("Building level for game:", game.id);
+      
       const res = await towerService.buildLevel({ game_id: game.id });
+
+      console.log("Build response:", res.data);
 
       if (res.data.status === "crashed") {
         setGame({ ...game, status: "crashed" });
-        setTimeout(() => setShowModal(true), 1200);
+        setTimeout(() => {
+          setShowLossModal(true);
+        }, 1000);
       } else if (res.data.status === "completed") {
-        // Update wallet balance
+        const winData = {
+          win_amount: res.data.win_amount,
+          win_ratio: res.data.win_ratio,
+          win_tier: res.data.win_tier,
+          multiplier: res.data.multiplier,
+          height: res.data.current_height,
+        };
+        
+        setLastWin(winData);
+        setGame({ ...game, status: "completed", height: res.data.current_height, multiplier: res.data.multiplier });
+        
         if (refreshWallet) {
           await refreshWallet();
         }
-        setGame({ ...game, status: "completed" });
-        setTimeout(() => setShowModal(true), 1200);
+        
+        // Show win modal for big wins
+        if (res.data.win_ratio > 0.5) {
+          setTimeout(() => {
+            setShowWinModal(true);
+          }, 800);
+        }
       } else {
         setGame({
           ...game,
           height: res.data.current_height,
           multiplier: res.data.multiplier,
         });
+        setCrashChance(res.data.crash_chance || 15);
+        setPotentialWinRatio(res.data.potential_win_ratio || 0);
+        setPotentialWinTier(res.data.potential_win_tier || "building");
       }
+    } catch (err) {
+      console.error("Build error:", err);
+      alert(err.response?.data?.error || "Build failed");
     } finally {
       setLoading(false);
     }
   };
 
+  /* -------------------- CASH OUT -------------------- */
   const cashOut = async () => {
-    if (!game) return;
+    if (!game || game.height === 0) return;
 
-    const res = await towerService.cashOut({ game_id: game.id });
-    
-    // Update wallet balance
-    if (refreshWallet) {
-      await refreshWallet();
+    try {
+      const res = await towerService.cashOut({ game_id: game.id });
+      
+      const winData = {
+        win_amount: res.data.win_amount,
+        win_ratio: res.data.win_ratio,
+        win_tier: res.data.win_tier,
+        multiplier: res.data.multiplier,
+        height: res.data.height_reached,
+      };
+      
+      setLastWin(winData);
+      setGame({ ...game, status: "cashed_out" });
+      
+      if (refreshWallet) {
+        await refreshWallet();
+      }
+      
+      // Show win modal for big wins
+      if (res.data.win_ratio > 0.5) {
+        setTimeout(() => {
+          setShowWinModal(true);
+        }, 500);
+      } else {
+        alert(`Cashed out ${formatNGN(res.data.win_amount)}`);
+      }
+      
+    } catch (err) {
+      alert(err.response?.data?.error || "Cash out failed");
     }
-    
-    setGame(null);
-    setShowModal(true);
   };
 
+  /* -------------------- GET WIN TIER COLOR -------------------- */
+  const getWinTierColor = (tier) => {
+    switch(tier) {
+      case "low": return "#FFA726";
+      case "normal": return "#4CAF50";
+      case "high": return "#2196F3";
+      case "jackpot": return "#9C27B0";
+      case "mega_jackpot": return "#F44336";
+      default: return "#666";
+    }
+  };
+
+  /* -------------------- RENDER -------------------- */
   return (
     <div className="tower-game">
-
       {/* HEADER */}
-      <div className="game-header">
-        <button onClick={() => navigate("/")}>←</button>
-        <span>🏗️ Tower Builder</span>
-        <span>
-          {walletLoading ? (
-            <div className="balance-loading-inline">
-              <span className="loading-spinner-small" />
-              Loading...
-            </div>
-          ) : (
-            format(balance)
-          )}
-        </span>
-      </div>
+      <header className="game-header">
+        <button onClick={() => navigate("/")}>← Back</button>
+        <div className="balance-details">
+          <div className="balance-total">
+            {walletLoading ? (
+              <div className="balance-loading">
+                <span className="loading-spinner-small" />
+                Loading...
+              </div>
+            ) : (
+              formatNGN(combinedBalance)
+            )}
+          </div>
+          <div className="balance-breakdown">
+            <span className="balance-main">Main: {formatNGN(wallet?.balance || 0)}</span>
+            <span className="balance-spot">Spot: {formatNGN(spotBalance)}</span>
+          </div>
+        </div>
+      </header>
 
       {/* STAKE MODAL */}
-      {showModal && (
+      {showStakeModal && (
         <div className="stake-modal-overlay">
           <div className="stake-modal">
-            <h3>Build Your Tower</h3>
+            <h3>🏗️ Tower Builder</h3>
+            <p className="game-description">Build your tower, avoid crashes, reach new heights!</p>
 
-            <label>Stake Amount (₦)</label>
-            <input
-              type="number"
-              value={stake}
-              min={MIN_STAKE}
-              onChange={(e) => setStake(Number(e.target.value))}
-              disabled={walletLoading}
-            />
+            <div className="balance-summary">
+              <span className="balance-label">Available Balance:</span>
+              <span className="balance-amount">
+                {walletLoading ? (
+                  <div className="balance-loading-inline">
+                    <span className="loading-spinner-small" />
+                    Loading...
+                  </div>
+                ) : (
+                  formatNGN(combinedBalance)
+                )}
+              </span>
+            </div>
+
+            <div className="game-settings">
+              <div className="setting-group">
+                <label>Target Height</label>
+                <div className="option-buttons">
+                  {[5, 8, 10, 15, 20].map(height => (
+                    <button
+                      key={height}
+                      className={targetHeight === height ? "active" : ""}
+                      onClick={() => !walletLoading && setTargetHeight(height)}
+                      disabled={walletLoading}
+                    >
+                      {height} Floors
+                    </button>
+                  ))}
+                </div>
+                <small className="risk-indicator">
+                  Risk: {targetHeight >= 15 ? "High" : targetHeight >= 10 ? "Medium" : "Low"}
+                </small>
+              </div>
+            </div>
+
+            <div className="stake-input-group">
+              <label>Stake Amount (₦)</label>
+              <input
+                type="number"
+                value={stake}
+                min={100}
+                step={100}
+                onChange={(e) => setStake(Number(e.target.value))}
+                disabled={walletLoading}
+              />
+            </div>
 
             <div className="quick-stakes">
-              {[1000, 2000, 5000, 10000].map(v => (
+              {[100, 500, 1000, 2500, 5000].map((v) => (
                 <button 
                   key={v} 
+                  className={stake === v ? "active" : ""}
                   onClick={() => !walletLoading && setStake(v)}
                   disabled={walletLoading}
                 >
@@ -146,47 +313,261 @@ const TowerGame = ({ user }) => {
                 </button>
               ))}
             </div>
-
-            <label>Target Height</label>
-            <div className="quick-stakes">
-              {[5, 10, 15, 20].map(h => (
-                <button 
-                  key={h} 
-                  onClick={() => !walletLoading && setTargetHeight(h)}
-                  disabled={walletLoading}
-                >
-                  {h} Floors
-                </button>
-              ))}
-            </div>
             <button
               className="start-btn"
-              disabled={walletLoading || stake < MIN_STAKE || stake > balance}
+              disabled={walletLoading || stake < 100 || stake > combinedBalance}
               onClick={startGame}
             >
-              {walletLoading ? "LOADING..." : "START BUILDING"}
+              {walletLoading ? "LOADING..." : "🚀 START BUILDING"}
             </button>
           </div>
         </div>
       )}
 
-      {/* GAMEPLAY */}
-      {game && (
-        <div className={`tower-stage ${game.status}`}>
-          <div className="tower-height">
-            Height: {game.height} / {targetHeight}
+      {/* GAME BOARD */}
+      {game && !showStakeModal && (
+        <div className="tower-game-board">
+          <div className="game-info-bar">
+            <div className="info-item">
+              <span>Current Height</span>
+              <strong className="height-display">
+                {game.height} / {targetHeight}
+              </strong>
+            </div>
+            <div className="info-item">
+              <span>Multiplier</span>
+              <strong className="multiplier-display">
+                {game.multiplier.toFixed(2)}x
+              </strong>
+            </div>
+            <div className="info-item">
+              <span>Crash Chance</span>
+              <strong style={{color: crashChance > 60 ? "#f44336" : crashChance > 40 ? "#ff9800" : "#4CAF50"}}>
+                {crashChance}%
+              </strong>
+            </div>
+            <div className="info-item">
+              <span>Potential Win</span>
+              <strong style={{color: getWinTierColor(potentialWinTier)}}>
+                {potentialWinTier === "building" ? "Calculating..." : 
+                 `${(potentialWinRatio * 100).toFixed(1)}%`}
+              </strong>
+            </div>
           </div>
 
-          <div className="tower-multiplier">
-            {game.multiplier.toFixed(2)}x
+          {/* TOWER VISUALIZATION */}
+          <div className="tower-visualization">
+            <div className="tower-base"></div>
+            {Array.from({ length: targetHeight }).map((_, index) => {
+              const floorIndex = targetHeight - index - 1;
+              const isBuilt = floorIndex < game.height;
+              const isCurrent = floorIndex === game.height - 1;
+              
+              return (
+                <div 
+                  key={index}
+                  className={`tower-floor ${isBuilt ? 'built' : ''} ${isCurrent ? 'current' : ''}`}
+                  style={{
+                    animationDelay: isBuilt ? `${index * 0.1}s` : '0s'
+                  }}
+                >
+                  {isBuilt && (
+                    <span className="floor-number">
+                      {floorIndex + 1}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            
+            {game.status === "crashed" && (
+              <div className="crash-animation">
+                <div className="explosion">💥</div>
+                <div className="debris">🏗️</div>
+                <div className="debris">🏗️</div>
+                <div className="debris">🏗️</div>
+              </div>
+            )}
           </div>
 
-          <div className="tower-actions">
-            <button onClick={buildNext} disabled={loading}>
-              ⬆️ BUILD
+          {/* ACTION BUTTONS */}
+          {game.status === "building" && (
+            <div className="action-buttons">
+              <button 
+                className="build-btn"
+                onClick={buildNext}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="loading-spinner-small" />
+                    BUILDING...
+                  </>
+                ) : (
+                  `⬆️ BUILD NEXT FLOOR`
+                )}
+              </button>
+              
+              <button 
+                className="cashout-btn"
+                onClick={cashOut}
+                disabled={game.height === 0}
+              >
+                💰 CASH OUT
+                <span className="cashout-amount">
+                  {formatNGN(stake * game.multiplier)}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* GAME RESULT */}
+          {(game.status === "crashed" || game.status === "completed" || game.status === "cashed_out") && (
+            <div className="result-section">
+              <div className="result-message">
+                {game.status === "crashed" ? (
+                  <>
+                    <div className="result-icon">💥</div>
+                    <h3>Tower Crashed!</h3>
+                    <p>Reached {game.height} floors</p>
+                  </>
+                ) : game.status === "completed" ? (
+                  <>
+                    <div className="result-icon">🏆</div>
+                    <h3>Tower Complete!</h3>
+                    <p>Reached target of {targetHeight} floors!</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="result-icon">💰</div>
+                    <h3>Cashed Out!</h3>
+                    <p>Reached {game.height} floors</p>
+                  </>
+                )}
+              </div>
+              
+              {lastWin && game.status !== "crashed" && (
+                <div className="win-details">
+                  <div className="win-amount-display">
+                    <span className="win-label">You Won</span>
+                    <span className="win-amount">
+                      {formatNGN(lastWin.win_amount)}
+                    </span>
+                    <span className="win-ratio">
+                      ({lastWin.win_ratio > 0 ? (lastWin.win_ratio * 100).toFixed(1) : '0'}% of stake)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                className="restart-btn"
+                onClick={deepRefresh}
+              >
+                🔁 BUILD NEW TOWER
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* WIN MODAL */}
+      {showWinModal && lastWin && (
+        <div className="modal-overlay win-modal-overlay">
+          <div className="win-modal-content">
+            <div className="win-modal-header">
+              <div className="win-icon">🏆</div>
+              <h2>Amazing Build!</h2>
+              <p className="win-subtitle">Your tower reached great heights!</p>
+            </div>
+            
+            <div className="win-amount-display">
+              <span className="win-amount-label">You won</span>
+              <span className="win-amount" style={{color: getWinTierColor(lastWin.win_tier)}}>
+                {formatNGN(lastWin.win_amount)}
+              </span>
+              <p className="win-note">
+                {lastWin.win_tier === "mega_jackpot" ? "MEGA JACKPOT!" : 
+                 lastWin.win_tier === "jackpot" ? "JACKPOT WIN!" : 
+                 "Great build!"}
+              </p>
+            </div>
+            
+            <div className="win-stats">
+              <div className="stat-item">
+                <span>Height Reached:</span>
+                <span>{lastWin.height} floors</span>
+              </div>
+              <div className="stat-item">
+                <span>Win Ratio:</span>
+                <span>{(lastWin.win_ratio * 100).toFixed(1)}%</span>
+              </div>
+              <div className="stat-item">
+                <span>Multiplier:</span>
+                <span>{lastWin.multiplier.toFixed(2)}x</span>
+              </div>
+              <div className="stat-item">
+                <span>Win Tier:</span>
+                <span style={{color: getWinTierColor(lastWin.win_tier), textTransform: 'capitalize'}}>
+                  {lastWin.win_tier.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+            
+            <button
+              className="continue-button"
+              onClick={() => {
+                setShowWinModal(false);
+                deepRefresh();
+              }}
+            >
+              🏗️ Build New Tower
             </button>
-            <button onClick={cashOut} disabled={game.height === 0}>
-              💰 CASH OUT
+          </div>
+        </div>
+      )}
+
+      {/* LOSS MODAL */}
+      {showLossModal && (
+        <div className="modal-overlay loss-modal-overlay">
+          <div className="loss-modal-content">
+            <div className="loss-modal-header">
+              <div className="loss-icon">💥</div>
+              <h2>Tower Crashed!</h2>
+              <p className="loss-subtitle">Better luck next time!</p>
+            </div>
+            
+            <div className="loss-message">
+              <p className="loss-encouragement">
+                You reached {game?.height || 0} floors!
+                <br />
+                <span className="loss-tip">Try a shorter tower for better odds!</span>
+              </p>
+            </div>
+            
+            <div className="loss-stats">
+              <div className="stat-item">
+                <span>Stake:</span>
+                <span>{formatNGN(stake)}</span>
+              </div>
+              <div className="stat-item">
+                <span>Target:</span>
+                <span>{targetHeight} floors</span>
+              </div>
+              <div className="stat-item">
+                <span>Crash Chance:</span>
+                <span>{crashChance}%</span>
+              </div>
+            </div>
+            
+            <button
+              className="try-again-button"
+              onClick={() => {
+                setShowLossModal(false);
+                deepRefresh();
+              }}
+            >
+              🔁 Try Again
             </button>
           </div>
         </div>

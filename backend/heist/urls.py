@@ -3,9 +3,6 @@ from . import views
 
 urlpatterns = [
     path('start-heist/', views.start_heist, name='start_heist'),
-    # path('stats/', views.get_heist_stats, name='heist_stats'),
-    # path('history/', views.get_heist_history, name='heist_history'),
-    # path('bank-stats/', views.get_bank_stats, name='bank_stats'),
-    # path('hack-stats/', views.get_hack_stats, name='hack_stats'),
-    # path('leaderboard/', views.get_heist_leaderboard, name='heist_leaderboard'),
+    path('stats/', views.get_heist_stats, name='heist_stats'),
+    path('history/', views.get_heist_history, name='heist_history'),
 ]

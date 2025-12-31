@@ -39,6 +39,7 @@
   gap: 14px;
   margin: 10px auto 14px;
   max-width: 980px;
+  position: relative;
 }
 
 .fortune-brand{
@@ -85,6 +86,35 @@
   letter-spacing: .2px;
 }
 
+/* Sound Controls */
+.sound-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.sound-toggle {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.sound-toggle:hover {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: #f1c40f;
+  transform: scale(1.1);
+}
+
 .fortune-hud{
   display:flex;
   align-items:center;
@@ -110,6 +140,18 @@
   font-size: 16px;
   font-weight: 800;
   margin-top: 2px;
+}
+
+.hud-value.highlight {
+  color: #f1c40f;
+  text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.8; }
+  100% { opacity: 1; }
 }
 
 .hud-cashout{
@@ -254,6 +296,84 @@
   to{ transform: translateY(150px); opacity: 0; }
 }
 
+/* Special Effects */
+.special-effect {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  font-weight: bold;
+  z-index: 1000;
+  animation: effectPop 1s ease-out forwards;
+  text-shadow: 0 0 20px currentColor;
+  pointer-events: none;
+}
+
+.special-effect.boost {
+  color: #9b59b6;
+}
+
+.special-effect.steal {
+  color: #e74c3c;
+}
+
+.special-effect.reduce {
+  color: #e67e22;
+}
+
+.special-effect.bomb {
+  color: #2c3e50;
+}
+
+.special-effect.cashout {
+  color: #f1c40f;
+}
+
+.special-effect.game_over {
+  color: #c0392b;
+}
+
+@keyframes effectPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Game State Effects */
+.fortune-stage.effect-boost .vault-bg {
+  background: radial-gradient(400px 200px at 20% 60%, rgba(155, 89, 182, 0.3), transparent 60%),
+              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
+              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
+}
+
+.fortune-stage.effect-steal .vault-bg {
+  background: radial-gradient(400px 200px at 20% 60%, rgba(231, 76, 60, 0.3), transparent 60%),
+              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
+              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
+}
+
+.fortune-stage.effect-bomb .vault-bg {
+  background: radial-gradient(400px 200px at 20% 60%, rgba(44, 62, 80, 0.3), transparent 60%),
+              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
+              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
+}
+
+.fortune-stage.effect-game_over .vault-bg {
+  background: radial-gradient(400px 200px at 20% 60%, rgba(192, 57, 43, 0.3), transparent 60%),
+              radial-gradient(300px 220px at 80% 40%, rgba(120,220,255,.12), transparent 60%),
+              repeating-linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 2px, transparent 2px, transparent 12px);
+}
+
 /* =========================
    BOARD
 ========================= */
@@ -305,6 +425,66 @@
   border-color: rgba(255,70,90,.28);
 }
 
+/* Multiplier History */
+.multiplier-history {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.history-label {
+  font-size: 11px;
+  color: #f1c40f;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-items {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.history-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  white-space: nowrap;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.history-item.boost {
+  background: rgba(155, 89, 182, 0.2);
+  border-color: #9b59b6;
+}
+
+.history-item.steal {
+  background: rgba(231, 76, 60, 0.2);
+  border-color: #e74c3c;
+}
+
+.history-item.reduce {
+  background: rgba(230, 126, 34, 0.2);
+  border-color: #e67e22;
+}
+
+.history-item.bomb {
+  background: rgba(44, 62, 80, 0.2);
+  border-color: #2c3e50;
+}
+
+.history-item.trap {
+  background: rgba(192, 57, 43, 0.2);
+  border-color: #c0392b;
+}
+
 .provably{
   text-align:right;
   max-width: 55%;
@@ -323,10 +503,12 @@
   word-break: break-all;
 }
 
-.fortune-grid{
+/* Enhanced Grid */
+.fortune-grid.enhanced{
   display:grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
+  margin: 10px auto;
   padding: 14px;
 }
 
@@ -352,6 +534,47 @@
   filter:none;
 }
 
+/* Tile Variations */
+.fortune-tile.safe {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  border-color: #27ae60;
+}
+
+.fortune-tile.super_safe {
+  background: linear-gradient(135deg, #2980b9, #3498db);
+  border-color: #2980b9;
+}
+
+.fortune-tile.multiplier_boost {
+  background: linear-gradient(135deg, #8e44ad, #9b59b6);
+  border-color: #8e44ad;
+}
+
+.fortune-tile.multiplier_steal {
+  background: linear-gradient(135deg, #c0392b, #e74c3c);
+  border-color: #c0392b;
+}
+
+.fortune-tile.multiplier_reduce {
+  background: linear-gradient(135deg, #d35400, #e67e22);
+  border-color: #d35400;
+}
+
+.fortune-tile.bomb {
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  border-color: #2c3e50;
+}
+
+.fortune-tile.trap {
+  background: linear-gradient(135deg, #c0392b, #e74c3c);
+  border-color: #c0392b;
+}
+
+.fortune-tile.mystery {
+  background: linear-gradient(135deg, #f39c12, #f1c40f);
+  border-color: #f39c12;
+}
+
 .tile-face{
   position:absolute;
   inset:0;
@@ -372,15 +595,37 @@
   100%{ transform: translateY(0); }
 }
 
-.fortune-tile.safe{
-  background: radial-gradient(circle at 30% 30%, rgba(255,230,140,.18), transparent 55%),
-              linear-gradient(180deg, rgba(255,210,90,.18), rgba(255,255,255,.03));
-  border-color: rgba(255,200,60,.22);
+/* Tile Revealed Content */
+.tile-revealed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
-.fortune-tile.trap{
-  background: radial-gradient(circle at 30% 30%, rgba(255,70,90,.18), transparent 55%),
-              linear-gradient(180deg, rgba(255,70,90,.14), rgba(255,255,255,.03));
-  border-color: rgba(255,70,90,.22);
+
+.tile-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.tile-multiplier {
+  font-size: 10px;
+  color: white;
+  background: rgba(0,0,0,0.5);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+/* Tile Preview */
+.tile-preview {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 12px;
+  opacity: 0.6;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
 }
 
 .fortune-tile.glow{
@@ -404,6 +649,55 @@
   animation: glowSpin 1.6s linear infinite;
 }
 @keyframes glowSpin{ to{ transform: rotate(360deg);} }
+
+/* Tile Legend */
+.tile-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 15px 0;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.legend-title {
+  width: 100%;
+  text-align: center;
+  color: #f1c40f;
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid var(--legend-color);
+  cursor: help;
+  transition: transform 0.2s;
+}
+
+.legend-item:hover {
+  transform: translateY(-2px);
+}
+
+.legend-icon {
+  font-size: 14px;
+}
+
+.legend-name {
+  font-size: 10px;
+  color: #ecf0f1;
+  white-space: nowrap;
+}
 
 .fortune-audit{
   padding: 10px 14px 14px;
@@ -480,6 +774,34 @@
   margin-top: 2px;
 }
 
+/* Stake Info Box */
+.stake-info {
+  margin: 12px 0;
+  padding: 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  z-index: 2;
+}
+
+.info-box h4 {
+  color: #f1c40f;
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.info-box ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.8);
+}
+
+.info-box li {
+  margin-bottom: 4px;
+}
+
 .stake-balance{
   display:flex;
   justify-content:space-between;
@@ -527,6 +849,32 @@
 .stake-input:focus{
   border-color: rgba(255,200,60,.35);
   box-shadow: 0 0 0 3px rgba(255,200,60,.10);
+}
+
+.stake-validation-error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 8px;
+  color: #ff3b30;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  animation: fadeIn 0.2s ease;
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stake-quick{
@@ -578,6 +926,19 @@
 }
 .stake-btn:disabled{ opacity:.55; cursor:not-allowed; }
 
+/* Update stake input placeholder */
+.stake-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Disabled state for invalid stake */
+.stake-btn.gold:disabled:not(.loading) {
+  background: linear-gradient(135deg, #444 0%, #333 100%);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .stake-footnote{
   margin-top: 12px;
   font-size: 11px;
@@ -603,6 +964,87 @@
 }
 
 /* =========================
+   TILE INFO MODAL
+========================= */
+.tile-info-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.tile-info-modal {
+  width: min(400px, 100%);
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.tile-info-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.tile-info-icon {
+  font-size: 32px;
+}
+
+.tile-info-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 18px;
+}
+
+.tile-info-body {
+  color: rgba(255,255,255,0.8);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.tile-info-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.stat-label {
+  color: #f1c40f;
+  font-size: 12px;
+}
+
+.stat-value {
+  color: white;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.tile-info-close {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #ffd86a, #ffb300);
+  color: #1b1202;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.tile-info-close:hover {
+  transform: translateY(-2px);
+}
+
+/* =========================
    RESPONSIVE
 ========================= */
 @media (max-width: 560px){
@@ -614,11 +1056,41 @@
     width: 100%;
     justify-content:flex-start;
   }
-  .fortune-grid{
+  .fortune-grid.enhanced{
     grid-template-columns: repeat(4, 1fr);
   }
   .fortune-tile{
     height: 60px;
+  }
+  .sound-controls {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-top: 10px;
+    align-self: flex-start;
+  }
+  .tile-legend {
+    gap: 6px;
+  }
+  .legend-item {
+    padding: 3px 6px;
+  }
+  .legend-name {
+    font-size: 9px;
+  }
+  .multiplier-history {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .history-items {
+    width: 100%;
+  }
+}
+
+@media (max-width: 400px){
+  .fortune-grid.enhanced {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -718,11 +1190,64 @@
 }
 
 .stake-btn.gold.loading::after {
-  content: "⏳";
+  content: "";
   position: absolute;
   right: 14px;
   top: 50%;
   transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Loading spinner for balance */
+.balance-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.loading-spinner-small {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Update stake balance display */
+.stake-balance .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #2ecc71;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+}
+
+/* Disable button when balance is loading */
+.stake-btn.gold:disabled:not(.loading) {
+    background-color: #666;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Loading state for start button */
+.stake-btn.gold.loading {
+    position: relative;
+    color: transparent;
 }
 
 /* =========================================================
@@ -735,7 +1260,6 @@
 
 /* =========================================================
    EXTRA THEMES: DRAGON / TOTEMS / LADDER
-   Add at bottom of src/games/fortune/fortune.css
 ========================================================= */
 
 .fortune-setup-grid{
@@ -1067,66 +1591,6 @@
   letter-spacing: .12em;
   text-transform: uppercase;
 }
-/* Loading spinner for balance */
-.balance-loading {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #aaa;
-    font-size: 0.9rem;
-}
-
-.loading-spinner-small {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Update stake balance display */
-.stake-balance .value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #2ecc71;
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-}
-
-/* Disable button when balance is loading */
-.stake-btn.gold:disabled:not(.loading) {
-    background-color: #666;
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-/* Loading state for start button */
-.stake-btn.gold.loading {
-    position: relative;
-    color: transparent;
-}
-
-.stake-btn.gold.loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top: 2px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
@@ -1142,43 +1606,4 @@
     .stake-balance .value {
         font-size: 1.2rem;
     }
-}
-
-/* Add to your fortune.css file */
-
-.stake-validation-error {
-  margin-top: 8px;
-  padding: 8px 12px;
-  background: rgba(255, 59, 48, 0.1);
-  border: 1px solid rgba(255, 59, 48, 0.3);
-  border-radius: 8px;
-  color: #ff3b30;
-  font-size: 12px;
-  font-weight: 500;
-  text-align: center;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Update the stake input placeholder */
-.stake-input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-/* Disabled state for invalid stake */
-.stake-btn.gold:disabled:not(.loading) {
-  background: linear-gradient(135deg, #444 0%, #333 100%);
-  color: rgba(255, 255, 255, 0.5);
-  cursor: not-allowed;
-  box-shadow: none;
 }

@@ -11,5 +11,14 @@ urlpatterns = [
     path("users/<int:user_id>/delete/", views.admin_delete_user, name="admin_delete_user"),
     path("referrals/", views.referral_list, name="referral_list"),
     path("referrals/<int:user_id>/", views.referral_detail, name="referral_detail"),
+
+    # adminpanel/urls.py
+
+    path(
+        "users/<int:user_id>/wallet/update/",
+        views.update_wallet,
+        name="update_wallet"
+    ),
+
 ]
 

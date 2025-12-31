@@ -1,5 +1,6 @@
 // src/layouts/BaseLayout.jsx
 import React, { useState, useEffect } from "react";
+import { Helmet } from "react-helmet"; // Add this import
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useWallet } from "../contexts/WalletContext";
@@ -53,6 +54,26 @@ const BaseLayout = ({ user, onLogout }) => {
 
   return (
     <>
+      {/* Add Helmet for SmartSupp script */}
+      <Helmet>
+        <script type="text/javascript">
+          {`
+            var _smartsupp = _smartsupp || {};
+            _smartsupp.key = '6f5d1e1374f08c82f14ccf88f162e085d45e0bf1';
+            _smartsupp.offsetX = 100; // move along the X axis by 100 pixels
+            _smartsupp.offsetY = 100; // move along the Y axis by 100 pixels
+            window.smartsupp||(function(d) {
+              var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
+              s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+              c.type='text/javascript';c.charset='utf-8';c.async=true;
+              c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
+            })(document);
+          `}
+        </script>
+        <noscript>
+          {` Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a>`}
+        </noscript>
+      </Helmet>
       <div className={`dashboard ${isDarkMode ? "dark-mode" : "light-mode"}`}>
         {/* ANIMATED BACKGROUND ELEMENTS */}
         <div className="animated-bg">

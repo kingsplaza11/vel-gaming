@@ -91,6 +91,28 @@ def users(request):
         "users": users,
     })
 
+
+@staff_member_required
+def update_wallet(request, user_id):
+    if request.method != "POST":
+        return redirect("adminpanel:admin_user_detail", user_id=user_id)
+
+    user = get_object_or_404(User, id=user_id)
+    wallet = get_object_or_404(Wallet, user=user)
+
+    try:
+        wallet.balance = Decimal(request.POST.get("balance", wallet.balance))
+        wallet.spot_balance = Decimal(request.POST.get("spot_balance", wallet.spot_balance))
+        wallet.locked_balance = Decimal(request.POST.get("locked_balance", wallet.locked_balance))
+        wallet.save()
+
+        messages.success(request, "Wallet updated successfully.")
+    except Exception as e:
+        messages.error(request, f"Wallet update failed: {e}")
+
+    return redirect("adminpanel:admin_user_detail", user_id=user_id)
+
+
 from django.contrib.auth import get_user_model
 
 User = get_user_model()

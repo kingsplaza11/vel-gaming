@@ -1,7 +1,8 @@
+# pyramid/views.py
 import random
 from decimal import Decimal, InvalidOperation
 from django.db import transaction
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Avg, Max
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,21 +12,113 @@ from .models import PyramidExploration, PyramidStats
 from wallets.models import Wallet
 from accounts.models import User
 
-MAX_PROFIT_RATIO = Decimal("0.30")
-MIN_STAKE = Decimal("1000")
+MIN_STAKE = Decimal("100")
+LOSS_PROBABILITY = 0.25  # 25% chance of complete loss
 
 PYRAMID_CHAMBERS = [
-    {'name': 'Entrance Hall', 'danger': 0.15, 'treasure_chance': 0.3, 'image': '🚪'},
-    {'name': 'Burial Chamber', 'danger': 0.4, 'treasure_chance': 0.5, 'image': '⚰️'},
-    {'name': 'Treasure Room', 'danger': 0.65, 'treasure_chance': 0.7, 'image': '💎'},
-    {'name': "Pharaoh's Tomb", 'danger': 0.85, 'treasure_chance': 0.9, 'image': '👑'},
+    {'name': 'Entrance Hall', 'danger': 0.15, 'treasure_chance': 0.3, 'image': '🚪', 'color': '#8B4513'},
+    {'name': 'Burial Chamber', 'danger': 0.4, 'treasure_chance': 0.5, 'image': '⚰️', 'color': '#654321'},
+    {'name': 'Treasure Room', 'danger': 0.65, 'treasure_chance': 0.7, 'image': '💎', 'color': '#FFD700'},
+    {'name': "Pharaoh's Tomb", 'danger': 0.85, 'treasure_chance': 0.9, 'image': '👑', 'color': '#C0C0C0'},
+    {'name': 'Secret Passage', 'danger': 0.5, 'treasure_chance': 0.6, 'image': '🕳️', 'color': '#708090'},
+    {'name': 'Guardian Room', 'danger': 0.7, 'treasure_chance': 0.8, 'image': '🗿', 'color': '#A0522D'},
 ]
 
 ARTIFACTS = [
-    {'name': 'Golden Scarab', 'value': 1.1, 'image': '🐞'},
-    {'name': 'Ancient Tablet', 'value': 1.15, 'image': '📜'},
-    {'name': 'Royal Mask', 'value': 1.2, 'image': '🎭'},
+    {'name': 'Golden Scarab', 'value': 1.1, 'image': '🐞', 'rarity': 'common'},
+    {'name': 'Ancient Tablet', 'value': 1.15, 'image': '📜', 'rarity': 'uncommon'},
+    {'name': 'Royal Mask', 'value': 1.2, 'image': '🎭', 'rarity': 'rare'},
+    {'name': 'Cursed Amulet', 'value': 1.3, 'image': '🔮', 'rarity': 'epic'},
+    {'name': 'Pharaoh Crown', 'value': 1.5, 'image': '👑', 'rarity': 'legendary'},
+    {'name': 'Eye of Ra', 'value': 2.0, 'image': '👁️', 'rarity': 'mythic'},
 ]
+
+
+# ================= WIN RATIO LOGIC =================
+def get_pyramid_win_ratio():
+    """
+    Returns a win ratio based on probability distribution:
+    - 25% chance: 0% (complete loss - curse of the pharaoh)
+    - 20% chance: 10-40% (dangerous expedition)
+    - 40% chance: 41-80% (successful expedition)
+    - 10% chance: 81-150% (lucrative discovery)
+    - 3% chance: 151-250% (ancient treasure)
+    - 2% chance: 251-400% (pharaoh's blessing)
+    """
+    rand = random.random() * 100  # 0-100
+    
+    if rand <= 25:  # 25% chance: Complete loss (0%)
+        return Decimal("0.00")
+    elif rand <= 45:  # 20% chance: Dangerous (10-40%)
+        return Decimal(str(random.uniform(0.10, 0.40)))
+    elif rand <= 85:  # 40% chance: Successful (41-80%)
+        return Decimal(str(random.uniform(0.41, 0.80)))
+    elif rand <= 95:  # 10% chance: Lucrative (81-150%)
+        return Decimal(str(random.uniform(0.81, 1.50)))
+    elif rand <= 98:  # 3% chance: Ancient treasure (151-250%)
+        return Decimal(str(random.uniform(1.51, 2.50)))
+    else:  # 2% chance: Pharaoh's blessing (251-400%)
+        return Decimal(str(random.uniform(2.51, 4.00)))
+
+
+def calculate_artifact_bonus(artifacts_found):
+    """Calculate bonus based on artifact rarity and quantity"""
+    total_bonus = Decimal("0.0")
+    legendary_count = 0
+    rarity_bonuses = {
+        'common': Decimal("0.02"),
+        'uncommon': Decimal("0.05"),
+        'rare': Decimal("0.10"),
+        'epic': Decimal("0.15"),
+        'legendary': Decimal("0.25"),
+        'mythic': Decimal("0.50"),
+    }
+    
+    for artifact in artifacts_found:
+        rarity = artifact.get('rarity', 'common')
+        if rarity in rarity_bonuses:
+            total_bonus += rarity_bonuses[rarity]
+            if rarity in ['legendary', 'mythic']:
+                legendary_count += 1
+    
+    # Quantity bonus
+    quantity_bonus = len(artifacts_found) * Decimal("0.03")
+    total_bonus += quantity_bonus
+    
+    return total_bonus, legendary_count
+
+
+def calculate_survival_penalty(traps_encountered, chambers_count):
+    """Calculate penalty based on traps encountered"""
+    if chambers_count == 0:
+        return Decimal("1.0")
+    
+    trap_ratio = traps_encountered / chambers_count
+    if trap_ratio <= 0.25:
+        return Decimal("1.0")  # No penalty
+    elif trap_ratio <= 0.5:
+        return Decimal("0.8")  # 20% penalty
+    elif trap_ratio <= 0.75:
+        return Decimal("0.6")  # 40% penalty
+    else:
+        return Decimal("0.4")  # 60% penalty
+
+
+def get_expedition_rank(win_ratio, artifacts_found, traps_encountered):
+    """Determine expedition rank based on results"""
+    if win_ratio == 0:
+        return "cursed"
+    elif win_ratio <= 0.40:
+        return "dangerous"
+    elif win_ratio <= 0.80:
+        return "successful"
+    elif win_ratio <= 1.50:
+        return "lucrative"
+    elif win_ratio <= 2.50:
+        return "legendary"
+    else:
+        return "blessed"
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -42,39 +135,77 @@ def explore_pyramid(request):
         user = User.objects.select_for_update().get(id=request.user.id)
         wallet = Wallet.objects.select_for_update().get(user=user)
 
-        if wallet.balance < bet_amount:
-            return Response({"error": "Insufficient wallet balance"}, status=400)
+        # Check combined balance (wallet + spot_balance)
+        combined_balance = wallet.balance + wallet.spot_balance
+        if combined_balance < bet_amount:
+            return Response({"error": "Insufficient balance (wallet + spot)"}, status=400)
 
-        # Deduct stake FIRST (can lose everything)
-        wallet.balance -= bet_amount
-        wallet.save(update_fields=["balance"])
+        # =====================
+        # DEDUCT STAKE (spot → wallet)
+        # =====================
+        remaining_cost = bet_amount
+
+        if wallet.spot_balance >= remaining_cost:
+            wallet.spot_balance -= remaining_cost
+            remaining_cost = Decimal("0.00")
+        else:
+            remaining_cost -= wallet.spot_balance
+            wallet.spot_balance = Decimal("0.00")
+            wallet.balance -= remaining_cost
+
+        # ================= EXPEDITION LOGIC =================
+        is_curse = random.random() < LOSS_PROBABILITY
 
         chambers_explored = []
         artifacts_found = []
-        survival_multiplier = Decimal("1.0")
         traps_encountered = 0
-
-        for _ in range(random.randint(3, 5)):
+        
+        # Explore 3-6 chambers
+        chambers_count = random.randint(3, 6)
+        
+        for _ in range(chambers_count):
             chamber = random.choice(PYRAMID_CHAMBERS)
             chambers_explored.append(chamber)
 
             if random.random() < chamber["danger"]:
                 traps_encountered += 1
-                survival_multiplier *= Decimal("0.75")
 
             if random.random() < chamber["treasure_chance"]:
                 artifact = random.choice(ARTIFACTS)
                 artifacts_found.append(artifact)
-                survival_multiplier *= Decimal(str(artifact["value"]))
 
-        raw_win = bet_amount * survival_multiplier
-        max_win = bet_amount * MAX_PROFIT_RATIO
+        if is_curse:
+            win_ratio = Decimal("0.00")
+            win_amount = Decimal("0.00")
+            survival_rate = Decimal("0.00")
+            artifact_bonus = Decimal("0.00")
+            legendary_count = 0
+            expedition_rank = "cursed"
+        else:
+            # Get base win ratio
+            win_ratio = get_pyramid_win_ratio()
+            
+            # Calculate artifact bonuses
+            artifact_bonus, legendary_count = calculate_artifact_bonus(artifacts_found)
+            
+            # Calculate survival penalty
+            survival_rate = Decimal("1.0") - (Decimal(str(traps_encountered)) / Decimal(str(chambers_count)))
+            survival_penalty = calculate_survival_penalty(traps_encountered, chambers_count)
+            
+            # Apply bonuses and penalties
+            total_multiplier = win_ratio * (1 + artifact_bonus) * survival_penalty
+            
+            # Calculate win amount
+            win_amount = (bet_amount * total_multiplier).quantize(Decimal("0.01"))
+            
+            # Determine expedition rank
+            expedition_rank = get_expedition_rank(float(total_multiplier), artifacts_found, traps_encountered)
 
-        win_amount = min(raw_win, max_win)
-
-        # Add winnings (could be zero)
-        wallet.balance += win_amount
-        wallet.save(update_fields=["balance"])
+        # =====================
+        # CREDIT WIN → SPOT BALANCE
+        # =====================
+        wallet.spot_balance += win_amount
+        wallet.save(update_fields=["balance", "spot_balance"])
 
         exploration = PyramidExploration.objects.create(
             user=user,
@@ -82,33 +213,77 @@ def explore_pyramid(request):
             chambers_explored=chambers_explored,
             traps_encountered=traps_encountered,
             artifacts_found=artifacts_found,
-            win_amount=win_amount
+            win_amount=win_amount,
+            win_ratio=float(win_ratio + artifact_bonus) if not is_curse else 0.0,
+            survival_rate=float(survival_rate) if not is_curse else 0.0,
         )
 
         stats, _ = PyramidStats.objects.get_or_create(user=user)
         stats.total_expeditions += 1
         stats.total_bet += bet_amount
         stats.total_won += win_amount
+        stats.traps_survived += chambers_count - traps_encountered
+        stats.total_artifacts += len(artifacts_found)
+        stats.chambers_explored_total += chambers_count
+        
+        # Track highest win ratio
+        total_win_ratio = win_ratio + artifact_bonus if not is_curse else Decimal("0.0")
+        if total_win_ratio > stats.highest_win_ratio:
+            stats.highest_win_ratio = float(total_win_ratio)
+            
+        # Track highest survival rate
+        if survival_rate > stats.highest_survival_rate:
+            stats.highest_survival_rate = float(survival_rate)
+            
+        # Track highest multiplier
+        if not is_curse:
+            final_multiplier = win_amount / bet_amount if bet_amount > 0 else Decimal("0.0")
+            if final_multiplier > stats.highest_multiplier:
+                stats.highest_multiplier = final_multiplier
+        
         stats.save()
+
+        # Determine win tier for frontend
+        win_tier = "loss"
+        if total_win_ratio > 0:
+            if total_win_ratio <= 0.40:
+                win_tier = "dangerous"
+            elif total_win_ratio <= 0.80:
+                win_tier = "successful"
+            elif total_win_ratio <= 1.50:
+                win_tier = "lucrative"
+            elif total_win_ratio <= 2.50:
+                win_tier = "legendary"
+            else:
+                win_tier = "blessed"
 
         return Response({
             "chambers_explored": chambers_explored,
+            "chambers_count": chambers_count,
             "traps_encountered": traps_encountered,
             "artifacts_found": artifacts_found,
-            "final_multiplier": float((win_amount / bet_amount) if bet_amount else 0),
+            "artifact_count": len(artifacts_found),
+            "legendary_count": legendary_count,
+            "artifact_bonus": float(artifact_bonus) if not is_curse else 0.0,
+            "survival_rate": float(survival_rate) if not is_curse else 0.0,
+            "expedition_rank": expedition_rank,
+            "win_tier": win_tier,
+            "final_multiplier": float(win_amount / bet_amount) if bet_amount > 0 and not is_curse else 0.0,
             "win_amount": float(win_amount),
-            "new_balance": float(wallet.balance),
+            "win_ratio": float(total_win_ratio) if not is_curse else 0.0,
+            "wallet_balance": float(wallet.balance),
+            "spot_balance": float(wallet.spot_balance),
+            "combined_balance": float(wallet.balance + wallet.spot_balance),
+            "expedition_id": exploration.id,
         })
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_pyramid_stats(request):
     """
     Get pyramid exploration statistics for the authenticated user
     """
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-    
     try:
         # Get or create stats for the user
         stats, created = PyramidStats.objects.get_or_create(user=request.user)
@@ -126,15 +301,23 @@ def get_pyramid_stats(request):
         total_profit = total_won - total_bet
         roi = (total_profit / total_bet * 100) if total_bet > 0 else 0
         avg_artifacts_per_expedition = total_artifacts / total_expeditions if total_expeditions > 0 else 0
-        avg_traps_per_expedition = traps_survived / total_expeditions if total_expeditions > 0 else 0
+        avg_traps_survived = traps_survived / chambers_explored_total if chambers_explored_total > 0 else 0
         avg_chambers_per_expedition = chambers_explored_total / total_expeditions if total_expeditions > 0 else 0
         
-        # Calculate survival rate (expeditions with positive profit)
-        successful_expeditions = PyramidExploration.objects.filter(
-            user=request.user, 
-            win_amount__gt=models.F('bet_amount') * Decimal('1.8')  # Account for 1.8x cost multiplier
-        ).count()
-        survival_rate = (successful_expeditions / total_expeditions * 100) if total_expeditions > 0 else 0
+        # Calculate survival rate
+        if chambers_explored_total > 0:
+            survival_rate = (traps_survived / chambers_explored_total) * 100
+        else:
+            survival_rate = 0
+        
+        # Get expedition success distribution
+        expeditions = PyramidExploration.objects.filter(user=request.user)
+        cursed = expeditions.filter(win_ratio=0).count()
+        dangerous = expeditions.filter(win_ratio__gt=0, win_ratio__lte=0.4).count()
+        successful = expeditions.filter(win_ratio__gt=0.4, win_ratio__lte=0.8).count()
+        lucrative = expeditions.filter(win_ratio__gt=0.8, win_ratio__lte=1.5).count()
+        legendary = expeditions.filter(win_ratio__gt=1.5, win_ratio__lte=2.5).count()
+        blessed = expeditions.filter(win_ratio__gt=2.5).count()
         
         return Response({
             'total_expeditions': total_expeditions,
@@ -146,53 +329,69 @@ def get_pyramid_stats(request):
             'total_artifacts': total_artifacts,
             'chambers_explored_total': chambers_explored_total,
             'highest_multiplier': round(highest_multiplier, 2),
+            'highest_win_ratio': round(float(stats.highest_win_ratio), 2),
+            'highest_survival_rate': round(float(stats.highest_survival_rate) * 100, 2),
             'avg_artifacts_per_expedition': round(avg_artifacts_per_expedition, 2),
-            'avg_traps_per_expedition': round(avg_traps_per_expedition, 2),
+            'avg_traps_survived': round(avg_traps_survived, 2),
             'avg_chambers_per_expedition': round(avg_chambers_per_expedition, 2),
             'survival_rate': round(survival_rate, 2),
-            'explorer_rank': calculate_explorer_rank(total_expeditions, total_artifacts)
+            'expedition_distribution': {
+                'cursed': cursed,
+                'dangerous': dangerous,
+                'successful': successful,
+                'lucrative': lucrative,
+                'legendary': legendary,
+                'blessed': blessed
+            },
+            'explorer_rank': calculate_explorer_rank(total_expeditions, total_artifacts, stats.highest_win_ratio)
         })
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_pyramid_history(request):
     """
     Get recent pyramid exploration history for the authenticated user
     """
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-    
     try:
         # Get last 10 pyramid explorations, most recent first
         explorations = PyramidExploration.objects.filter(user=request.user).order_by('-created_at')[:10]
         
         history = []
         for exploration in explorations:
-            # Calculate exploration cost
-            exploration_cost_multiplier = Decimal('1.8')
-            total_cost = exploration.bet_amount * exploration_cost_multiplier
-            profit = exploration.win_amount - total_cost
+            profit = exploration.win_amount - exploration.bet_amount
             
-            # Calculate some metrics for this exploration
-            chambers_count = len(exploration.chambers_explored)
-            artifacts_count = len(exploration.artifacts_found)
-            trap_survival_rate = (1 - (exploration.traps_encountered / chambers_count)) * 100 if chambers_count > 0 else 100
-            
+            # Determine expedition rank
+            win_tier = "cursed"
+            if exploration.win_ratio > 0:
+                if exploration.win_ratio <= 0.40:
+                    win_tier = "dangerous"
+                elif exploration.win_ratio <= 0.80:
+                    win_tier = "successful"
+                elif exploration.win_ratio <= 1.50:
+                    win_tier = "lucrative"
+                elif exploration.win_ratio <= 2.50:
+                    win_tier = "legendary"
+                else:
+                    win_tier = "blessed"
+
             history.append({
                 'id': exploration.id,
                 'bet_amount': float(exploration.bet_amount),
-                'total_cost': float(total_cost),
                 'win_amount': float(exploration.win_amount),
+                'win_ratio': float(exploration.win_ratio),
+                'win_tier': win_tier,
                 'profit': float(profit),
                 'chambers_explored': exploration.chambers_explored,
-                'chambers_count': chambers_count,
+                'chambers_count': len(exploration.chambers_explored),
                 'traps_encountered': exploration.traps_encountered,
                 'artifacts_found': exploration.artifacts_found,
-                'artifacts_count': artifacts_count,
+                'artifacts_count': len(exploration.artifacts_found),
+                'survival_rate': float(exploration.survival_rate) * 100,
                 'final_multiplier': float(exploration.win_amount / exploration.bet_amount) if exploration.bet_amount > 0 else 0,
-                'trap_survival_rate': round(trap_survival_rate, 2),
                 'created_at': exploration.created_at.isoformat(),
                 'was_successful': profit > 0
             })
@@ -205,153 +404,20 @@ def get_pyramid_history(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
-def get_artifact_stats(request):
-    """
-    Get artifact discovery statistics for the authenticated user
-    """
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    try:
-        # Get all explorations
-        explorations = PyramidExploration.objects.filter(user=request.user)
-        
-        # Count artifact discoveries
-        artifact_counts = {}
-        total_artifact_value = Decimal('0.0')
-        
-        for exploration in explorations:
-            for artifact in exploration.artifacts_found:
-                artifact_name = artifact['name']
-                artifact_value = Decimal(str(artifact['value']))
-                
-                if artifact_name in artifact_counts:
-                    artifact_counts[artifact_name]['count'] += 1
-                    artifact_counts[artifact_name]['total_value'] += artifact_value
-                else:
-                    artifact_counts[artifact_name] = {
-                        'count': 1,
-                        'total_value': artifact_value,
-                        'image': artifact['image'],
-                        'value': artifact_value
-                    }
-                
-                total_artifact_value += artifact_value
-        
-        # Convert to list and sort by count (most common first)
-        artifact_stats = []
-        for artifact_name, stats in artifact_counts.items():
-            artifact_stats.append({
-                'name': artifact_name,
-                'count': stats['count'],
-                'total_value': float(stats['total_value']),
-                'image': stats['image'],
-                'value': float(stats['value']),
-                'percentage': (stats['count'] / sum(item['count'] for item in artifact_counts.values()) * 100) if artifact_counts else 0
-            })
-        
-        # Sort by count descending
-        artifact_stats.sort(key=lambda x: x['count'], reverse=True)
-        
-        # Get most common artifact
-        most_common_artifact = artifact_stats[0] if artifact_stats else None
-        
-        # Get rarest artifact (lowest count)
-        rarest_artifact = artifact_stats[-1] if artifact_stats else None
-        
-        return Response({
-            'artifact_stats': artifact_stats,
-            'total_artifacts_found': sum(item['count'] for item in artifact_stats),
-            'total_artifact_value': float(total_artifact_value),
-            'most_common_artifact': most_common_artifact,
-            'rarest_artifact': rarest_artifact,
-            'unique_artifacts_found': len(artifact_stats)
-        })
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
-def get_chamber_stats(request):
-    """
-    Get chamber exploration statistics for the authenticated user
-    """
-    if not request.user.is_authenticated:
-        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    try:
-        # Get all explorations
-        explorations = PyramidExploration.objects.filter(user=request.user)
-        
-        # Count chamber visits and treasure findings
-        chamber_stats = {}
-        total_chambers_explored = 0
-        total_treasure_found = 0
-        
-        for exploration in explorations:
-            for chamber in exploration.chambers_explored:
-                chamber_name = chamber['name']
-                
-                if chamber_name in chamber_stats:
-                    chamber_stats[chamber_name]['visits'] += 1
-                    chamber_stats[chamber_name]['treasure_found'] += 1 if any(artifact['name'] for artifact in exploration.artifacts_found) else 0
-                else:
-                    chamber_stats[chamber_name] = {
-                        'visits': 1,
-                        'treasure_found': 1 if any(artifact['name'] for artifact in exploration.artifacts_found) else 0,
-                        'danger': chamber['danger'],
-                        'treasure_chance': chamber['treasure_chance'],
-                        'image': chamber['image']
-                    }
-                
-                total_chambers_explored += 1
-                if any(artifact['name'] for artifact in exploration.artifacts_found):
-                    total_treasure_found += 1
-        
-        # Convert to list and calculate success rates
-        chamber_stats_list = []
-        for chamber_name, stats in chamber_stats.items():
-            success_rate = (stats['treasure_found'] / stats['visits'] * 100) if stats['visits'] > 0 else 0
-            chamber_stats_list.append({
-                'name': chamber_name,
-                'visits': stats['visits'],
-                'treasure_found': stats['treasure_found'],
-                'success_rate': round(success_rate, 2),
-                'danger': stats['danger'],
-                'treasure_chance': stats['treasure_chance'],
-                'image': stats['image']
-            })
-        
-        # Sort by visits descending
-        chamber_stats_list.sort(key=lambda x: x['visits'], reverse=True)
-        
-        # Calculate overall treasure finding rate
-        overall_treasure_rate = (total_treasure_found / total_chambers_explored * 100) if total_chambers_explored > 0 else 0
-        
-        return Response({
-            'chamber_stats': chamber_stats_list,
-            'total_chambers_explored': total_chambers_explored,
-            'total_treasure_found': total_treasure_found,
-            'overall_treasure_rate': round(overall_treasure_rate, 2),
-            'most_visited_chamber': chamber_stats_list[0] if chamber_stats_list else None,
-            'most_successful_chamber': max(chamber_stats_list, key=lambda x: x['success_rate']) if chamber_stats_list else None
-        })
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-def calculate_explorer_rank(total_expeditions, total_artifacts):
+def calculate_explorer_rank(total_expeditions, total_artifacts, highest_win_ratio):
     """
     Calculate explorer rank based on total expeditions and artifacts found
     """
-    if total_expeditions >= 100 and total_artifacts >= 50:
+    if total_expeditions >= 50 and total_artifacts >= 30 and highest_win_ratio >= 3.0:
+        return "Pharaoh's Chosen ✨"
+    elif total_expeditions >= 30 and total_artifacts >= 20 and highest_win_ratio >= 2.0:
         return "Master Archaeologist 🏺"
-    elif total_expeditions >= 50 and total_artifacts >= 25:
+    elif total_expeditions >= 20 and total_artifacts >= 10:
         return "Elite Explorer ⚱️"
-    elif total_expeditions >= 25 and total_artifacts >= 10:
-        return "Seasoned Adventurer 🗿"
     elif total_expeditions >= 10 and total_artifacts >= 5:
+        return "Seasoned Adventurer 🗿"
+    elif total_expeditions >= 5:
         return "Amateur Historian 🔍"
     else:
         return "Novice Explorer 🧭"

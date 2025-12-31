@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWallet } from "../contexts/WalletContext"; // Import wallet context
+import { useWallet } from "../contexts/WalletContext";
 import { guessingService } from "../services/api";
 import "./NumberGuessingGame.css";
 
@@ -8,16 +8,27 @@ const MIN_STAKE = 100;
 
 const NumberGuessingGame = ({ user }) => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet(); // Get wallet data
+  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
 
   /* -------------------- HELPER FUNCTIONS -------------------- */
-  // Get wallet balance with fallback to user.balance
-  const getWalletBalance = () => {
-    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
+  const getCombinedBalance = () => {
+    if (!wallet) return user?.balance || 0;
+    const balance = wallet.balance || 0;
+    const spot_balance = wallet.spot_balance || 0;
+    return balance + spot_balance;
   };
 
-  const balance = Number(getWalletBalance() || 0);
+  const getSpotBalance = () => {
+    if (!wallet) return 0;
+    return wallet.spot_balance || 0;
+  };
 
+  const combinedBalance = Number(getCombinedBalance() || 0);
+  const spotBalance = Number(getSpotBalance() || 0);
+
+  const formatNGN = (v) => `₦${Number(v || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+
+  /* -------------------- STATE -------------------- */
   const [stake, setStake] = useState(MIN_STAKE);
   const [maxNumber, setMaxNumber] = useState(100);
   const [maxAttempts, setMaxAttempts] = useState(10);
@@ -25,163 +36,337 @@ const NumberGuessingGame = ({ user }) => {
   const [game, setGame] = useState(null);
   const [showModal, setShowModal] = useState(true);
   const [feedback, setFeedback] = useState(null);
+  const [proximityHint, setProximityHint] = useState("");
+  const [remainingAttempts, setRemainingAttempts] = useState(10);
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [showLossModal, setShowLossModal] = useState(false);
+  const [lastWin, setLastWin] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [gameHistory, setGameHistory] = useState([]);
 
-  const format = (v) => `₦${Number(v).toLocaleString()}`;
+  const difficulties = [
+    { label: "Easy", maxNumber: 50, maxAttempts: 10, description: "1-50, 10 attempts" },
+    { label: "Medium", maxNumber: 100, maxAttempts: 10, description: "1-100, 10 attempts" },
+    { label: "Hard", maxNumber: 200, maxAttempts: 8, description: "1-200, 8 attempts" },
+    { label: "Expert", maxNumber: 500, maxAttempts: 6, description: "1-500, 6 attempts" },
+    { label: "Master", maxNumber: 1000, maxAttempts: 5, description: "1-1000, 5 attempts" },
+  ];
 
+  const numericStake = Number(stake);
+
+  const canStart = 
+    numericStake >= MIN_STAKE &&
+    numericStake <= combinedBalance &&
+    !walletLoading &&
+    !refreshing;
+
+  /* -------------------- DEEP REFRESH -------------------- */
+  const deepRefresh = async () => {
+    setRefreshing(true);
+    setShowModal(true);
+    setGame(null);
+    setLastWin(null);
+    setShowWinModal(false);
+    setShowLossModal(false);
+    setFeedback(null);
+    setProximityHint("");
+    
+    if (refreshWallet) {
+      await refreshWallet();
+    }
+    
+    setRefreshing(false);
+  };
+
+  /* -------------------- START GAME -------------------- */
   const startGame = async () => {
-    // Check if wallet is still loading
     if (walletLoading) {
       alert("Please wait while your balance loads...");
       return;
     }
 
-    const res = await guessingService.startGame({
-      bet_amount: stake,
-      max_number: maxNumber,
-      max_attempts: maxAttempts,
-    });
-
-    setGame({ id: res.data.game_id });
-
-    // Update wallet balance
-    if (refreshWallet) {
-      await refreshWallet();
+    if (numericStake < MIN_STAKE) {
+      alert(`Minimum stake is ₦${MIN_STAKE.toLocaleString("en-NG")}`);
+      return;
     }
 
-    setShowModal(false);
-    setFeedback(null);
-  };
+    if (numericStake > combinedBalance) {
+      alert("Insufficient balance");
+      return;
+    }
 
-  const submitGuess = async () => {
-    if (!guess) return;
+    try {
+      const res = await guessingService.startGame({
+        bet_amount: numericStake,
+        max_number: maxNumber,
+        max_attempts: maxAttempts,
+      });
 
-    const res = await guessingService.makeGuess({
-      game_id: game.id,
-      guess: Number(guess),
-    });
+      setGame({ id: res.data.game_id });
+      setRemainingAttempts(maxAttempts);
+      setAttemptsUsed(0);
+      setFeedback(null);
+      setProximityHint("");
+      setShowModal(false);
+      setLastWin(null);
 
-    if (res.data.status === "won") {
-      // Update wallet balance
       if (refreshWallet) {
         await refreshWallet();
       }
 
-      setFeedback(`🎉 You won ${format(res.data.win_amount)}!`);
-      setTimeout(() => setShowModal(true), 1500);
-      setGame(null);
-    } else if (res.data.status === "lost") {
-      setFeedback(`💀 Lost! Number was ${res.data.target_number}`);
-      setTimeout(() => setShowModal(true), 1500);
-      setGame(null);
-    } else {
-      setFeedback(`Try ${res.data.hint.toUpperCase()}`);
-    }
+      // Add to game history
+      setGameHistory(prev => [{
+        type: 'start',
+        stake: numericStake,
+        maxNumber,
+        maxAttempts,
+        timestamp: new Date().toLocaleTimeString()
+      }, ...prev.slice(0, 9)]);
 
-    setGuess("");
+    } catch (err) {
+      console.error("Game start error:", err);
+      alert(err.response?.data?.error || "Failed to start game");
+    }
   };
 
+  /* -------------------- SUBMIT GUESS -------------------- */
+  const submitGuess = async () => {
+    if (!guess || !game || refreshing) return;
+
+    const guessNum = Number(guess);
+    if (isNaN(guessNum) || guessNum < 1 || guessNum > maxNumber) {
+      setFeedback(`Please enter a number between 1 and ${maxNumber}`);
+      return;
+    }
+
+    try {
+      const res = await guessingService.makeGuess({
+        game_id: game.id,
+        guess: guessNum,
+      });
+
+      setAttemptsUsed(prev => prev + 1);
+      setRemainingAttempts(res.data.remaining_attempts || maxAttempts - (attemptsUsed + 1));
+
+      if (res.data.status === "won") {
+        setLastWin({
+          win_amount: res.data.win_amount,
+          win_ratio: res.data.win_ratio,
+          win_tier: res.data.win_tier,
+          multiplier: res.data.multiplier,
+          attempts_used: res.data.attempts_used,
+          target_number: res.data.target_number,
+        });
+
+        if (refreshWallet) {
+          await refreshWallet();
+        }
+
+        // Show win modal for significant wins
+        setTimeout(() => {
+          if (res.data.win_ratio > 0.5) {
+            setShowWinModal(true);
+          }
+        }, 800);
+
+        // Add to game history
+        setGameHistory(prev => [{
+          type: 'win',
+          stake: numericStake,
+          win_amount: res.data.win_amount,
+          win_ratio: res.data.win_ratio,
+          attempts: res.data.attempts_used,
+          target: res.data.target_number,
+          timestamp: new Date().toLocaleTimeString()
+        }, ...prev.slice(0, 9)]);
+
+      } else if (res.data.status === "lost") {
+        setTimeout(() => {
+          setShowLossModal(true);
+        }, 800);
+
+        // Add to game history
+        setGameHistory(prev => [{
+          type: 'loss',
+          stake: numericStake,
+          target: res.data.target_number,
+          attempts: attemptsUsed + 1,
+          timestamp: new Date().toLocaleTimeString()
+        }, ...prev.slice(0, 9)]);
+
+      } else {
+        // Still playing
+        setFeedback(`${res.data.hint.toUpperCase()} - ${res.data.proximity_hint}`);
+        setProximityHint(res.data.proximity_hint);
+      }
+
+      setGuess("");
+
+    } catch (err) {
+      console.error("Guess error:", err);
+      setFeedback(err.response?.data?.error || "Guess failed");
+    }
+  };
+
+  /* -------------------- GET HINT -------------------- */
+  const getHint = async () => {
+    if (!game || refreshing) return;
+
+    try {
+      const res = await guessingService.getHint({
+        game_id: game.id,
+      });
+
+      setFeedback(res.data.hint);
+      
+      // Could deduct a small fee for hint here
+      // if (res.data.cost > 0) {
+      //   // Update balance
+      // }
+
+    } catch (err) {
+      console.error("Hint error:", err);
+    }
+  };
+
+  /* -------------------- GET WIN TIER COLOR -------------------- */
+  const getWinTierColor = (tier) => {
+    switch(tier) {
+      case "low": return "#FFA726";
+      case "normal": return "#4CAF50";
+      case "high": return "#2196F3";
+      case "jackpot": return "#9C27B0";
+      case "mega_jackpot": return "#F44336";
+      default: return "#666";
+    }
+  };
+
+  /* -------------------- PROXIMITY COLOR -------------------- */
+  const getProximityColor = () => {
+    if (!proximityHint) return "#666";
+    if (proximityHint.includes("Very Hot")) return "#FF0000";
+    if (proximityHint.includes("Hot")) return "#FF5722";
+    if (proximityHint.includes("Warm")) return "#FF9800";
+    if (proximityHint.includes("Cool")) return "#2196F3";
+    return "#607D8B";
+  };
+
+  /* -------------------- RENDER -------------------- */
   return (
-    <div className="guessing-game">
+    <div className="number-guessing-game">
+
+      {/* AMBIENT ANIMATION */}
+      <div className="ambient-animation"></div>
 
       {/* HEADER */}
       <div className="game-header">
-        <button onClick={() => navigate("/")}>←</button>
-        <span>🎯 Number Guess</span>
-        <span className="balance-display">
-          {walletLoading ? (
-            <div className="balance-loading">
-              <span className="loading-spinner-small" />
-              Loading...
-            </div>
-          ) : (
-            format(balance)
-          )}
-        </span>
+        <button onClick={() => navigate("/")} className="back-button">
+          ← Back
+        </button>
+        <div className="balance-details">
+          <div className="balance-total">
+            {walletLoading || refreshing ? (
+              <div className="balance-loading">
+                <span className="loading-spinner-small" />
+                {refreshing ? "Refreshing..." : "Loading..."}
+              </div>
+            ) : (
+              formatNGN(combinedBalance)
+            )}
+          </div>
+          <div className="balance-breakdown">
+            <span className="balance-main">Main: {formatNGN(wallet?.balance || 0)}</span>
+            <span className="balance-spot">Spot: {formatNGN(spotBalance)}</span>
+          </div>
+        </div>
       </div>
 
-      {/* MODAL */}
+      {/* STAKE MODAL */}
       {showModal && (
-        <div className="stake-modal-overlay">
-          <div className="stake-modal">
-            <h3>Start Guessing</h3>
+        <div className="stake-modal-overlay animated-fadeIn">
+          <div className="stake-modal animated-slideUp">
+            <div className="panel-header-glow">
+              <h3>🎯 Number Guessing</h3>
+            </div>
 
             <div className="balance-summary">
               <span className="balance-label">Available Balance:</span>
               <span className="balance-amount">
-                {walletLoading ? (
+                {walletLoading || refreshing ? (
                   <div className="balance-loading-inline">
                     <span className="loading-spinner-small" />
-                    Loading...
+                    {refreshing ? "Refreshing..." : "Loading..."}
                   </div>
                 ) : (
-                  format(balance)
+                  formatNGN(combinedBalance)
                 )}
               </span>
             </div>
 
-            <label>Stake (₦)</label>
-            <input
-              type="number"
-              value={stake}
-              min={MIN_STAKE}
-              onChange={(e) => setStake(Number(e.target.value))}
-              disabled={walletLoading}
-            />
+            <div className="game-description">
+              <p>Guess the number between 1 and your chosen maximum!</p>
+              <p className="description-tip">Fewer attempts = Higher rewards!</p>
+            </div>
+
+            <div className="game-settings">
+              <div className="setting-group">
+                <label>Difficulty Level</label>
+                <div className="option-buttons">
+                  {difficulties.map(d => (
+                    <button
+                      key={d.label}
+                      className={maxNumber === d.maxNumber ? "active" : ""}
+                      onClick={() => {
+                        setMaxNumber(d.maxNumber);
+                        setMaxAttempts(d.maxAttempts);
+                      }}
+                      disabled={walletLoading || refreshing}
+                    >
+                      {d.label}
+                      <small>{d.description}</small>
+                    </button>
+                  ))}
+                </div>
+                <small className="risk-indicator">
+                  Current: 1-{maxNumber}, {maxAttempts} attempts
+                </small>
+              </div>
+            </div>
+
+            <div className="stake-input-group">
+              <label>Stake Amount (₦)</label>
+              <input
+                type="number"
+                value={stake}
+                min={MIN_STAKE}
+                step={100}
+                onChange={(e) => setStake(e.target.value)}
+                disabled={walletLoading || refreshing}
+              />
+            </div>
 
             <div className="quick-stakes">
-              {[1000, 2000, 5000, 10000].map(v => (
+              {[100, 500, 1000, 2500, 5000].map(v => (
                 <button 
                   key={v} 
-                  onClick={() => !walletLoading && setStake(v)}
-                  disabled={walletLoading}
+                  className={numericStake === v ? "active" : ""}
+                  onClick={() => !walletLoading && !refreshing && setStake(v)}
+                  disabled={walletLoading || refreshing}
                 >
                   ₦{v.toLocaleString()}
                 </button>
               ))}
             </div>
 
-            <label>Difficulty</label>
-            <div className="quick-stakes">
-              <button 
-                onClick={() => {
-                  if (!walletLoading) {
-                    setMaxNumber(50);
-                    setMaxAttempts(10);
-                  }
-                }}
-                disabled={walletLoading}
-              >
-                Easy
-              </button>
-              <button 
-                onClick={() => {
-                  if (!walletLoading) {
-                    setMaxNumber(100);
-                    setMaxAttempts(10);
-                  }
-                }}
-                disabled={walletLoading}
-              >
-                Medium
-              </button>
-              <button 
-                onClick={() => {
-                  if (!walletLoading) {
-                    setMaxNumber(200);
-                    setMaxAttempts(8);
-                  }
-                }}
-                disabled={walletLoading}
-              >
-                Hard
-              </button>
-            </div>
             <button
               className="start-btn"
-              disabled={stake < MIN_STAKE || stake > balance || walletLoading}
+              disabled={!canStart}
               onClick={startGame}
             >
-              {walletLoading ? "LOADING..." : "START GAME"}
+              {refreshing ? "REFRESHING..." : 
+               walletLoading ? "LOADING..." : 
+               "🎮 Start Game"}
             </button>
           </div>
         </div>
@@ -189,18 +374,211 @@ const NumberGuessingGame = ({ user }) => {
 
       {/* GAMEPLAY */}
       {game && (
-        <div className="guess-stage">
-          <div className="guess-input">
-            <input
-              type="number"
-              value={guess}
-              onChange={(e) => setGuess(e.target.value)}
-              placeholder={`1 - ${maxNumber}`}
-            />
-            <button onClick={submitGuess}>GUESS</button>
+        <div className="game-board-section">
+          <div className="game-info-bar">
+            <div className="info-item">
+              <span>Range</span>
+              <strong>1 - {maxNumber}</strong>
+            </div>
+            <div className="info-item">
+              <span>Attempts</span>
+              <strong>{attemptsUsed}/{maxAttempts}</strong>
+            </div>
+            <div className="info-item">
+              <span>Remaining</span>
+              <strong>{remainingAttempts}</strong>
+            </div>
           </div>
 
-          {feedback && <div className="guess-feedback">{feedback}</div>}
+          <div className="guess-container">
+            <div className="guess-input-group">
+              <input
+                type="number"
+                value={guess}
+                onChange={(e) => setGuess(e.target.value)}
+                placeholder={`Enter number (1-${maxNumber})`}
+                min={1}
+                max={maxNumber}
+                disabled={refreshing}
+                onKeyPress={(e) => e.key === 'Enter' && submitGuess()}
+              />
+              <button 
+                className="guess-button"
+                onClick={submitGuess}
+                disabled={!guess || refreshing}
+              >
+                GUESS
+              </button>
+            </div>
+
+            <button 
+              className="hint-button"
+              onClick={getHint}
+              disabled={refreshing}
+            >
+              💡 Get Hint
+            </button>
+          </div>
+
+          {feedback && (
+            <div className="feedback-container">
+              <div className="feedback-message" style={{color: getProximityColor()}}>
+                {feedback}
+              </div>
+              {proximityHint && (
+                <div className="proximity-indicator" style={{color: getProximityColor()}}>
+                  {proximityHint}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Game History */}
+          {gameHistory.length > 0 && (
+            <div className="game-history">
+              <h4>Recent Game History</h4>
+              <div className="history-list">
+                {gameHistory.map((item, index) => (
+                  <div key={index} className={`history-item ${item.type}`}>
+                    <span>
+                      {item.type === 'start' ? '🎮 Started' : 
+                       item.type === 'win' ? '🎉 Won' : '💀 Lost'}
+                    </span>
+                    <span>
+                      {item.type === 'start' ? `₦${item.stake}` :
+                       item.type === 'win' ? `₦${item.win_amount}` : `₦${item.stake}`}
+                    </span>
+                    <small>{item.timestamp}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* WIN MODAL */}
+      {showWinModal && lastWin && (
+        <div className="modal-overlay win-modal-overlay animated-fadeIn">
+          <div className="win-modal-content animated-slideUp">
+            <div className="win-modal-header">
+              <div className="win-icon">🎯</div>
+              <h2>Correct Guess!</h2>
+              <p className="win-subtitle">You found the number!</p>
+            </div>
+            
+            <div className="win-amount-display">
+              <span className="win-amount-label">You won</span>
+              <span 
+                className="win-amount" 
+                style={{color: getWinTierColor(lastWin.win_tier)}}
+              >
+                {formatNGN(lastWin.win_amount)}
+              </span>
+              <p className="win-note">
+                {lastWin.win_tier === "mega_jackpot" ? "MEGA JACKPOT!" : 
+                 lastWin.win_tier === "jackpot" ? "JACKPOT WIN!" : 
+                 "Great guess!"}
+              </p>
+            </div>
+            
+            <div className="win-stats">
+              <div className="stat-item">
+                <span>Target Number:</span>
+                <span>{lastWin.target_number}</span>
+              </div>
+              <div className="stat-item">
+                <span>Attempts Used:</span>
+                <span>{lastWin.attempts_used}</span>
+              </div>
+              <div className="stat-item">
+                <span>Win Ratio:</span>
+                <span>{(lastWin.win_ratio * 100).toFixed(1)}%</span>
+              </div>
+              <div className="stat-item">
+                <span>Multiplier:</span>
+                <span>{lastWin.multiplier.toFixed(2)}x</span>
+              </div>
+              <div className="stat-item">
+                <span>Win Tier:</span>
+                <span style={{color: getWinTierColor(lastWin.win_tier), textTransform: 'capitalize'}}>
+                  {lastWin.win_tier.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+            
+            <button
+              className="continue-button"
+              onClick={() => {
+                setShowWinModal(false);
+                deepRefresh();
+              }}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <>
+                  <span className="loading-spinner-small" />
+                  Refreshing...
+                </>
+              ) : (
+                "🎮 Continue Playing"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* LOSS MODAL */}
+      {showLossModal && (
+        <div className="modal-overlay loss-modal-overlay animated-fadeIn">
+          <div className="loss-modal-content animated-slideUp">
+            <div className="loss-modal-header">
+              <div className="loss-icon">💔</div>
+              <h2>Out of Attempts</h2>
+              <p className="loss-subtitle">Better luck next time!</p>
+            </div>
+            
+            <div className="loss-message">
+              <p className="loss-encouragement">
+                You used <strong>{attemptsUsed} attempts</strong>
+                <br />
+                <span className="loss-tip">Try Easy difficulty first to build confidence!</span>
+              </p>
+            </div>
+            
+            <div className="loss-stats">
+              <div className="stat-item">
+                <span>Stake:</span>
+                <span>{formatNGN(numericStake)}</span>
+              </div>
+              <div className="stat-item">
+                <span>Range:</span>
+                <span>1-{maxNumber}</span>
+              </div>
+              <div className="stat-item">
+                <span>Attempts Used:</span>
+                <span>{attemptsUsed}</span>
+              </div>
+            </div>
+            
+            <button
+              className="try-again-button"
+              onClick={() => {
+                setShowLossModal(false);
+                deepRefresh();
+              }}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <>
+                  <span className="loading-spinner-small" />
+                  Refreshing...
+                </>
+              ) : (
+                "🔁 Try Again"
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>

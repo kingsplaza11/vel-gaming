@@ -1,41 +1,36 @@
-// src/games/fortune/useFortuneWS.js
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-/**
- * Fortune WS (stable)
- * - Works on localhost + production
- * - Accepts REACT_APP_WS_URL in any of these formats:
- *    "ws://localhost:8001"
- *    "wss://api.domain.com"
- *    "http://localhost:8001"   (auto converts to ws)
- *    "https://api.domain.com"  (auto converts to wss)
- *    "localhost:8001"          (auto adds ws://)
- *
- * If not provided, it derives from REACT_APP_API_URL (http://localhost:8001/api/)
- */
+/*
+============================================================
+ Fortune WebSocket Hook (FINAL, STABLE)
+------------------------------------------------------------
+ ✔ Requires a valid wsToken
+ ✔ Auto-reconnect with backoff
+ ✔ Safe cleanup on unmount
+ ✔ Works on localhost + production
+ ✔ Explicit logging for debugging
+============================================================
+*/
+
+/* ------------------ URL HELPERS ------------------ */
 
 function normalizeWsBase(input) {
   if (!input) return null;
 
   let s = String(input).trim();
 
-  // If someone put "/ws/fortune/" etc, strip path to base
-  // but still keep scheme/host.
-  // We'll handle via URL parsing where possible.
-
-  // If missing scheme (e.g. localhost:8001), add ws://
+  // If missing scheme (localhost:8001)
   if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(s)) {
     s = `ws://${s}`;
   }
 
-  // Convert http(s) to ws(s)
+  // Convert http → ws
   if (s.startsWith("http://")) s = s.replace("http://", "ws://");
   if (s.startsWith("https://")) s = s.replace("https://", "wss://");
 
-  // Ensure no trailing slash
+  // Remove trailing slash
   s = s.replace(/\/+$/, "");
 
-  // Validate
   try {
     const u = new URL(s);
     if (u.protocol !== "ws:" && u.protocol !== "wss:") return null;
@@ -46,21 +41,24 @@ function normalizeWsBase(input) {
 }
 
 function deriveWsBase() {
-  // 1) Explicit WS URL
+  // 1️⃣ Explicit WS URL
   const explicit = normalizeWsBase(process.env.REACT_APP_WS_URL);
   if (explicit) return explicit;
 
-  // 2) Derive from API URL
-  const api = process.env.REACT_APP_API_URL || "https://veltoragames.com/api/";
+  // 2️⃣ Derive from API URL
+  const api = process.env.REACT_APP_API_URL || "http://veltoragames.com/api/";
   try {
     const u = new URL(api);
     const proto = u.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${u.host}`;
   } catch {
-    // final fallback
     return "ws://veltoragames.com";
   }
 }
+
+/* ============================================================
+   MAIN HOOK
+============================================================ */
 
 export function useFortuneWS({ wsToken, onEvent }) {
   const wsRef = useRef(null);
@@ -72,28 +70,16 @@ export function useFortuneWS({ wsToken, onEvent }) {
   const [connected, setConnected] = useState(false);
   const [lastError, setLastError] = useState(null);
 
-  // Prevent flicker: delay setting connected=false
-  const disconnectGraceRef = useRef(null);
-
   const wsBase = useMemo(() => deriveWsBase(), []);
   const wsUrl = useMemo(() => `${wsBase}/ws/fortune/`, [wsBase]);
+
+  /* ------------------ CLEANUP HELPERS ------------------ */
 
   const clearTimers = useCallback(() => {
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
-    if (disconnectGraceRef.current) {
-      clearTimeout(disconnectGraceRef.current);
-      disconnectGraceRef.current = null;
-    }
-  }, []);
-
-  const safeSetDisconnected = useCallback(() => {
-    if (disconnectGraceRef.current) clearTimeout(disconnectGraceRef.current);
-    disconnectGraceRef.current = setTimeout(() => {
-      setConnected(false);
-    }, 250);
   }, []);
 
   const closeSocket = useCallback(() => {
@@ -111,54 +97,60 @@ export function useFortuneWS({ wsToken, onEvent }) {
     joinSentRef.current = false;
   }, []);
 
+  /* ------------------ SEND SAFE ------------------ */
+
   const send = useCallback((payload) => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn("[FortuneWS] Send failed: socket not open");
+      return false;
+    }
     ws.send(JSON.stringify(payload));
     return true;
   }, []);
 
+  /* ------------------ CONNECT ------------------ */
+
   const connect = useCallback(() => {
-    if (!wsToken) return;
+    if (!wsToken) {
+      console.warn("[FortuneWS] wsToken missing, abort connect");
+      return;
+    }
     if (!aliveRef.current) return;
 
     clearTimers();
     closeSocket();
 
-    // Validate URL again (just in case)
-    try {
-      const u = new URL(wsUrl);
-      if (u.protocol !== "ws:" && u.protocol !== "wss:") {
-        setLastError("WebSocket URL invalid");
-        safeSetDisconnected();
-        return;
-      }
-    } catch {
-      setLastError("WebSocket URL invalid");
-      safeSetDisconnected();
-      return;
-    }
-
     let ws;
     try {
       ws = new WebSocket(wsUrl);
     } catch (e) {
-      setLastError("WebSocket URL invalid");
-      safeSetDisconnected();
+      console.error("[FortuneWS] Invalid WS URL", wsUrl);
+      setLastError("Invalid WebSocket URL");
+      setConnected(false);
       return;
     }
 
     wsRef.current = ws;
 
+    console.info("[FortuneWS] Connecting →", wsUrl);
+
     ws.onopen = () => {
       reconnectAttemptRef.current = 0;
-      setLastError(null);
       setConnected(true);
+      setLastError(null);
 
-      // Send join once per connection
+      console.info("[FortuneWS] Connected");
+
       if (!joinSentRef.current) {
         joinSentRef.current = true;
-        ws.send(JSON.stringify({ type: "join", ws_token: wsToken }));
+        ws.send(
+          JSON.stringify({
+            type: "join",
+            ws_token: wsToken,
+          })
+        );
+        console.info("[FortuneWS] Join sent");
       }
     };
 
@@ -166,62 +158,75 @@ export function useFortuneWS({ wsToken, onEvent }) {
       try {
         const msg = JSON.parse(ev.data);
         onEvent?.(msg);
-      } catch (_) {}
+      } catch (err) {
+        console.warn("[FortuneWS] Invalid message", ev.data);
+      }
     };
 
-    ws.onerror = () => {
+    ws.onerror = (err) => {
+      console.error("[FortuneWS] Socket error", err);
       setLastError("WebSocket error");
-      safeSetDisconnected();
     };
 
-    ws.onclose = () => {
-      safeSetDisconnected();
+    ws.onclose = (ev) => {
+      console.warn(
+        `[FortuneWS] Closed (${ev.code}) ${ev.reason || ""}`
+      );
+      setConnected(false);
 
       if (!aliveRef.current) return;
 
-      // Backoff with cap
       reconnectAttemptRef.current += 1;
       const attempt = reconnectAttemptRef.current;
 
-      const base = Math.min(2500, 600 + attempt * 250);
-      const jitter = Math.floor(Math.random() * 400);
-      const delay = base + jitter;
+      const delay = Math.min(3000, 500 + attempt * 400);
 
       reconnectTimerRef.current = setTimeout(() => {
         connect();
       }, delay);
     };
-  }, [wsToken, wsUrl, onEvent, clearTimers, closeSocket, safeSetDisconnected]);
+  }, [wsToken, wsUrl, clearTimers, closeSocket, onEvent]);
+
+  /* ------------------ EFFECT ------------------ */
 
   useEffect(() => {
     aliveRef.current = true;
 
     if (!wsToken) {
-      setConnected(false);
-      setLastError(null);
-      reconnectAttemptRef.current = 0;
       closeSocket();
       clearTimers();
-      return () => {};
+      setConnected(false);
+      setLastError(null);
+      return;
     }
 
     connect();
 
-    const onVis = () => {
+    const onVisibility = () => {
       if (document.visibilityState === "visible" && wsToken) {
+        console.info("[FortuneWS] Visibility restore → reconnect");
         connect();
       }
     };
-    document.addEventListener("visibilitychange", onVis);
+
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       aliveRef.current = false;
-      document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("visibilitychange", onVisibility);
       clearTimers();
       closeSocket();
       setConnected(false);
     };
   }, [wsToken, connect, clearTimers, closeSocket]);
 
-  return { connected, lastError, send, wsUrl, wsBase };
+  /* ------------------ EXPORT ------------------ */
+
+  return {
+    connected,
+    lastError,
+    send,
+    wsUrl,
+    wsBase,
+  };
 }

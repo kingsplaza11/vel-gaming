@@ -236,24 +236,175 @@ export const heistService = {
   startHeist: (data) => api.post("/heist/start-heist/", data),
 };
 
+// Example API service structure - make sure it looks like this
 export const minesweeperService = {
-  startGame: (data) => api.post("/minesweeper/start/", data),
+  start: async (data) => {
+    console.log("API Request to /minesweeper/start/:", data);
+    try {
+      const response = await api.post('/minesweeper/start/', data);
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+  reveal: async (data) => {
+    console.log("API Request to /minesweeper/reveal/:", data);
+    return api.post('/minesweeper/reveal/', data);
+  },
+  cashout: async (data) => {
+    console.log("API Request to /minesweeper/cashout/:", data);
+    return api.post('/minesweeper/cashout/', data);
+  }
 };
 
+// Tower Builder Service - FIXED NAMES
 export const towerService = {
-  startGame: (data) => api.post("/tower/start/", data),
+  startTower: (data) => api.post('/tower/start/', data),
+  buildLevel: (data) => api.post('/tower/build/', data),
+  cashOut: (data) => api.post('/tower/cashout/', data),
+  // Add these for stats if needed
+  getStats: () => api.get('/tower/stats/'),
+  getHistory: () => api.get('/tower/history/'),
 };
 
 export const cardService = {
-  startGame: (data) => api.post("/cards/start-game/", data),
+  // Start a new card game
+  startGame: async (data) => {
+    console.log("API Request to /cards/start-game/:", data);
+    try {
+      const response = await api.post('/cards/start-game/', data);
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("Start Game API Error:", error);
+      throw error;
+    }
+  },
+
+  // Reveal a card - Make sure this matches what you're calling
+  revealCard: async (data) => {  // This is the function name you're calling
+    console.log("API Request to /cards/reveal-card/:", data);
+    try {
+      const response = await api.post('/cards/reveal-card/', data);
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("Reveal Card API Error:", error);
+      throw error;
+    }
+  },
+
+  // Cash out early - Make sure this matches what you're calling
+  cashOut: async (data) => {  // This is the function name you're calling
+    console.log("API Request to /cards/cash-out/:", data);
+    try {
+      const response = await api.post('/cards/cash-out/', data);
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("Cash Out API Error:", error);
+      throw error;
+    }
+  },
+
+  // Get stats
+  getStats: async () => {
+    console.log("API Request to /cards/stats/");
+    try {
+      const response = await api.get('/cards/stats/');
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("Stats API Error:", error);
+      throw error;
+    }
+  },
+
+  // Get game history
+  getHistory: async () => {
+    console.log("API Request to /cards/history/");
+    try {
+      const response = await api.get('/cards/history/');
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("History API Error:", error);
+      throw error;
+    }
+  },
 };
 
+// services/api.js
 export const guessingService = {
   startGame: (data) => api.post("/guessing/start/", data),
+  makeGuess: (data) => api.post("/guessing/guess/", data),
+  getHint: (data) => api.post("/guessing/hint/", data),
+  getStats: () => api.get("/guessing/stats/"),
+  getHistory: () => api.get("/guessing/history/"),
 };
 
 export const colorSwitchService = {
-  startGame: (data) => api.post("/colorswitch/start/", data),
+  startGame: async (data) => {
+    console.log("API Request to /colorswitch/start/:", data);
+    try {
+      const response = await api.post('/colorswitch/start/', data);
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+  
+  submitSequence: async (data) => {
+    console.log("API Request to /colorswitch/submit/:", data);
+    try {
+      const response = await api.post('/colorswitch/submit/', data);
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+  
+  cashOut: async (data) => {
+    console.log("API Request to /colorswitch/cashout/:", data);
+    try {
+      const response = await api.post('/colorswitch/cashout/', data);
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+  
+  getStats: async () => {
+    console.log("API Request to /colorswitch/stats/");
+    try {
+      const response = await api.get('/colorswitch/stats/');
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+  
+  getHistory: async () => {
+    console.log("API Request to /colorswitch/history/");
+    try {
+      const response = await api.get('/colorswitch/history/');
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  }
 };
 
 export default api;

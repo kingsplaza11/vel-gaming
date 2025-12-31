@@ -8,7 +8,20 @@ class PyramidExploration(models.Model):
     traps_encountered = models.IntegerField(default=0)
     artifacts_found = models.JSONField()
     win_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    win_ratio = models.FloatField(default=0.0)  # Add this field
+    survival_rate = models.FloatField(default=0.0)  # Add this field
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['win_ratio']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - ₦{self.win_amount} ({self.win_ratio*100:.1f}%)"
+
 
 class PyramidStats(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -18,6 +31,8 @@ class PyramidStats(models.Model):
     traps_survived = models.IntegerField(default=0)
     total_artifacts = models.IntegerField(default=0)
     highest_multiplier = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    highest_win_ratio = models.FloatField(default=0.0)  # Add this field
+    highest_survival_rate = models.FloatField(default=0.0)  # Add this field
     chambers_explored_total = models.IntegerField(default=0)
     
     def __str__(self):
