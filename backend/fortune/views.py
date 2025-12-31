@@ -61,72 +61,46 @@ def start_session(request):
     if not defaults:
         return Response({"detail": "Invalid game id"}, status=400)
 
-    cfg, _ = RTPConfig.objects.get_or_create(
-        game=game,
-        defaults=defaults,
-    )
+    cfg, _ = RTPConfig.objects.get_or_create(game=game, defaults=defaults)
 
     server_seed = secrets.token_hex(32)
     server_seed_h = seed_hash(server_seed)
 
-    # Prepare session instance
-    session = GameSession(
-        user=request.user,
-        game=game,
-        bet_amount=bet_amount,
-        server_seed_hash=server_seed_h,
-        server_seed=server_seed,
-        client_seed=client_seed,
-    )
-
-    ws_token_holder: dict[str, str] = {}
-
-    try:
-        with transaction.atomic():
-            session.save()
-
-            # 🔴 THIS WAS MISSING
-            session.refresh_from_db()
-
-            debit_for_bet(
-                request.user.id,
-                bet_amount,
-                ref=f"fortune:{session.id}:bet",
-            )
-
-            def _after_commit():
-                ws_token_holder["token"] = sign_ws_token(
-                    request.user.id,
-                    str(session.id),
-                    str(session.server_nonce),  # NOW CORRECT
-                )
-
-            transaction.on_commit(_after_commit)
-
-
-    except WalletError as e:
-        return Response({"detail": str(e)}, status=400)
-
-    # 🔒 Guaranteed committed + visible here
-    ws_token = ws_token_holder.get("token")
-    if not ws_token:
-        return Response(
-            {"detail": "Failed to initialize session"},
-            status=500,
+    with transaction.atomic():
+        session = GameSession.objects.create(
+            user=request.user,
+            game=game,
+            bet_amount=bet_amount,
+            server_seed_hash=server_seed_h,
+            server_seed=server_seed,
+            client_seed=client_seed,
         )
 
-    return Response(
-        StartSessionOut({
-            "session_id": session.id,
-            "game": session.game,
-            "bet_amount": session.bet_amount,
-            "ws_token": ws_token,
-            "server_seed_hash": session.server_seed_hash,
-            "max_steps": cfg.max_steps,
-            "max_multiplier": cfg.max_multiplier,
-        }).data,
-        status=status.HTTP_201_CREATED,
+        # 🔑 MUST REFRESH (DB-generated fields)
+        session.refresh_from_db()
+
+        debit_for_bet(
+            request.user.id,
+            bet_amount,
+            ref=f"fortune:{session.id}:bet",
+        )
+
+    # ✅ SAFE: transaction already committed here
+    ws_token = sign_ws_token(
+        request.user.id,
+        str(session.id),
+        str(session.server_nonce),
     )
+
+    return Response({
+        "session_id": str(session.id),
+        "game": session.game,
+        "bet_amount": str(session.bet_amount),
+        "ws_token": ws_token,
+        "server_seed_hash": session.server_seed_hash,
+        "max_steps": cfg.max_steps,
+        "max_multiplier": cfg.max_multiplier,
+    }, status=201)
 
 
 # =====================================================
