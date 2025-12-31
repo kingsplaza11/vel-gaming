@@ -264,7 +264,7 @@ const WithdrawalForm = () => {
           {error && <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>}
 
           <Alert severity="info" sx={{ my: 2 }}>
-            💰 <strong>Available for Withdrawal:</strong> ₦{wallet?.balance?.toLocaleString() || '0'}
+            💰 <strong>Available for Withdrawal:</strong> ₦{wallet?.spot_balance?.toLocaleString() || '0'}
             <br />
             <small>Minimum withdrawal: ₦{MIN_WITHDRAWAL_AMOUNT.toLocaleString()}</small>
           </Alert>

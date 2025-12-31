@@ -12,44 +12,43 @@ class WalletError(Exception):
 def debit_for_bet(user_id: int, amount: Decimal, ref: str):
     """
     Debit bet amount using:
-    - wallet.balance
-    - wallet.spot_balance
-    - or BOTH combined
+    1) wallet.balance (FIRST)
+    2) wallet.spot_balance (IF NEEDED)
 
-    Priority:
-    1) spot_balance
-    2) balance
-
-    Bet is moved into locked_balance.
+    Total debited amount is moved into locked_balance.
     """
+
     if amount <= 0:
         raise WalletError("Invalid bet amount")
 
     wallet = Wallet.objects.select_for_update().get(user_id=user_id)
 
-    available = wallet.balance + wallet.spot_balance
-
-    if available < amount:
+    total_available = wallet.balance + wallet.spot_balance
+    if total_available < amount:
         raise WalletError("Insufficient funds")
 
     remaining = amount
 
-    # 1️⃣ Use spot balance first
-    if wallet.spot_balance > 0:
+    # 1️⃣ Use MAIN balance first
+    used_from_balance = min(wallet.balance, remaining)
+    wallet.balance -= used_from_balance
+    remaining -= used_from_balance
+
+    # 2️⃣ Use SPOT balance if needed
+    if remaining > 0:
         used_from_spot = min(wallet.spot_balance, remaining)
         wallet.spot_balance -= used_from_spot
         remaining -= used_from_spot
 
-    # 2️⃣ Use main balance if needed
-    if remaining > 0:
-        wallet.balance -= remaining
+    # Sanity check (should never fail)
+    if remaining != Decimal("0"):
+        raise WalletError("Debit calculation error")
 
-    # 3️⃣ Lock full bet
-    wallet.locked_balance += amount
-
-    wallet.save(
-        update_fields=["balance", "spot_balance", "locked_balance"]
-    )
+    wallet.save(update_fields=[
+        "balance",
+        "spot_balance",
+        "locked_balance",
+    ])
 
 @transaction.atomic
 def credit_payout(user_id: int, payout: Decimal, ref: str):

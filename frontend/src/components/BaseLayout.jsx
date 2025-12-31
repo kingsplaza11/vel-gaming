@@ -60,7 +60,7 @@ const BaseLayout = ({ user, onLogout }) => {
           {`
             var _smartsupp = _smartsupp || {};
             _smartsupp.key = '6f5d1e1374f08c82f14ccf88f162e085d45e0bf1';
-            _smartsupp.offsetX = 100; // move along the X axis by 100 pixels
+            _smartsupp.offsetY = 100; // move along the X axis by 100 pixels
             window.smartsupp||(function(d) {
               var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
               s=d.getElementsByTagName('script')[0];c=d.createElement('script');
