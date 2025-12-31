@@ -18,14 +18,14 @@ function deriveWsBase() {
   }
   
   // 2️⃣ Derive from API URL or default
-  const api = process.env.REACT_APP_API_URL || "https://veltoragames.com/api/";
+  const api = process.env.REACT_APP_API_URL || "http://localhost:8001/api/";
   try {
     const url = new URL(api);
     const protocol = url.protocol === "https:" ? "wss:" : "ws:";
     return `${protocol}//${url.host}`;
   } catch {
     // Default to localhost with ws protocol
-    return "ws://veltoragames.com";
+    return "ws://localhost:8001";
   }
 }
 
@@ -39,6 +39,7 @@ export function useFortuneWS({ wsToken, onEvent }) {
   const aliveRef = useRef(true);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
+  const connectionTimeoutRef = useRef(null);
 
   const [connected, setConnected] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
@@ -51,6 +52,12 @@ export function useFortuneWS({ wsToken, onEvent }) {
 
   const closeSocket = useCallback((code = 1000, reason = "Normal closure") => {
     console.log(`[FortuneWS] Closing socket: code=${code}, reason=${reason}`);
+    
+    // Clear connection timeout
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
     
     if (wsRef.current) {
       wsRef.current.onopen = null;
@@ -107,20 +114,33 @@ export function useFortuneWS({ wsToken, onEvent }) {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
+      // Set connection timeout (10 seconds)
+      connectionTimeoutRef.current = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          console.log("[FortuneWS] Connection timeout");
+          ws.close(4000, "Connection timeout");
+        }
+      }, 10000);
+
       ws.onopen = () => {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+        
         console.log("[FortuneWS] Connected successfully");
         setConnected(true);
         setLastError(null);
         reconnectAttemptsRef.current = 0;
         
-        // Send join message immediately after connection
-        if (wsToken) {
-          console.log("[FortuneWS] Sending join message with token");
-          ws.send(JSON.stringify({
-            type: "join",
-            ws_token: wsToken,
-          }));
-        }
+        // Wait a moment before sending join to ensure connection is ready
+        setTimeout(() => {
+          if (ws.readyState === WebSocket.OPEN && wsToken) {
+            console.log("[FortuneWS] Sending join message with token");
+            ws.send(JSON.stringify({
+              type: "join",
+              ws_token: wsToken,
+            }));
+          }
+        }, 100);
       };
 
       ws.onmessage = (event) => {
@@ -143,7 +163,9 @@ export function useFortuneWS({ wsToken, onEvent }) {
             setLastError(message.message || message.code || "Unknown error");
             
             // If auth error, don't try to reconnect
-            if (message.code === "auth_failed" || message.code === "session_not_found") {
+            if (message.code === "auth_failed" || 
+                message.code === "session_not_found" || 
+                message.code === "session_inactive") {
               console.log("[FortuneWS] Auth error, closing connection");
               closeSocket(4001, "Authentication failed");
             }
@@ -164,6 +186,12 @@ export function useFortuneWS({ wsToken, onEvent }) {
       };
 
       ws.onclose = (event) => {
+        // Clear connection timeout
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
         console.log(`[FortuneWS] Connection closed (${event.code}): ${event.reason || 'No reason provided'}`);
         setConnected(false);
         setAuthenticated(false);
@@ -181,11 +209,13 @@ export function useFortuneWS({ wsToken, onEvent }) {
           event.code !== 1000 &&   // Normal closure
           event.code !== 4001 &&   // Auth failed
           event.code !== 4002 &&   // Session not found
+          event.code !== 4003 &&   // Session inactive
           event.code !== 1011 &&   // Internal error
+          event.code !== 4000 &&   // Connection timeout
           reconnectAttemptsRef.current < maxReconnectAttempts
         ) {
           reconnectAttemptsRef.current += 1;
-          const delay = Math.min(2000 * reconnectAttemptsRef.current, 10000); // Exponential backoff
+          const delay = Math.min(1000 * reconnectAttemptsRef.current, 10000); // Exponential backoff
           
           console.log(`[FortuneWS] Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
           
@@ -228,6 +258,11 @@ export function useFortuneWS({ wsToken, onEvent }) {
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
+      }
+      
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
       }
       
       reconnectAttemptsRef.current = 0;

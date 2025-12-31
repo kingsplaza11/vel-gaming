@@ -1,3 +1,4 @@
+# fortune/consumers.py
 from __future__ import annotations
 
 import uuid
@@ -8,6 +9,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
+from django.db import connection, DatabaseError
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 
@@ -96,30 +98,46 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
             user_id, session_id, nonce = await database_sync_to_async(
                 verify_ws_token
             )(token, 120)
-        except Exception:
+            print(f"[FortuneWS] Token verified: user={user_id}, session={session_id}")
+        except Exception as e:
+            print(f"[FortuneWS] Token verification failed: {e}")
             await self.send_error("auth_failed", "Invalid token")
             await self.close(code=4001)
             return
 
+        # Get the session with retry
         session = await self.get_session_with_retry(user_id, session_id)
+        
         if not session:
-            await self.send_error("session_not_found", "Session not available")
+            print(f"[FortuneWS] Session not found: user={user_id}, session={session_id}")
+            await self.send_error("session_not_found", "Session not found or expired")
             await self.close(code=4002)
             return
 
+        # Verify nonce
         if str(session.server_nonce) != str(nonce):
-            await self.send_error("auth_failed", "Nonce mismatch")
+            print(f"[FortuneWS] Nonce mismatch: expected={session.server_nonce}, got={nonce}")
+            await self.send_error("auth_failed", "Session token mismatch")
             await self.close(code=4001)
+            return
+
+        # Check session status
+        if session.status != GameSession.STATUS_ACTIVE:
+            print(f"[FortuneWS] Session not active: status={session.status}")
+            await self.send_error("session_inactive", "Session is no longer active")
+            await self.close(code=4003)
             return
 
         self.user_id = user_id
         self.session_id = session_id
         self.authenticated = True
 
+        print(f"[FortuneWS] User {user_id} joined session {session_id}")
+
         await self.send_json({
             "type": "joined",
             "session_id": str(session.id),
-            "game": "fortune_mouse",
+            "game": session.game,
             "status": session.status,
             "step_index": session.step_index,
             "current_multiplier": str(session.current_multiplier),
@@ -129,16 +147,31 @@ class FortuneConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def get_session_with_retry(self, user_id, session_id):
         """
-        Postgres-safe visibility retry.
+        Postgres-safe visibility retry with exponential backoff.
         """
-        for _ in range(SESSION_RETRY_ATTEMPTS):
+        for attempt in range(SESSION_RETRY_ATTEMPTS):
             try:
-                return GameSession.objects.get(
+                # Ensure fresh database connection
+                connection.close_if_unusable_or_obsolete()
+                
+                session = GameSession.objects.get(
                     id=session_id,
                     user_id=user_id
                 )
+                print(f"[FortuneWS] Session found on attempt {attempt + 1}: {session.id}")
+                return session
             except GameSession.DoesNotExist:
+                if attempt < SESSION_RETRY_ATTEMPTS - 1:
+                    # Exponential backoff
+                    delay = SESSION_RETRY_DELAY * (2 ** attempt)
+                    time.sleep(min(delay, 1.0))  # Cap at 1 second
+                print(f"[FortuneWS] Session not found, attempt {attempt + 1}")
+                continue
+            except DatabaseError:
+                connection.close_if_unusable_or_obsolete()
                 time.sleep(SESSION_RETRY_DELAY)
+        
+        print(f"[FortuneWS] All retry attempts failed for session {session_id}")
         return None
 
     # ===============================

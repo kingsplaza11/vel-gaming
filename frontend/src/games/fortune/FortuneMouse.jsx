@@ -181,6 +181,9 @@ export default function FortuneMouse() {
       }));
 
       setStageEffect("effect-cashout");
+      
+      // Dismiss any loading toast
+      toast.dismiss("cashout");
 
       setTimeout(() => {
         resetGame();
@@ -222,20 +225,24 @@ export default function FortuneMouse() {
         unlockTimeoutRef.current = null;
       }
       
-      // Show error toast (but not for duplicate messages)
-      if (msg.message && msg.code !== "duplicate") {
+      // Show error toast
+      if (msg.message) {
         toast.error(`Error: ${msg.message}`, {
-          duration: 3000,
+          duration: 4000,
           position: "top-center",
+          id: `error-${msg.code}`,
         });
       }
       
-      // If it's an authentication error, reset the session
-      if (msg.code === "auth_failed" || msg.code === "session_not_found") {
+      // Handle specific error codes
+      if (msg.code === "auth_failed" || msg.code === "session_not_found" || msg.code === "session_inactive") {
+        console.log("[FortuneMouse] Session error, resetting game");
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
-          toast.error("Session expired. Please start a new game.");
+          toast.error("Session expired or not found. Please start a new game.", {
+            duration: 5000,
+          });
         }, 1000);
       }
       

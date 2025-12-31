@@ -76,6 +76,7 @@ class RTPConfig(models.Model):
         return f"{self.game} (RTP={self.target_rtp}, cap={self.win_prob_cap})"
 
 
+# fortune/models.py - Update GameSession Meta class
 class GameSession(models.Model):
     STATUS_ACTIVE = "active"
     STATUS_LOST = "lost"
@@ -117,6 +118,8 @@ class GameSession(models.Model):
         indexes = [
             models.Index(fields=["user", "game", "status"]),
             models.Index(fields=["created_at"]),
+            models.Index(fields=["id", "user_id"]),  # Add this for WS lookups
+            models.Index(fields=["server_nonce"]),   # Add this for token verification
         ]
 
     def __str__(self) -> str:

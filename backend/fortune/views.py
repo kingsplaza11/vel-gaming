@@ -44,7 +44,7 @@ def verify_ws_token(token: str, max_age: int = 120) -> tuple[int, str, str]:
 
 
 # =====================================================
-# START SESSION (CRITICAL FIX)
+# START SESSION (FIXED VERSION)
 # =====================================================
 
 @api_view(["POST"])
@@ -66,7 +66,10 @@ def start_session(request):
     server_seed = secrets.token_hex(32)
     server_seed_h = seed_hash(server_seed)
 
+    print(f"[Fortune] Creating session: user={request.user.id}, game={game}")
+    
     with transaction.atomic():
+        # Create session
         session = GameSession.objects.create(
             user=request.user,
             game=game,
@@ -75,22 +78,32 @@ def start_session(request):
             server_seed=server_seed,
             client_seed=client_seed,
         )
+        
+        # Force immediate save to ensure visibility
+        session.save(force_update=True)
+        
+        print(f"[Fortune] Session created: id={session.id}, nonce={session.server_nonce}")
 
-        # 🔑 MUST REFRESH (DB-generated fields)
-        session.refresh_from_db()
-
+        # Debit user's wallet
         debit_for_bet(
             request.user.id,
             bet_amount,
             ref=f"fortune:{session.id}:bet",
         )
 
-    # ✅ SAFE: transaction already committed here
+    # Transaction is committed here automatically by Django
+    
+    # Refresh from database to ensure we have the latest state
+    session.refresh_from_db()
+    
+    # Generate WebSocket token
     ws_token = sign_ws_token(
         request.user.id,
         str(session.id),
         str(session.server_nonce),
     )
+    
+    print(f"[Fortune] Token generated for session {session.id}")
 
     return Response({
         "session_id": str(session.id),
