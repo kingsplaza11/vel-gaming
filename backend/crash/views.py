@@ -12,18 +12,18 @@ from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 
 from .models import GameRound, CrashBet, RiskSettings
 from wallets.models import Wallet
+
 
 class RecentRoundsView(generics.ListAPIView):
     serializer_class = GameRoundSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        is_demo = self.request.query_params.get("is_demo") == "true"
-        return GameRound.objects.filter(is_demo=is_demo).order_by("-id")[:50]
+        # Remove demo mode filtering
+        return GameRound.objects.all().order_by("-id")[:50]
 
 
 class VerifyRoundView(views.APIView):
@@ -53,19 +53,6 @@ def place_bet(request):
         amount = Decimal(str(data.get('amount', '0')))
         auto_cashout = data.get('auto_cashout')
         auto_cashout = Decimal(str(auto_cashout)) if auto_cashout else None
-        mode = data.get('mode', 'real')
-        
-        # Validate mode
-        if mode not in ['real', 'demo']:
-            return Response(
-                {'error': 'Invalid game mode'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        is_demo = mode == 'demo'
-        
-        # Get risk settings
-        risk = RiskSettings.get()
         
         # Validate amount
         if amount <= 0:
@@ -74,30 +61,56 @@ def place_bet(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if amount < risk.min_bet_per_player:
+        # Get risk settings
+        risk = RiskSettings.get()
+        
+        # Check minimum bet
+        min_bet = getattr(risk, 'min_bet_per_player', Decimal('100'))
+        if amount < min_bet:
             return Response(
-                {'error': f'Minimum bet is ₦{risk.min_bet_per_player}'}, 
+                {'error': f'Minimum bet is ₦{min_bet}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if amount > risk.max_bet_per_player:
+        # Check maximum bet
+        max_bet = getattr(risk, 'max_bet_per_player', Decimal('1000'))
+        if amount > max_bet:
             return Response(
-                {'error': f'Maximum bet is ₦{risk.max_bet_per_player}'}, 
+                {'error': f'Maximum bet is ₦{max_bet}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Validate auto cashout if provided
+        if auto_cashout:
+            min_auto = getattr(risk, 'min_auto_cashout', Decimal('1.1'))
+            max_auto = getattr(risk, 'max_auto_cashout', Decimal('100.0'))
+            
+            if auto_cashout < min_auto:
+                return Response(
+                    {'error': f'Auto cashout must be at least {min_auto}x'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if auto_cashout > max_auto:
+                return Response(
+                    {'error': f'Auto cashout cannot exceed {max_auto}x'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         with transaction.atomic():
             # Get current round (most recent pending or running round)
             round_obj = GameRound.objects.filter(
-                is_demo=is_demo,
                 status__in=['PENDING', 'RUNNING']
             ).order_by('-created_at').first()
             
             if not round_obj:
                 # Create new round if none exists
                 round_obj = GameRound.objects.create(
-                    is_demo=is_demo,
-                    status='PENDING'
+                    status='PENDING',
+                    crash_point=Decimal('0.00'),  # Will be set by engine
+                    server_seed='pending',
+                    server_seed_hash='pending',
+                    client_seed='pending',
+                    nonce=0,
                 )
             
             # Check if betting is allowed
@@ -107,88 +120,101 @@ def place_bet(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Check wallet balance
-            wallet = Wallet.objects.select_for_update().get(
-                user=user,
-                is_demo=is_demo
-            )
+            # Get wallet with lock
+            wallet = Wallet.objects.select_for_update().get(user=user)
             
-            if wallet.balance < amount:
+            # Check available funds: first balance, then spot_balance
+            available_balance = wallet.balance
+            available_spot = wallet.spot_balance
+            
+            # Calculate total available
+            total_available = available_balance + available_spot
+            
+            if amount > total_available:
                 return Response(
-                    {'error': 'Insufficient balance'}, 
+                    {'error': 'Insufficient funds'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Check player exposure
+            # Calculate how much to take from each balance
+            amount_from_balance = min(amount, available_balance)
+            amount_from_spot = amount - amount_from_balance
+            
+            # Check player exposure per round
+            max_player_per_round = getattr(risk, 'max_bet_per_player_per_round', Decimal('5000'))
             player_total_bet = CrashBet.objects.filter(
                 user=user,
                 round=round_obj,
                 status='ACTIVE'
             ).aggregate(total=Sum('bet_amount'))['total'] or Decimal('0')
             
-            if player_total_bet + amount > risk.max_bet_per_player_per_round:
+            if player_total_bet + amount > max_player_per_round:
                 return Response(
-                    {'error': f'Maximum bet per round is ₦{risk.max_bet_per_player_per_round}'}, 
+                    {'error': f'Maximum bet per round is ₦{max_player_per_round}'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
             # Check round exposure
+            max_exposure = getattr(risk, 'max_exposure_per_round', Decimal('10000'))
             round_total_bet = CrashBet.objects.filter(
                 round=round_obj,
                 status='ACTIVE'
             ).aggregate(total=Sum('bet_amount'))['total'] or Decimal('0')
             
-            if round_total_bet + amount > risk.max_exposure_per_round:
+            if round_total_bet + amount > max_exposure:
                 return Response(
                     {'error': 'Round exposure limit reached'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
             # Check cooldown (prevent spam)
+            bet_cooldown = getattr(risk, 'bet_cooldown_seconds', 1)
             last_bet = CrashBet.objects.filter(
                 user=user,
-                is_demo=is_demo,
-                created_at__gte=timezone.now() - timezone.timedelta(seconds=1)
+                created_at__gte=timezone.now() - timezone.timedelta(seconds=bet_cooldown)
             ).first()
             
             if last_bet:
                 return Response(
-                    {'error': 'Please wait before placing another bet'}, 
+                    {'error': f'Please wait {bet_cooldown} second(s) before placing another bet'}, 
                     status=status.HTTP_429_TOO_MANY_REQUESTS
                 )
             
-            # Place bet atomic operation
-            ref = f'CRASH-BET-{round_obj.id}-{user.id}-{int(timezone.now().timestamp())}'
+            # Check bets per minute limit
+            max_bets_per_min = getattr(risk, 'max_bets_per_minute', 30)
+            recent_bets_count = CrashBet.objects.filter(
+                user=user,
+                created_at__gte=timezone.now() - timezone.timedelta(minutes=1)
+            ).count()
             
-            try:
-                # Deduct from wallet
-                wallet.balance -= amount
-                wallet.save(update_fields=['balance'])
-                
-                # Create bet record
-                bet = CrashBet.objects.create(
-                    user=user,
-                    round=round_obj,
-                    bet_amount=amount,
-                    auto_cashout=auto_cashout,
-                    status='ACTIVE',
-                    is_demo=is_demo,
-                    ip_address=request.META.get('REMOTE_ADDR'),
-                    device_fingerprint=request.META.get('HTTP_USER_AGENT', '')[:200],
-                )
-                
-                # Update round bet count
-                round_obj.total_bets += 1
-                round_obj.total_bet_amount += amount
-                round_obj.save(update_fields=['total_bets', 'total_bet_amount'])
-                
-            except Exception as e:
+            if recent_bets_count >= max_bets_per_min:
                 return Response(
-                    {'error': f'Bet placement failed: {str(e)}'}, 
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    {'error': f'Too many bets. Maximum {max_bets_per_min} per minute.'}, 
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
                 )
+            
+            # Deduct from balances
+            if amount_from_balance > 0:
+                wallet.balance -= amount_from_balance
+            
+            if amount_from_spot > 0:
+                wallet.spot_balance -= amount_from_spot
+            
+            # Save wallet changes
+            wallet.save(update_fields=['balance', 'spot_balance'])
+            
+            # Create bet record
+            bet = CrashBet.objects.create(
+                user=user,
+                round=round_obj,
+                bet_amount=amount,
+                auto_cashout=auto_cashout,
+                status='ACTIVE',
+                ip_address=request.META.get('REMOTE_ADDR'),
+                device_fingerprint=request.META.get('HTTP_USER_AGENT', '')[:200],
+            )
         
-        # Get updated balance
+        # Get updated wallet
         wallet.refresh_from_db()
         
         return Response({
@@ -196,9 +222,16 @@ def place_bet(request):
             'bet_id': bet.id,
             'round_id': round_obj.id,
             'balance': float(wallet.balance),
+            'spot_balance': float(wallet.spot_balance),
+            'total_balance': float(wallet.balance + wallet.spot_balance),
             'message': 'Bet placed successfully'
         })
         
+    except Wallet.DoesNotExist:
+        return Response(
+            {'error': 'Wallet not found'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
     except Exception as e:
         return Response(
             {'error': str(e)}, 
@@ -219,16 +252,6 @@ def cash_out(request):
         data = request.data
         bet_id = data.get('bet_id')
         multiplier = Decimal(str(data.get('multiplier', '1.0')))
-        mode = data.get('mode', 'real')
-        
-        # Validate mode
-        if mode not in ['real', 'demo']:
-            return Response(
-                {'error': 'Invalid game mode'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        is_demo = mode == 'demo'
         
         # Validate multiplier
         if multiplier <= Decimal('1.0'):
@@ -240,11 +263,10 @@ def cash_out(request):
         with transaction.atomic():
             # Get bet with lock
             bet = CrashBet.objects.select_for_update().select_related(
-                'round', 'user'
+                'round'
             ).get(
                 id=bet_id,
-                user=user,
-                is_demo=is_demo
+                user=user
             )
             
             # Check bet status
@@ -276,32 +298,25 @@ def cash_out(request):
             
             # Check maximum win
             risk = RiskSettings.get()
-            if payout > risk.max_win_per_bet:
-                payout = risk.max_win_per_bet
+            max_win = getattr(risk, 'max_win_per_bet', Decimal('50000'))
+            if payout > max_win:
+                payout = max_win
             
             # Get wallet
-            wallet = Wallet.objects.select_for_update().get(
-                user=user,
-                is_demo=is_demo
-            )
+            wallet = Wallet.objects.select_for_update().get(user=user)
             
-            # Credit winnings
+            # Credit winnings to main balance
             wallet.balance += payout
             wallet.save(update_fields=['balance'])
             
             # Update bet
             bet.cashout_multiplier = multiplier
-            bet.cashout_amount = payout
+            bet.win_amount = payout
             bet.status = 'CASHED_OUT'
             bet.cashed_out_at = timezone.now()
             bet.save()
-            
-            # Update round stats
-            round_obj.total_cashed_out += 1
-            round_obj.total_payout_amount += payout
-            round_obj.save(update_fields=['total_cashed_out', 'total_payout_amount'])
         
-        # Get updated balance
+        # Get updated wallet
         wallet.refresh_from_db()
         
         return Response({
@@ -310,6 +325,8 @@ def cash_out(request):
             'multiplier': float(multiplier),
             'payout': float(payout),
             'balance': float(wallet.balance),
+            'spot_balance': float(wallet.spot_balance),
+            'total_balance': float(wallet.balance + wallet.spot_balance),
             'message': 'Successfully cashed out'
         })
         
@@ -317,6 +334,11 @@ def cash_out(request):
         return Response(
             {'error': 'Bet not found'}, 
             status=status.HTTP_404_NOT_FOUND
+        )
+    except Wallet.DoesNotExist:
+        return Response(
+            {'error': 'Wallet not found'}, 
+            status=status.HTTP_400_BAD_REQUEST
         )
     except Exception as e:
         return Response(
@@ -332,24 +354,32 @@ def get_stats(request):
     Get crash game statistics for the user
     """
     user = request.user
-    mode = request.GET.get('mode', 'real')
-    is_demo = mode == 'demo'
     
     try:
         # Get user stats
-        user_bets = CrashBet.objects.filter(
-            user=user,
-            is_demo=is_demo
-        )
+        user_bets = CrashBet.objects.filter(user=user)
         
         total_bets = user_bets.count()
         total_bet_amount = user_bets.aggregate(total=Sum('bet_amount'))['total'] or Decimal('0')
+        
+        # Total won from cashed out bets
         total_won = user_bets.filter(
             status='CASHED_OUT'
-        ).aggregate(total=Sum('cashout_amount'))['total'] or Decimal('0')
+        ).aggregate(total=Sum('win_amount'))['total'] or Decimal('0')
+        
+        # Total lost from LOST bets
         total_lost = user_bets.filter(
-            status='CRASHED'
+            status='LOST'
         ).aggregate(total=Sum('bet_amount'))['total'] or Decimal('0')
+        
+        # Calculate profit/loss
+        profit_loss = total_won - total_bet_amount
+        
+        # Calculate win rate (based on cashed out vs lost)
+        won_bets = user_bets.filter(status='CASHED_OUT').count()
+        lost_bets = user_bets.filter(status='LOST').count()
+        total_settled = won_bets + lost_bets
+        win_rate = (won_bets / total_settled * 100) if total_settled > 0 else 0
         
         # Get active bets
         active_bets = user_bets.filter(status='ACTIVE').values(
@@ -358,18 +388,17 @@ def get_stats(request):
         
         # Get recent bets (last 10)
         recent_bets = user_bets.order_by('-created_at')[:10].values(
-            'id', 'bet_amount', 'cashout_multiplier', 'cashout_amount',
+            'id', 'bet_amount', 'cashout_multiplier', 'win_amount',
             'status', 'created_at'
         )
         
         # Get best win
         best_win = user_bets.filter(
             status='CASHED_OUT'
-        ).order_by('-cashout_amount').first()
+        ).order_by('-win_amount').first()
         
         # Get current round info
         current_round = GameRound.objects.filter(
-            is_demo=is_demo,
             status__in=['PENDING', 'RUNNING']
         ).order_by('-created_at').first()
         
@@ -379,33 +408,48 @@ def get_stats(request):
                 'id': current_round.id,
                 'status': current_round.status,
                 'created_at': current_round.created_at,
-                'total_bets': current_round.total_bets,
-                'total_bet_amount': float(current_round.total_bet_amount),
+                'crash_point': float(current_round.crash_point) if current_round.crash_point else None,
             }
         
+        # Get wallet info
+        wallet = Wallet.objects.get(user=user)
+        
+        # Get risk settings with defaults
+        risk = RiskSettings.get()
+        risk_data = {
+            'min_bet': float(getattr(risk, 'min_bet_per_player', Decimal('100'))),
+            'max_bet': float(getattr(risk, 'max_bet_per_player', Decimal('1000'))),
+            'max_win_per_bet': float(getattr(risk, 'max_win_per_bet', Decimal('50000'))),
+            'max_exposure_per_round': float(getattr(risk, 'max_exposure_per_round', Decimal('10000'))),
+            'house_edge': float(getattr(risk, 'house_edge_percent', Decimal('1.0'))),
+            'max_multiplier': float(getattr(risk, 'max_multiplier_cap', Decimal('500.0'))),
+        }
+        
         return Response({
+            'wallet': {
+                'balance': float(wallet.balance),
+                'spot_balance': float(wallet.spot_balance),
+                'total_balance': float(wallet.balance + wallet.spot_balance),
+            },
             'user_stats': {
                 'total_bets': total_bets,
                 'total_bet_amount': float(total_bet_amount),
                 'total_won': float(total_won),
                 'total_lost': float(total_lost),
-                'profit_loss': float(total_won - total_bet_amount),
-                'win_rate': float((total_won / total_bet_amount * 100) if total_bet_amount > 0 else 0),
+                'profit_loss': float(profit_loss),
+                'win_rate': float(win_rate),
+                'won_bets': won_bets,
+                'lost_bets': lost_bets,
             },
             'best_win': {
                 'multiplier': float(best_win.cashout_multiplier) if best_win else 0,
-                'amount': float(best_win.cashout_amount) if best_win else 0,
+                'amount': float(best_win.win_amount) if best_win else 0,
                 'bet_amount': float(best_win.bet_amount) if best_win else 0,
             } if best_win else None,
             'active_bets': list(active_bets),
             'recent_bets': list(recent_bets),
             'current_round': round_info,
-            'risk_settings': {
-                'min_bet': float(RiskSettings.get().min_bet_per_player),
-                'max_bet': float(RiskSettings.get().max_bet_per_player),
-                'max_win_per_bet': float(RiskSettings.get().max_win_per_bet),
-                'max_exposure_per_round': float(RiskSettings.get().max_exposure_per_round),
-            }
+            'risk_settings': risk_data
         })
         
     except Exception as e:
@@ -421,29 +465,35 @@ def get_history(request):
     """
     Get crash game history (public rounds)
     """
-    mode = request.GET.get('mode', 'real')
-    is_demo = mode == 'demo'
     limit = min(int(request.GET.get('limit', 50)), 100)
     
     try:
-        # Get completed rounds
+        # Get completed rounds (CRASHED status in your model)
         rounds = GameRound.objects.filter(
-            is_demo=is_demo,
-            status='COMPLETED'
+            status='CRASHED'
         ).order_by('-created_at')[:limit].values(
-            'id', 'crash_point', 'total_bets', 'total_bet_amount',
-            'total_payout_amount', 'created_at'
+            'id', 'crash_point', 'created_at'
         )
         
-        # Format data
+        # For each round, get bet statistics
+        from django.db.models import Count
         history = []
         for round_obj in rounds:
+            # Get bet stats for this round
+            bet_stats = CrashBet.objects.filter(
+                round_id=round_obj['id']
+            ).aggregate(
+                total_bets=Sum('bet_amount'),
+                total_players=Count('user', distinct=True),
+                cashed_out=Count('id', filter=Q(status='CASHED_OUT')),
+            )
+            
             history.append({
                 'round_id': round_obj['id'],
                 'crash_point': float(round_obj['crash_point']) if round_obj['crash_point'] else None,
-                'total_bets': round_obj['total_bets'],
-                'total_bet_amount': float(round_obj['total_bet_amount']),
-                'total_payout_amount': float(round_obj['total_payout_amount']),
+                'total_bet_amount': float(bet_stats['total_bets'] or 0),
+                'total_players': bet_stats['total_players'] or 0,
+                'cashed_out_players': bet_stats['cashed_out'] or 0,
                 'created_at': round_obj['created_at'],
             })
         
@@ -467,8 +517,6 @@ def cancel_bet(request):
     """
     user = request.user
     bet_id = request.data.get('bet_id')
-    mode = request.data.get('mode', 'real')
-    is_demo = mode == 'demo'
     
     try:
         with transaction.atomic():
@@ -477,8 +525,7 @@ def cancel_bet(request):
                 'round'
             ).get(
                 id=bet_id,
-                user=user,
-                is_demo=is_demo
+                user=user
             )
             
             # Check if cancellation is allowed
@@ -496,35 +543,38 @@ def cancel_bet(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Refund bet amount
-            wallet = Wallet.objects.select_for_update().get(
-                user=user,
-                is_demo=is_demo
-            )
+            # Get wallet with lock
+            wallet = Wallet.objects.select_for_update().get(user=user)
             
+            # Refund bet amount to main balance (always refund to main balance)
             wallet.balance += bet.bet_amount
             wallet.save(update_fields=['balance'])
             
             # Update bet status
             bet.status = 'CANCELLED'
             bet.save()
-            
-            # Update round stats
-            round_obj.total_bets = max(0, round_obj.total_bets - 1)
-            round_obj.total_bet_amount = max(Decimal('0'), round_obj.total_bet_amount - bet.bet_amount)
-            round_obj.save(update_fields=['total_bets', 'total_bet_amount'])
+        
+        # Get updated wallet
+        wallet.refresh_from_db()
         
         return Response({
             'success': True,
             'message': 'Bet cancelled successfully',
             'refunded_amount': float(bet.bet_amount),
-            'balance': float(wallet.balance)
+            'balance': float(wallet.balance),
+            'spot_balance': float(wallet.spot_balance),
+            'total_balance': float(wallet.balance + wallet.spot_balance)
         })
         
     except CrashBet.DoesNotExist:
         return Response(
             {'error': 'Bet not found'}, 
             status=status.HTTP_404_NOT_FOUND
+        )
+    except Wallet.DoesNotExist:
+        return Response(
+            {'error': 'Wallet not found'}, 
+            status=status.HTTP_400_BAD_REQUEST
         )
     except Exception as e:
         return Response(
