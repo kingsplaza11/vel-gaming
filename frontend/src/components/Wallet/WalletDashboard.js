@@ -191,7 +191,6 @@ const WalletDashboard = () => {
                   <span className="currency">₦</span>
                   <span className="amount">{formatAmount(betOutBalance)}</span>
                 </div>
-                <p className="card-description">Ready to use in games</p>
               </div>
               <div className="card-decoration"></div>
             </div>
