@@ -26,5 +26,10 @@ urlpatterns = [
         name="update_wallet"
     ),
 
+    # ... other URLs ...
+    path('withdrawal/<str:reference>/delete/', 
+         views.delete_withdrawal, 
+         name='delete_withdrawal'),
+
 ]
 

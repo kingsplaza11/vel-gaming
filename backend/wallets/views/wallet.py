@@ -330,7 +330,7 @@ class WalletViewSet(viewsets.GenericViewSet):
                 bank_name=bank_name,
                 account_name=account_name,
                 reference=withdrawal_ref,
-                status='pending',
+                status='SUCCESS',
                 processing_fee=processing_fee,
                 meta={
                     "net_amount": str(net_amount),

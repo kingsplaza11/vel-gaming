@@ -157,7 +157,7 @@ const WalletDashboard = () => {
                   <div className="card-icon">
                     <Icon icon="mdi:cash" />
                   </div>
-                  <h3>Available Balance</h3>
+                  <h3>Bet Out Balance</h3>
                 </div>
                 <div className="card-balance">
                   <span className="currency">₦</span>
@@ -175,7 +175,7 @@ const WalletDashboard = () => {
                   <div className="card-icon">
                     <Icon icon="mdi:gamepad" />
                   </div>
-                  <h3>Bet Out Balance</h3>
+                  <h3>Available Balance</h3>
                 </div>
                 <div className="card-balance">
                   <span className="currency">₦</span>
@@ -283,8 +283,8 @@ const WalletDashboard = () => {
                         </span>
                       </div>
                       <div className="table-cell">
-                        <span className={`status-badge ${tx.meta?.status || 'pending'}`}>
-                          {tx.meta?.status || 'pending'}
+                        <span className={`status-badge ${tx.meta?.status }`}>
+                          {tx.meta?.status }
                         </span>
                       </div>
                     </div>
@@ -408,8 +408,8 @@ const WalletDashboard = () => {
                       <span className="reference">{tx.reference || '--'}</span>
                     </div>
                     <div className="table-cell">
-                      <span className={`status-badge ${tx.meta?.status || 'pending'}`}>
-                        {tx.meta?.status || 'pending'}
+                      <span className={`status-badge ${tx.meta?.status }`}>
+                        {tx.meta?.status }
                       </span>
                     </div>
                   </div>

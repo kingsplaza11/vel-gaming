@@ -48,28 +48,35 @@ class PasswordResetAPIView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        form = PasswordResetForm(request.data)
+        email = request.data.get('email', '')
+        form = PasswordResetForm({'email': email})
+        
         if form.is_valid():
             # Get cleaned data
             email = form.cleaned_data['email']
             
-            # Prepare email context
-            context = {
-                'email': email,
-                'domain': request.get_host(),
-                'site_name': 'Veltora Games',
-                'uid': None,  # Will be set by form.save
-                'user': None,  # Will be set by form.save
-                'token': None,  # Will be set by form.save
-                'protocol': 'https' if request.is_secure() else 'http',
-            }
+            # Get the first user (if exists)
+            users = list(form.get_users(email))
             
-            # Custom email sending with HTML and plain text
-            users = form.get_users(email)
-            for user in users:
-                context['user'] = user
-                context['uid'] = form.make_uid(user)
-                context['token'] = form.make_token(user)
+            if users:
+                user = users[0]  # Get first user
+                
+                # Generate token and uid
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                
+                # Prepare context for email
+                context = {
+                    'email': user.email,
+                    'domain': get_current_site(request).domain,
+                    'site_name': get_current_site(request).name,
+                    'uid': uid,
+                    'user': user,
+                    'token': token,
+                    'protocol': 'https' if request.is_secure() else 'http',
+                    # Backend API endpoint - React will need to redirect or handle differently
+                    'password_reset_confirm_url': f"{protocol}://{domain}/api/accounts/password/reset/confirm/?uid={uid}&token={token}",
+                }
                 
                 # Render HTML email
                 html_content = render_to_string(
@@ -77,26 +84,31 @@ class PasswordResetAPIView(APIView):
                     context
                 )
                 
-                # Create plain text version by stripping HTML tags
+                # Strip HTML tags to create plain text version
                 text_content = strip_tags(html_content)
                 
-                # Send email
+                # Send email with both HTML and plain text
                 subject = "🔐 Reset Your Veltora Games Password"
                 email_msg = EmailMultiAlternatives(
                     subject=subject,
-                    body=text_content,
+                    body=text_content,  # Plain text version (HTML stripped)
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     to=[user.email],
                 )
                 
+                # Attach HTML version
                 email_msg.attach_alternative(html_content, "text/html")
                 email_msg.send()
             
+            # Always return success even if no users found (security best practice)
             return Response({
                 'detail': 'Password reset email has been sent.',
-                'message': 'Check your email for the reset link.'
+                'message': 'If an account exists with this email, you will receive a reset link.'
             })
-        return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Return form errors
+        return Response({'error': 'Please enter a valid email address'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
 
 class PasswordResetConfirmAPIView(APIView):
     permission_classes = [AllowAny]
@@ -191,3 +203,4 @@ class PasswordResetConfirmAPIView(APIView):
                 'error': 'An error occurred while resetting password',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

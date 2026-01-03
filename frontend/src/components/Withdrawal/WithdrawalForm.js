@@ -277,7 +277,7 @@ const WithdrawalForm = () => {
                   textAlign: 'center'
                 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Spot Balance (Game Winnings)
+                    Available Balance (Game Winnings)
                   </Typography>
                   <Typography variant="h4" color="success.main" fontWeight="bold">
                     ₦{wallet.spot_balance?.toLocaleString() || '0'}
@@ -295,7 +295,7 @@ const WithdrawalForm = () => {
                   textAlign: 'center'
                 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Deposit Balance
+                    Bet Out Balance
                   </Typography>
                   <Typography variant="h4" color="primary" fontWeight="bold">
                     ₦{wallet.balance?.toLocaleString() || '0'}

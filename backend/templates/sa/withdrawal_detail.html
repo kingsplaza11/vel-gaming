@@ -4,7 +4,8 @@
 
 {% block title %}Withdrawal #{{ withdrawal.reference }} - Admin Dashboard{% endblock %}
 
-{% block extra_css %}
+
+{% block content %}
 <style>
     /* Detail page styles */
     .detail-card {
@@ -172,16 +173,92 @@
         font-weight: bold;
         margin: 0 auto 1rem;
     }
-</style>
-{% endblock %}
 
-{% block content %}
+    /* Timeline styles for status history */
+    .status-history {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .status-history-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .status-history-item:last-child {
+        border-bottom: none;
+    }
+
+    .status-history-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .status-history-content {
+        flex: 1;
+    }
+
+    .status-history-date {
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+
+    .restore-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: white;
+    }
+
+    .restore-btn:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+    }
+
+    /* Deleted status indicator */
+    .deleted-badge {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        z-index: 10;
+    }
+
+    .archived-info {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+</style>
 <div class="container-fluid">
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'adminpanel:dashboard' %}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'adminpanel:withdrawal_list' %}">Withdrawals</a></li>
+            <li class="breadcrumb-item">
+                {% if withdrawal.is_deleted %}
+                <a href="{% url 'adminpanel:archived_withdrawals' %}">Archived Withdrawals</a>
+                {% else %}
+                <a href="{% url 'adminpanel:withdrawal_list' %}">Withdrawals</a>
+                {% endif %}
+            </li>
             <li class="breadcrumb-item active" aria-current="page">#{{ withdrawal.reference }}</li>
         </ol>
     </nav>
@@ -190,14 +267,33 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h2 mb-1">Withdrawal #{{ withdrawal.reference }}</h1>
-            <p class="text-muted mb-0">Manage this withdrawal request</p>
+            <p class="text-muted mb-0">
+                {% if withdrawal.is_deleted %}
+                <i class="fas fa-archive text-warning me-1"></i> Archived Withdrawal Request
+                {% else %}
+                Manage this withdrawal request
+                {% endif %}
+            </p>
         </div>
         <div>
+            {% if withdrawal.is_deleted %}
+            <a href="{% url 'adminpanel:archived_withdrawals' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Archive
+            </a>
+            {% else %}
             <a href="{% url 'adminpanel:withdrawal_list' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>Back to List
             </a>
+            {% endif %}
         </div>
     </div>
+
+    <!-- Deleted indicator -->
+    {% if withdrawal.is_deleted %}
+    <div class="deleted-badge">
+        <i class="fas fa-archive me-1"></i> ARCHIVED
+    </div>
+    {% endif %}
 
     <div class="row">
         <!-- Main Details -->
@@ -223,7 +319,7 @@
                         {% else %}bg-secondary bg-opacity-10 text-secondary{% endif %}">
                         <i class="fas 
                             {% if withdrawal.status == 'pending' %}fa-clock
-                            {% elif withdrawal.status == 'processing' %}fa-spinner fa-spin
+                            {% elif withdrawal.status == 'processing' %}fa-spinner
                             {% elif withdrawal.status == 'completed' %}fa-check-circle
                             {% elif withdrawal.status == 'failed' %}fa-times-circle
                             {% else %}fa-ban{% endif %}">
@@ -231,6 +327,22 @@
                         {{ withdrawal.get_status_display }}
                     </div>
                 </div>
+
+                <!-- Archived info -->
+                {% if withdrawal.is_deleted %}
+                <div class="archived-info mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle text-warning me-2"></i>
+                        <div>
+                            <strong>Archived Information:</strong>
+                            <div class="small mt-1">
+                                Archived by: {{ withdrawal.deleted_by.username|default:"System" }}<br>
+                                Archived on: {{ withdrawal.deleted_at|date:"M d, Y H:i" }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Information Grid -->
                 <div class="info-grid">
@@ -266,6 +378,16 @@
                         <div class="info-label">Last Updated</div>
                         <div class="info-value">{{ withdrawal.updated_at|date:"M d, Y H:i" }}</div>
                     </div>
+                    {% if withdrawal.is_deleted %}
+                    <div class="info-item">
+                        <div class="info-label">Archived By</div>
+                        <div class="info-value">{{ withdrawal.deleted_by.username|default:"System" }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Archived At</div>
+                        <div class="info-value">{{ withdrawal.deleted_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Admin Notes -->
@@ -277,7 +399,40 @@
                 {% endif %}
             </div>
 
-            <!-- Update Status Form -->
+            <!-- Status History (Optional) -->
+            {% if status_history %}
+            <div class="status-history">
+                <h5><i class="fas fa-history me-2"></i>Status History</h5>
+                {% for history in status_history %}
+                <div class="status-history-item">
+                    <div class="status-history-icon 
+                        {% if history.status == 'pending' %}bg-warning
+                        {% elif history.status == 'processing' %}bg-info
+                        {% elif history.status == 'completed' %}bg-success
+                        {% elif history.status == 'failed' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                        <i class="fas 
+                            {% if history.status == 'pending' %}fa-clock
+                            {% elif history.status == 'processing' %}fa-spinner
+                            {% elif history.status == 'completed' %}fa-check-circle
+                            {% elif history.status == 'failed' %}fa-times-circle
+                            {% else %}fa-ban{% endif %}">
+                        </i>
+                    </div>
+                    <div class="status-history-content">
+                        <div class="fw-medium">{{ history.get_status_display }}</div>
+                        {% if history.notes %}
+                        <div class="small text-muted">{{ history.notes }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="status-history-date">{{ history.created_at|date:"M d, Y H:i" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Update Status Form (Only if not deleted) -->
+            {% if not withdrawal.is_deleted %}
             <div class="update-form" id="update">
                 <h4 class="mb-3">Update Status</h4>
                 <form id="statusUpdateForm">
@@ -305,6 +460,7 @@
                     </div>
                 </form>
             </div>
+            {% endif %}
         </div>
 
         <!-- Sidebar -->
@@ -327,7 +483,8 @@
                 </div>
             </div>
 
-            <!-- Recent Withdrawals -->
+            <!-- Recent Withdrawals (Only if not deleted) -->
+            {% if not withdrawal.is_deleted %}
             <div class="detail-card">
                 <h5 class="mb-3">Recent Withdrawals by User</h5>
                 {% if recent_withdrawals %}
@@ -355,53 +512,87 @@
                 <p class="text-muted text-center">No other withdrawals found</p>
                 {% endif %}
             </div>
+            {% endif %}
 
+            <!-- Quick Actions -->
             <!-- Quick Actions -->
             <div class="detail-card">
                 <h5 class="mb-3">Quick Actions</h5>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-success" onclick="markAsCompleted()">
+                <div class="d-grid gap-2" id="quickActions">
+                    {% if not withdrawal.is_deleted %}
+                    <!-- Active withdrawal actions -->
+                    <button class="btn btn-success" id="markCompletedBtn">
                         <i class="fas fa-check-circle me-1"></i>Mark as Completed
                     </button>
-                    <button class="btn btn-warning" onclick="markAsProcessing()">
+                    <button class="btn btn-warning" id="markProcessingBtn">
                         <i class="fas fa-spinner me-1"></i>Mark as Processing
                     </button>
-                    <button class="btn btn-danger" onclick="markAsFailed()">
+                    <button class="btn btn-danger" id="markFailedBtn">
                         <i class="fas fa-times-circle me-1"></i>Mark as Failed
                     </button>
                     <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                        <i class="fas fa-trash me-1"></i>Delete Request
+                        <i class="fas fa-archive me-1"></i>Archive Request
                     </button>
+                    {% else %}
+                    <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#permanentDeleteModal">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Delete Modal -->
+<!-- Archive Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Delete Withdrawal Request</h5>
+                <h5 class="modal-title">Archive Withdrawal Request</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete withdrawal request #{{ withdrawal.reference }}?</p>
-                <p class="text-danger"><strong>Warning:</strong> This action cannot be undone.</p>
+                <p>Are you sure you want to archive withdrawal request #{{ withdrawal.reference }}?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> This will move the withdrawal to the archive. It won't be visible in the main list but can be restored if needed.
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="deleteWithdrawal()">
-                    <i class="fas fa-trash me-1"></i>Delete
+                <button type="button" class="btn btn-danger" id="archiveBtn" onclick="archiveWithdrawal()">
+                    <i class="fas fa-archive me-1"></i>Delete
                 </button>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Permanent Delete Modal (for archived items) -->
+<div class="modal fade" id="permanentDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Permanently Delete Withdrawal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to <strong>permanently delete</strong> withdrawal request #{{ withdrawal.reference }}?</p>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This action cannot be undone! All data will be permanently lost.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="archiveConfirmBtn">
+                    <i class="fas fa-trash me-1"></i>Permanently Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     // Update status form
     document.getElementById('statusUpdateForm').addEventListener('submit', function(e) {
@@ -465,14 +656,48 @@
         document.getElementById('updateStatusBtn').click();
     }
     
-    function deleteWithdrawal() {
-        // Implement delete functionality
-        showNotification('Delete functionality coming soon!', 'info');
-        $('#deleteModal').modal('hide');
+    function archiveWithdrawal() {
+        const archiveBtn = document.getElementById('archiveConfirmBtn');
+        const originalText = archiveBtn.innerHTML;
+        
+        archiveBtn.disabled = true;
+        archiveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Archiving...';
+        
+        fetch('{% url "adminpanel:delete_withdrawal" withdrawal.reference %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                setTimeout(() => {
+                    window.location.href = '{% url "adminpanel:withdrawal_list" %}';
+                }, 1500);
+            } else {
+                showNotification('Error: ' + data.error, 'danger');
+                archiveBtn.disabled = false;
+                archiveBtn.innerHTML = originalText;
+                $('#deleteModal').modal('hide');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred while archiving', 'danger');
+            archiveBtn.disabled = false;
+            archiveBtn.innerHTML = originalText;
+            $('#deleteModal').modal('hide');
+        });
     }
     
     // Notification function
     function showNotification(message, type) {
+        // Remove existing notifications
+        document.querySelectorAll('.alert.position-fixed').forEach(el => el.remove());
+        
         const notification = document.createElement('div');
         notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
         notification.style.top = '20px';
@@ -485,9 +710,47 @@
         
         document.body.appendChild(notification);
         
+        // Auto-remove after 5 seconds
         setTimeout(() => {
-            notification.remove();
+            if (notification.parentNode) {
+                notification.remove();
+            }
         }, 5000);
     }
+    
+    // Add event listeners when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quick action buttons (only if they exist)
+        const markCompletedBtn = document.getElementById('markCompletedBtn');
+        const markProcessingBtn = document.getElementById('markProcessingBtn');
+        const markFailedBtn = document.getElementById('markFailedBtn');
+        const restoreBtn = document.getElementById('restoreBtn');
+        const archiveConfirmBtn = document.getElementById('archiveConfirmBtn');
+        const permanentDeleteBtn = document.getElementById('permanentDeleteBtn');
+        
+        if (markCompletedBtn) {
+            markCompletedBtn.addEventListener('click', markAsCompleted);
+        }
+        
+        if (markProcessingBtn) {
+            markProcessingBtn.addEventListener('click', markAsProcessing);
+        }
+        
+        if (markFailedBtn) {
+            markFailedBtn.addEventListener('click', markAsFailed);
+        }
+        
+        if (restoreBtn) {
+            restoreBtn.addEventListener('click', restoreWithdrawal);
+        }
+        
+        if (archiveConfirmBtn) {
+            archiveConfirmBtn.addEventListener('click', archiveWithdrawal);
+        }
+        
+        if (permanentDeleteBtn) {
+            permanentDeleteBtn.addEventListener('click', permanentlyDeleteWithdrawal);
+        }
+    });
 </script>
 {% endblock %}

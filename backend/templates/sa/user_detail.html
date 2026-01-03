@@ -80,9 +80,8 @@
             {% if wallet %}
                 <!-- Read-only view -->
                 <div id="wallet-view">
-                    <p><strong>Balance:</strong> ₦{{ wallet.balance|floatformat:2 }}</p>
-                    <p><strong>Spot:</strong> ₦{{ wallet.spot_balance|floatformat:2 }}</p>
-                    <p><strong>Locked:</strong> ₦{{ wallet.locked_balance|floatformat:2 }}</p>
+                    <p><strong>Bet Out Balance:</strong> ₦{{ wallet.balance|floatformat:2 }}</p>
+                    <p><strong>Available:</strong> ₦{{ wallet.spot_balance|floatformat:2 }}</p>
                 </div>
 
                 <!-- Edit form (hidden by default) -->

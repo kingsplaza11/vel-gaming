@@ -11,6 +11,7 @@ from accounts.models import User, Referral
 from wallets.models import Wallet, WalletTransaction, WithdrawalRequest
 from django.views.decorators.http import require_POST
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
 
 
 @staff_member_required
@@ -336,3 +337,40 @@ def bulk_update_withdrawals(request):
         'updated_count': updated_count,
         'new_status': new_status
     })
+
+
+import json
+
+@staff_member_required
+@require_POST
+def delete_withdrawal(request, reference):
+    try:
+        withdrawal = get_object_or_404(WithdrawalRequest, reference=reference)
+        
+        # Optional: Store some info before deletion for audit
+        deletion_info = {
+            'user': str(withdrawal.user),
+            'amount': float(withdrawal.amount),
+            'status': withdrawal.status,
+            'deleted_by': str(request.user),
+            'deleted_at': timezone.now().isoformat()
+        }
+        
+        # Delete the withdrawal
+        withdrawal.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Withdrawal #{reference} deleted successfully'
+        })
+        
+    except WithdrawalRequest.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Withdrawal not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
