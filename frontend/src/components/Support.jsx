@@ -28,18 +28,24 @@ const Support = () => {
       title: "Email Support",
       details: "support@veltoragames.com",
       description: "24/7 email response",
+      action: () => window.location.href = "mailto:support@veltoragames.com",
+      type: "email"
     },
     {
       icon: "mdi:whatsapp",
       title: "WhatsApp Chat",
       details: "+1 (825) 572-0351",
       description: "Live chat support",
+      action: () => window.open("https://wa.me/18255720351", "_blank"),
+      type: "whatsapp"
     },
     {
       icon: "mdi:clock",
       title: "Response Time",
       details: "< 1 hour",
       description: "Average response time",
+      action: null,
+      type: "info"
     },
   ];
 
@@ -92,7 +98,12 @@ const Support = () => {
       {/* Contact Methods */}
       <div className="contact-methods">
         {contactMethods.map((method, index) => (
-          <div className="contact-card" key={index}>
+          <div 
+            className={`contact-card ${method.action ? 'clickable' : ''}`} 
+            key={index}
+            onClick={method.action || undefined}
+            style={{ cursor: method.action ? 'pointer' : 'default' }}
+          >
             <div className="contact-icon">
               <Icon icon={method.icon} />
               <div className="icon-glow"></div>
@@ -102,6 +113,11 @@ const Support = () => {
               <p className="contact-details">{method.details}</p>
               <p className="contact-description">{method.description}</p>
             </div>
+            {method.action && (
+              <div className="contact-action">
+                <Icon icon={method.type === 'whatsapp' ? "mdi:whatsapp" : "mdi:arrow-right"} />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -223,6 +239,48 @@ const Support = () => {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Alternative Support Options */}
+      <div className="alternative-support">
+        <h3>Quick Support Options</h3>
+        <div className="quick-options">
+          <button 
+            className="quick-option whatsapp"
+            onClick={() => window.open("https://wa.me/18255720351", "_blank")}
+          >
+            <Icon icon="mdi:whatsapp" />
+            <div className="option-content">
+              <span className="option-title">WhatsApp Chat</span>
+              <span className="option-desc">Instant live chat support</span>
+            </div>
+            <Icon icon="mdi:arrow-right" className="option-arrow" />
+          </button>
+          
+          <button 
+            className="quick-option email"
+            onClick={() => window.location.href = "mailto:support@veltoragames.com"}
+          >
+            <Icon icon="mdi:email" />
+            <div className="option-content">
+              <span className="option-title">Email Support</span>
+              <span className="option-desc">support@veltoragames.com</span>
+            </div>
+            <Icon icon="mdi:arrow-right" className="option-arrow" />
+          </button>
+          
+          <button 
+            className="quick-option phone"
+            onClick={() => window.location.href = "tel:+18255720351"}
+          >
+            <Icon icon="mdi:phone" />
+            <div className="option-content">
+              <span className="option-title">Phone Support</span>
+              <span className="option-desc">+1 (825) 572-0351</span>
+            </div>
+            <Icon icon="mdi:arrow-right" className="option-arrow" />
+          </button>
         </div>
       </div>
 
