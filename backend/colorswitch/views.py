@@ -74,32 +74,51 @@ def start_color_switch(request):
         wallet = Wallet.objects.select_for_update().get(user=request.user)
         logger.info(f"Wallet retrieved: balance={wallet.balance}, spot={wallet.spot_balance}")
         
-        # Check combined balance (wallet + spot)
+        # Check combined balance first
         combined_balance = wallet.balance + wallet.spot_balance
         
         logger.info(f"Combined balance: {combined_balance}, Bet amount: {bet_amount}")
         
         if combined_balance < bet_amount:
             logger.warning(f"Insufficient balance: {combined_balance} < {bet_amount}")
-            return Response({'error': 'Insufficient balance (wallet + spot)'}, status=400)
+            return Response({'error': 'Insufficient balance'}, status=400)
 
-        # Deduct from spot_balance first, then main balance
         remaining_cost = bet_amount
+        taken_from_wallet = Decimal('0')
+        taken_from_spot = Decimal('0')
         
         logger.info(f"Before deduction - Balance: {wallet.balance}, Spot: {wallet.spot_balance}")
-        
-        if wallet.spot_balance >= remaining_cost:
-            wallet.spot_balance -= remaining_cost
-            remaining_cost = Decimal("0.00")
-            logger.info(f"Deducted from spot: {bet_amount}")
-        else:
-            remaining_cost -= wallet.spot_balance
-            wallet.spot_balance = Decimal("0.00")
-            wallet.balance -= remaining_cost
-            logger.info(f"Deducted from balance: {remaining_cost}")
+
+        # 1️⃣ Deduct from wallet balance first
+        if wallet.balance > 0:
+            taken_from_wallet = min(wallet.balance, remaining_cost)
+            wallet.balance -= taken_from_wallet
+            remaining_cost -= taken_from_wallet
+            logger.info(f"Deducted from wallet: {taken_from_wallet}")
+
+        # 2️⃣ If still remaining, deduct from spot balance
+        if remaining_cost > 0 and wallet.spot_balance > 0:
+            taken_from_spot = min(wallet.spot_balance, remaining_cost)
+            wallet.spot_balance -= taken_from_spot
+            remaining_cost -= taken_from_spot
+            logger.info(f"Deducted from spot: {taken_from_spot}")
             
         wallet.save(update_fields=["balance", "spot_balance"])
         logger.info(f"After deduction - Balance: {wallet.balance}, Spot: {wallet.spot_balance}")
+
+        # Create wallet transaction
+        # WalletTransaction.objects.create(
+        #     user=request.user,
+        #     amount=bet_amount,
+        #     tx_type=WalletTransaction.DEBIT,
+        #     reference=f"color_switch_bet_{uuid.uuid4().hex[:8]}",
+        #     meta={
+        #         "reason": "color_switch_bet",
+        #         "taken_from_wallet": str(taken_from_wallet),
+        #         "taken_from_spot": str(taken_from_spot),
+        #         "game_type": "color_switch"
+        #     }
+        # )
 
         sequence = [random.choice(COLORS) for _ in range(sequence_length)]
 
@@ -120,6 +139,10 @@ def start_color_switch(request):
             "wallet_balance": float(wallet.balance),
             "spot_balance": float(wallet.spot_balance),
             "combined_balance": float(wallet.balance + wallet.spot_balance),
+            "deduction_breakdown": {
+                "from_wallet": float(taken_from_wallet),
+                "from_spot": float(taken_from_spot)
+            }
         })
 
 

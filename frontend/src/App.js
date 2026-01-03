@@ -11,6 +11,8 @@ import BaseLayout from "./components/BaseLayout";
 ========================= */
 import Dashboard from "./components/Dashboard";
 import Login from "./components/Login";
+import PasswordReset from './components/PasswordReset';
+import PasswordResetConfirm from './components/PasswordResetConfirm';
 import Register from "./components/Register";
 import Profile from "./components/Profile";
 import SeoHead from "./components/SeoHead";
@@ -131,6 +133,8 @@ function App() {
           {/* AUTH */}
           <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
           <Route path="/register" element={!user ? <Register onLogin={handleLogin} /> : <Navigate to="/" />} />
+          <Route path="/password-reset" element={<PasswordReset />} />
+          <Route path="/password-reset-confirm/:uid/:token" element={<PasswordResetConfirm />} />
 
           {/* BASE */}
           <Route

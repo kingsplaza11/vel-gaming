@@ -41,8 +41,15 @@ def spin_slots(request):
             return Response({'error': 'Insufficient balance'}, status=400)
 
         # 🔻 Deduct stake
-        wallet.balance -= bet_amount
-        wallet.save(update_fields=['balance'])
+        if wallet.balance >= remaining_cost:
+            wallet.balance -= remaining_cost
+            remaining_cost = Decimal("0.00")
+        else:
+            remaining_cost -= wallet.balance
+            wallet.balance = Decimal("0.00")
+            wallet.spot_balance -= remaining_cost
+
+        wallet.save(update_fields=['balance', 'spot_balance'])
 
         reels = [random.choice(SYMBOLS[theme]) for _ in range(12)]
 
@@ -57,8 +64,8 @@ def spin_slots(request):
         win_amount = min(raw_win, max_profit)
 
         if win_amount > 0:
-            wallet.balance += win_amount
-            wallet.save(update_fields=['balance'])
+            wallet.spot_balance += win_amount
+            wallet.save(update_fields=['spot_balance'])
 
         SlotGame.objects.create(
             user=request.user,

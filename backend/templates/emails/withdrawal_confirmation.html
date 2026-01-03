@@ -1,0 +1,194 @@
+<!-- templates/emails/withdrawal_confirmation.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdrawal Request Confirmation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+        }
+        .title {
+            color: #2E7D32;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .transaction-details {
+            background-color: #f8f9fa;
+            border-left: 4px solid #2E7D32;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .detail-value {
+            color: #333;
+            text-align: right;
+        }
+        .highlight {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .important-note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .support-info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="title">🎮 Veltro Gaming</h1>
+            <p>Your Premier Gaming Platform</p>
+        </div>
+
+        <!-- Greeting -->
+        <div class="greeting">
+            <p>Dear <strong>{{ user.username }}</strong>,</p>
+            <p>Thank you for choosing <strong>Veltro Gaming</strong>! Your withdrawal request has been received and is being processed.</p>
+        </div>
+
+        <!-- Transaction Details -->
+        <div class="transaction-details">
+            <h3 style="color: #2E7D32; margin-top: 0;">📋 Withdrawal Details</h3>
+            
+            <div class="detail-row">
+                <span class="detail-label">Reference Number:</span>
+                <span class="detail-value"><strong>{{ reference }}</strong></span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Amount Requested:</span>
+                <span class="detail-value">₦{{ amount }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Processing Fee:</span>
+                <span class="detail-value">- ₦{{ processing_fee }}</span>
+            </div>
+            
+            <div class="detail-row" style="border-bottom: none;">
+                <span class="detail-label"><strong>Net Amount to Receive:</strong></span>
+                <span class="detail-value"><strong style="color: #2E7D32; font-size: 18px;">₦{{ net_amount }}</strong></span>
+            </div>
+        </div>
+
+        <!-- Bank Details -->
+        <div class="highlight">
+            <h3 style="color: #2E7D32; margin-top: 0;">🏦 Bank Information</h3>
+            <p><strong>Account Name:</strong> {{ account_name }}</p>
+            <p><strong>Bank:</strong> {{ bank_name }}</p>
+            <p><strong>Account Number:</strong> {{ account_number }}</p>
+        </div>
+
+        <!-- Important Information -->
+        <div class="important-note">
+            <h3 style="color: #d35400; margin-top: 0;">⏰ Processing Timeline</h3>
+            <p><strong>Please allow 24-48 hours</strong> for the funds to reflect in your bank account.</p>
+            <p>Processing occurs during business days only (Monday to Friday, 9 AM - 5 PM WAT).</p>
+            <p>You will receive another notification once your withdrawal has been processed and the funds have been sent.</p>
+        </div>
+
+        <!-- CTA -->
+        <div style="text-align: center;">
+            <p>You can track your withdrawal status in your account dashboard.</p>
+            <a href="{{ site_url }}/withdrawal/history" class="cta-button">
+                View Withdrawal History
+            </a>
+        </div>
+
+        <!-- Support Information -->
+        <div class="support-info">
+            <h3 style="color: #1976d2; margin-top: 0;">📞 Need Help?</h3>
+            <p>Our support team is here to assist you:</p>
+            <p>📧 Email: <a href="mailto:{{ support_email }}">{{ support_email }}</a></p>
+            <p>📱 WhatsApp: <a href="https://wa.me/18255720351">{{ support_whatsapp }}</a></p>
+            <p>We're available Monday to Friday, 9 AM - 6 PM WAT</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thank you for choosing <strong>Veltro Gaming</strong>!</p>
+            <p>We appreciate your trust and look forward to providing you with more exciting gaming experiences.</p>
+            <p>Best regards,<br><strong>The Veltro Gaming Team</strong></p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+            
+            <p style="font-size: 12px; color: #888;">
+                This is an automated email. Please do not reply to this message.<br>
+                If you have any questions, contact our support team at {{ support_email }}<br>
+                © {% now "Y" %} Veltro Gaming. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

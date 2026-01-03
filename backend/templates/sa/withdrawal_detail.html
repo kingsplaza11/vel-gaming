@@ -1,0 +1,493 @@
+<!-- templates/sa/withdrawal_detail.html -->
+{% extends "sa/base.html" %}
+{% load static %}
+
+{% block title %}Withdrawal #{{ withdrawal.reference }} - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Detail page styles */
+    .detail-card {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .detail-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .info-item {
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .info-label {
+        font-size: 0.875rem;
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .info-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #fff;
+    }
+    
+    .amount-display {
+        text-align: center;
+        padding: 2rem;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        margin: 2rem 0;
+    }
+    
+    .amount-main {
+        font-size: 3rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .status-display {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+        margin: 2rem 0;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 10px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--border-color);
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .timeline-item:last-child {
+        margin-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -1.75rem;
+        top: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 3px solid var(--sidebar-bg);
+    }
+    
+    .update-form {
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .notes-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+        min-height: 100px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .user-card {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: var(--transition);
+    }
+    
+    .user-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .user-avatar-large {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0 auto 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'adminpanel:dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'adminpanel:withdrawal_list' %}">Withdrawals</a></li>
+            <li class="breadcrumb-item active" aria-current="page">#{{ withdrawal.reference }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1">Withdrawal #{{ withdrawal.reference }}</h1>
+            <p class="text-muted mb-0">Manage this withdrawal request</p>
+        </div>
+        <div>
+            <a href="{% url 'adminpanel:withdrawal_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Details -->
+        <div class="col-lg-8">
+            <div class="detail-card">
+                <!-- Amount Display -->
+                <div class="amount-display">
+                    <div class="text-muted mb-2">Withdrawal Amount</div>
+                    <div class="amount-main">₦{{ withdrawal.amount|floatformat:2 }}</div>
+                    <div class="text-muted mt-2">
+                        Processing Fee: ₦{{ withdrawal.processing_fee|floatformat:2 }} •
+                        Net Amount: ₦{{ net_amount|floatformat:2 }}
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="d-flex justify-content-center mb-4">
+                    <div class="status-display 
+                        {% if withdrawal.status == 'pending' %}bg-warning bg-opacity-10 text-warning
+                        {% elif withdrawal.status == 'processing' %}bg-info bg-opacity-10 text-info
+                        {% elif withdrawal.status == 'completed' %}bg-success bg-opacity-10 text-success
+                        {% elif withdrawal.status == 'failed' %}bg-danger bg-opacity-10 text-danger
+                        {% else %}bg-secondary bg-opacity-10 text-secondary{% endif %}">
+                        <i class="fas 
+                            {% if withdrawal.status == 'pending' %}fa-clock
+                            {% elif withdrawal.status == 'processing' %}fa-spinner fa-spin
+                            {% elif withdrawal.status == 'completed' %}fa-check-circle
+                            {% elif withdrawal.status == 'failed' %}fa-times-circle
+                            {% else %}fa-ban{% endif %}">
+                        </i>
+                        {{ withdrawal.get_status_display }}
+                    </div>
+                </div>
+
+                <!-- Information Grid -->
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">User</div>
+                        <div class="info-value">{{ withdrawal.user.username }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Email</div>
+                        <div class="info-value">{{ withdrawal.user.email }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Account Name</div>
+                        <div class="info-value">{{ withdrawal.account_name }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Bank</div>
+                        <div class="info-value">{{ withdrawal.bank_name }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Account Number</div>
+                        <div class="info-value">{{ withdrawal.account_number }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Bank Code</div>
+                        <div class="info-value">{{ withdrawal.bank_code }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Created</div>
+                        <div class="info-value">{{ withdrawal.created_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Last Updated</div>
+                        <div class="info-value">{{ withdrawal.updated_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                </div>
+
+                <!-- Admin Notes -->
+                {% if withdrawal.admin_notes %}
+                <div class="mt-4">
+                    <h5 class="mb-2"><i class="fas fa-sticky-note me-2"></i>Admin Notes</h5>
+                    <div class="notes-box">{{ withdrawal.admin_notes }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Update Status Form -->
+            <div class="update-form" id="update">
+                <h4 class="mb-3">Update Status</h4>
+                <form id="statusUpdateForm">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">New Status</label>
+                            <select class="form-select" id="newStatus" required>
+                                {% for value, label in withdrawal.STATUS_CHOICES %}
+                                <option value="{{ value }}" {% if withdrawal.status == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Add Note (Optional)</label>
+                            <textarea class="form-control" id="adminNotes" rows="2" placeholder="Add notes about this update..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary" id="updateStatusBtn">
+                                <i class="fas fa-save me-1"></i>Update Status
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- User Card -->
+            <div class="user-card mb-4">
+                <div class="user-avatar-large">
+                    {{ withdrawal.user.username|first|upper }}
+                </div>
+                <h5 class="text-center mb-1">{{ withdrawal.user.username }}</h5>
+                <p class="text-center text-muted mb-3">{{ withdrawal.user.email }}</p>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'adminpanel:admin_user_detail' withdrawal.user.id %}" class="btn btn-outline-primary">
+                        <i class="fas fa-user me-1"></i>View User Profile
+                    </a>
+                    <a href="mailto:{{ withdrawal.user.email }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-envelope me-1"></i>Send Email
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Withdrawals -->
+            <div class="detail-card">
+                <h5 class="mb-3">Recent Withdrawals by User</h5>
+                {% if recent_withdrawals %}
+                <div class="list-group list-group-flush">
+                    {% for recent in recent_withdrawals %}
+                    <a href="{% url 'adminpanel:withdrawal_detail' recent.reference %}" 
+                       class="list-group-item list-group-item-action bg-transparent text-white border-color">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-medium">₦{{ recent.amount|floatformat:2 }}</div>
+                                <small class="text-muted">{{ recent.created_at|date:"M d" }}</small>
+                            </div>
+                            <span class="badge 
+                                {% if recent.status == 'pending' %}bg-warning
+                                {% elif recent.status == 'completed' %}bg-success
+                                {% elif recent.status == 'failed' %}bg-danger
+                                {% else %}bg-secondary{% endif %}">
+                                {{ recent.get_status_display }}
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No other withdrawals found</p>
+                {% endif %}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="detail-card">
+                <h5 class="mb-3">Quick Actions</h5>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="markAsCompleted()">
+                        <i class="fas fa-check-circle me-1"></i>Mark as Completed
+                    </button>
+                    <button class="btn btn-warning" onclick="markAsProcessing()">
+                        <i class="fas fa-spinner me-1"></i>Mark as Processing
+                    </button>
+                    <button class="btn btn-danger" onclick="markAsFailed()">
+                        <i class="fas fa-times-circle me-1"></i>Mark as Failed
+                    </button>
+                    <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash me-1"></i>Delete Request
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Withdrawal Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete withdrawal request #{{ withdrawal.reference }}?</p>
+                <p class="text-danger"><strong>Warning:</strong> This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="deleteWithdrawal()">
+                    <i class="fas fa-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Update status form
+    document.getElementById('statusUpdateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const newStatus = document.getElementById('newStatus').value;
+        const adminNotes = document.getElementById('adminNotes').value;
+        const updateBtn = document.getElementById('updateStatusBtn');
+        
+        updateBtn.disabled = true;
+        updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+        
+        fetch('{% url "adminpanel:update_withdrawal_status" withdrawal.reference %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                status: newStatus,
+                admin_notes: adminNotes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Status updated successfully!', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification('Error: ' + data.error, 'danger');
+                updateBtn.disabled = false;
+                updateBtn.innerHTML = '<i class="fas fa-save me-1"></i>Update Status';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred', 'danger');
+            updateBtn.disabled = false;
+            updateBtn.innerHTML = '<i class="fas fa-save me-1"></i>Update Status';
+        });
+    });
+    
+    // Quick action functions
+    function markAsCompleted() {
+        document.getElementById('newStatus').value = 'completed';
+        document.getElementById('adminNotes').value = 'Marked as completed by admin';
+        document.getElementById('updateStatusBtn').click();
+    }
+    
+    function markAsProcessing() {
+        document.getElementById('newStatus').value = 'processing';
+        document.getElementById('adminNotes').value = 'Processing started';
+        document.getElementById('updateStatusBtn').click();
+    }
+    
+    function markAsFailed() {
+        document.getElementById('newStatus').value = 'failed';
+        document.getElementById('adminNotes').value = 'Marked as failed by admin';
+        document.getElementById('updateStatusBtn').click();
+    }
+    
+    function deleteWithdrawal() {
+        // Implement delete functionality
+        showNotification('Delete functionality coming soon!', 'info');
+        $('#deleteModal').modal('hide');
+    }
+    
+    // Notification function
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        notification.style.top = '20px';
+        notification.style.right = '20px';
+        notification.style.zIndex = '9999';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
+</script>
+{% endblock %}

@@ -168,24 +168,6 @@ const WalletDashboard = () => {
               <div className="card-decoration"></div>
             </div>
 
-            <div className="balance-card locked">
-              <div className="card-glow"></div>
-              <div className="card-content">
-                <div className="card-header">
-                  <div className="card-icon">
-                    <Icon icon="mdi:lock" />
-                  </div>
-                  <h3>Locked Balance</h3>
-                </div>
-                <div className="card-balance">
-                  <span className="currency">₦</span>
-                  <span className="amount">{formatAmount(safeWallet.locked_balance)}</span>
-                </div>
-                <p className="card-description">In pending transactions</p>
-              </div>
-              <div className="card-decoration"></div>
-            </div>
-
             <div className="balance-card demo">
               <div className="card-glow"></div>
               <div className="card-content">
@@ -193,7 +175,7 @@ const WalletDashboard = () => {
                   <div className="card-icon">
                     <Icon icon="mdi:gamepad" />
                   </div>
-                  <h3>Spot Balance</h3>
+                  <h3>Bet Out Balance</h3>
                 </div>
                 <div className="card-balance">
                   <span className="currency">₦</span>

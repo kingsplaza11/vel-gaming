@@ -185,3 +185,27 @@ STATIC_ROOT = "static/"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Email settings for password reset
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Or your email provider
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'veltoragaming@gmail.com'  # Your email address
+EMAIL_HOST_PASSWORD = 'jgjz gqnb jzhn uzov'
+DEFAULT_FROM_EMAIL = 'Veltora Games <noreply@veltoragames.com>'
+DEFAULT_REPLY_TO_EMAIL = 'support@veltrogames.com'  # Add this line
+SITE_URL = 'https://veltrogames.com'  # Add this line
+SUPPORT_EMAIL = 'support@veltrogames.com'  # Add this line
+SUPPORT_WHATSAPP = '+1 (825) 572-0351'  # Add this line
+SERVER_EMAIL = 'server@veltoragames.com'
+
+# Email subject prefix
+EMAIL_SUBJECT_PREFIX = '[Veltora Games] '
+
+# Password reset settings
+PASSWORD_RESET_TIMEOUT = 3600  # 1 hour
+
+# Frontend URLs
+FRONTEND_URL = 'https://veltrogames.com'  # Your React app URL
+PASSWORD_RESET_CONFIRM_URL = f'{FRONTEND_URL}/password-reset-confirm'

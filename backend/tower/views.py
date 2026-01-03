@@ -95,13 +95,13 @@ def start_tower(request):
             # Deduct from spot_balance first, then main balance
             remaining_cost = bet_amount
             
-            if wallet.spot_balance >= remaining_cost:
-                wallet.spot_balance -= remaining_cost
+            if wallet.balance >= remaining_cost:
+                wallet.balance -= remaining_cost
                 remaining_cost = Decimal("0.00")
             else:
-                remaining_cost -= wallet.spot_balance
-                wallet.spot_balance = Decimal("0.00")
-                wallet.balance -= remaining_cost
+                remaining_cost -= wallet.balance
+                wallet.balance = Decimal("0.00")
+                wallet.spot_balance -= remaining_cost
                 
             wallet.save(update_fields=["balance", "spot_balance"])
             logger.info(f"Deducted {bet_amount}, New balance: {wallet.balance}, Spot: {wallet.spot_balance}")

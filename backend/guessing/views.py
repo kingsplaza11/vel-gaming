@@ -83,17 +83,22 @@ def start_guessing(request):
         if combined_balance < bet_amount:
             return Response({'error': 'Insufficient balance (wallet + spot)'}, status=400)
 
-        # Deduct from spot_balance first, then main balance
         remaining_cost = bet_amount
-        
-        if wallet.spot_balance >= remaining_cost:
-            wallet.spot_balance -= remaining_cost
-            remaining_cost = Decimal("0.00")
-        else:
-            remaining_cost -= wallet.spot_balance
-            wallet.spot_balance = Decimal("0.00")
-            wallet.balance -= remaining_cost
-            
+        taken_from_wallet = Decimal('0')
+        taken_from_spot = Decimal('0')
+
+        # Deduct from wallet balance first
+        if wallet.balance > 0:
+            taken_from_wallet = min(wallet.balance, remaining_cost)
+            wallet.balance -= taken_from_wallet
+            remaining_cost -= taken_from_wallet
+
+        # If still remaining, deduct from spot balance
+        if remaining_cost > 0 and wallet.spot_balance > 0:
+            taken_from_spot = min(wallet.spot_balance, remaining_cost)
+            wallet.spot_balance -= taken_from_spot
+            remaining_cost -= taken_from_spot
+
         wallet.save(update_fields=["balance", "spot_balance"])
 
         # Generate target number

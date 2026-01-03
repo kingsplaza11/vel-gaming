@@ -549,6 +549,9 @@ const WithdrawalForm = () => {
         </DialogContent>
         
         <DialogActions>
+          <Button onClick={() => navigate("/withdrawal/history")} variant="outlined">
+            View History
+          </Button>
           <Button 
             onClick={() => {
               setSuccessDialog(false);

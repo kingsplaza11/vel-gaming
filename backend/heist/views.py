@@ -150,17 +150,26 @@ def start_heist(request):
             return Response({"error": "Insufficient balance (wallet + spot)"}, status=400)
 
         # =====================
-        # DEDUCT STAKE (spot → wallet)
+        # DEDUCT STAKE (wallet → spot)
         # =====================
         remaining_cost = bet_amount
+        taken_from_wallet = Decimal('0')
+        taken_from_spot = Decimal('0')
 
-        if wallet.spot_balance >= remaining_cost:
-            wallet.spot_balance -= remaining_cost
-            remaining_cost = Decimal("0.00")
-        else:
-            remaining_cost -= wallet.spot_balance
-            wallet.spot_balance = Decimal("0.00")
-            wallet.balance -= remaining_cost
+        # 1️⃣ Deduct from wallet balance first
+        if wallet.balance > 0:
+            taken_from_wallet = min(wallet.balance, remaining_cost)
+            wallet.balance -= taken_from_wallet
+            remaining_cost -= taken_from_wallet
+
+        # 2️⃣ If still remaining, deduct from spot balance
+        if remaining_cost > 0 and wallet.spot_balance > 0:
+            taken_from_spot = min(wallet.spot_balance, remaining_cost)
+            wallet.spot_balance -= taken_from_spot
+            remaining_cost -= taken_from_spot
+
+        # 3️⃣ Optional: Check if we covered the full amount
+        # (This should already be validated before reaching this point)
 
         # ================= HEIST LOGIC =================
         # Select 3 random hacks

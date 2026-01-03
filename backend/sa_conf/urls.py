@@ -14,6 +14,12 @@ urlpatterns = [
 
     # adminpanel/urls.py
 
+    # Withdrawal management URLs
+    path('withdrawals/', views.withdrawal_list, name='withdrawal_list'),
+    path('withdrawals/<str:reference>/', views.withdrawal_detail, name='withdrawal_detail'),
+    path('withdrawals/<str:reference>/update/', views.update_withdrawal_status, name='update_withdrawal_status'),
+    path('withdrawals/bulk-update/', views.bulk_update_withdrawals, name='bulk_update_withdrawals'),
+
     path(
         "users/<int:user_id>/wallet/update/",
         views.update_wallet,

@@ -12,16 +12,22 @@ class FundWalletSerializer(serializers.Serializer):
             raise serializers.ValidationError("Minimum funding amount is 100.00")
         return value
 
+from .models import WithdrawalRequest
+
 class WithdrawalSerializer(serializers.Serializer):
-    amount = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal('100.00'))
+    amount = serializers.DecimalField(
+        max_digits=18, 
+        decimal_places=2, 
+        min_value=Decimal('2000.00')
+    )
     account_number = serializers.CharField(max_length=10)
     bank_code = serializers.CharField(max_length=10)
     bank_name = serializers.CharField(max_length=100)
     account_name = serializers.CharField(max_length=100)
     
     def validate_amount(self, value):
-        if value < Decimal('100.00'):
-            raise serializers.ValidationError("Minimum withdrawal amount is 100.00")
+        if value < Decimal('2000.00'):
+            raise serializers.ValidationError("Minimum withdrawal amount is ₦2,000.00")
         return value
 
 class WalletTransactionSerializer(serializers.ModelSerializer):
@@ -34,4 +40,4 @@ class WalletSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Wallet
-        fields = ['balance', 'locked_balance', 'spot_balance', 'updated_at', 'transactions']
+        fields = ['balance', 'spot_balance', 'updated_at', 'transactions']

@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 from .csrf import csrf
+from . import api_views  # your custom API views
+
 
 urlpatterns = [
     path('register/', views.register_view, name='register'),
@@ -13,4 +15,12 @@ urlpatterns = [
     path("change-password/", views.change_password),
     path("ticket/", views.submit_ticket),
     path("referral_dashboard/", views.referral_dashboard),
+
+    path('password/reset/', 
+         api_views.PasswordResetAPIView.as_view(), 
+         name='api_password_reset'),
+    
+    path('password/reset/confirm/', 
+         api_views.PasswordResetConfirmAPIView.as_view(), 
+         name='api_password_reset_confirm'),
 ]

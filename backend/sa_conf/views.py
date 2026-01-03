@@ -1,16 +1,16 @@
 from datetime import timedelta
 from decimal import Decimal
-
+from django.core.paginator import Paginator
+from django.db.models import Q, Sum, Count
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.contrib import messages
 from accounts.models import User, Referral
-from wallets.models import Wallet, WalletTransaction
-
+from wallets.models import Wallet, WalletTransaction, WithdrawalRequest
+from django.views.decorators.http import require_POST
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import Count
 
 
 @staff_member_required
@@ -181,4 +181,158 @@ def admin_login(request):
 
     return render(request, "sa/login.html", {
         "error": error
+    })
+
+
+@staff_member_required
+def withdrawal_list(request):
+    """List all withdrawal requests"""
+    # Get filter parameters
+    status_filter = request.GET.get('status', '')
+    search_query = request.GET.get('q', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Start with all withdrawals
+    withdrawals = WithdrawalRequest.objects.all().select_related('user')
+    
+    # Apply filters
+    if status_filter:
+        withdrawals = withdrawals.filter(status=status_filter)
+    
+    if search_query:
+        withdrawals = withdrawals.filter(
+            Q(user__username__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(account_name__icontains=search_query) |
+            Q(reference__icontains=search_query) |
+            Q(account_number__icontains=search_query)
+        )
+    
+    if date_from:
+        withdrawals = withdrawals.filter(created_at__gte=date_from)
+    
+    if date_to:
+        withdrawals = withdrawals.filter(created_at__lte=date_to)
+    
+    # Order by creation date (newest first)
+    withdrawals = withdrawals.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(withdrawals, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Statistics
+    stats = {
+        'total_count': withdrawals.count(),
+        'total_amount': withdrawals.aggregate(total=Sum('amount'))['total'] or 0,
+        'total_pending': withdrawals.filter(status='pending').count(),
+        'total_processing': withdrawals.filter(status='processing').count(),
+        'total_completed': withdrawals.filter(status='completed').count(),
+        'total_failed': withdrawals.filter(status='failed').count(),
+    }
+    
+    context = {
+        'active': 'withdrawals',
+        'page_obj': page_obj,
+        'stats': stats,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'date_from': date_from,
+        'date_to': date_to,
+        'status_choices': WithdrawalRequest.STATUS_CHOICES,
+    }
+    
+    return render(request, 'sa/withdrawal_list.html', context)
+
+@staff_member_required
+def withdrawal_detail(request, reference):
+    """View withdrawal request details"""
+    withdrawal = get_object_or_404(
+        WithdrawalRequest.objects.select_related('user'),
+        reference=reference
+    )
+    
+    # Get related transactions
+    transactions = WalletTransaction.objects.filter(
+        user=withdrawal.user,
+        meta__withdrawal_reference=reference
+    ).order_by('-created_at')
+    
+    # Calculate net amount
+    net_amount = withdrawal.amount - withdrawal.processing_fee
+    
+    # Get user's recent withdrawals
+    recent_withdrawals = WithdrawalRequest.objects.filter(
+        user=withdrawal.user
+    ).exclude(pk=withdrawal.pk).order_by('-created_at')[:5]
+    
+    context = {
+        'active': 'withdrawals',
+        'withdrawal': withdrawal,
+        'transactions': transactions,
+        'net_amount': net_amount,
+        'recent_withdrawals': recent_withdrawals,
+    }
+    
+    return render(request, 'sa/withdrawal_detail.html', context)
+
+@staff_member_required
+@require_POST
+def update_withdrawal_status(request, reference):
+    """Update withdrawal request status"""
+    withdrawal = get_object_or_404(WithdrawalRequest, reference=reference)
+    
+    data = json.loads(request.body)
+    new_status = data.get('status')
+    admin_notes = data.get('admin_notes', '')
+    
+    if new_status not in dict(WithdrawalRequest.STATUS_CHOICES):
+        return JsonResponse({'success': False, 'error': 'Invalid status'})
+    
+    # Update withdrawal
+    withdrawal.status = new_status
+    if admin_notes:
+        withdrawal.admin_notes = admin_notes
+    withdrawal.save()
+    
+    # If status is completed, also update related wallet transaction
+    if new_status == 'completed':
+        WalletTransaction.objects.filter(
+            meta__withdrawal_reference=reference
+        ).update(
+            meta__status='completed'
+        )
+        
+        # Send completion email to user
+        from wallet.utils.email_service import send_withdrawal_completion_email
+        send_withdrawal_completion_email(withdrawal.user, withdrawal)
+    
+    return JsonResponse({'success': True, 'new_status': new_status})
+
+@staff_member_required
+@require_POST
+def bulk_update_withdrawals(request):
+    """Bulk update withdrawal statuses"""
+    data = json.loads(request.body)
+    withdrawal_ids = data.get('withdrawal_ids', [])
+    new_status = data.get('status')
+    admin_notes = data.get('admin_notes', '')
+    
+    if new_status not in dict(WithdrawalRequest.STATUS_CHOICES):
+        return JsonResponse({'success': False, 'error': 'Invalid status'})
+    
+    # Update selected withdrawals
+    updated_count = WithdrawalRequest.objects.filter(
+        reference__in=withdrawal_ids
+    ).update(
+        status=new_status,
+        admin_notes=admin_notes if admin_notes else None
+    )
+    
+    return JsonResponse({
+        'success': True, 
+        'updated_count': updated_count,
+        'new_status': new_status
     })

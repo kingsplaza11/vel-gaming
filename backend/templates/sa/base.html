@@ -385,6 +385,17 @@
                     <span class="nav-badge">{{ total_users }}</span>
                 </a>
             </div>
+
+            <!-- Update the sidebar navigation in base.html -->
+            <div class="nav-item">
+                <a href="{% url 'adminpanel:withdrawal_list' %}" class="nav-link {% if active == 'withdrawals' %}active{% endif %}">
+                    <i class="fas fa-money-bill-transfer"></i>
+                    <span>Withdrawals</span>
+                    {% if withdrawal_count %}
+                    <span class="nav-badge">{{ withdrawal_count }}</span>
+                    {% endif %}
+                </a>
+            </div>
             
             <div class="nav-item">
                 <a href="{% url 'adminpanel:referral_list' %}" class="nav-link">

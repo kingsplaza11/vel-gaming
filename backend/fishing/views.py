@@ -117,7 +117,7 @@ def cast_line(request):
             max_allowed = (bet_amount * MAX_WIN_RATIO).quantize(Decimal("0.01"))
             win_amount = min(raw_win, max_allowed)
 
-        wallet.balance += win_amount
+        wallet.spot_balance += win_amount
         wallet.save(update_fields=["balance"])
 
         FishingSession.objects.create(

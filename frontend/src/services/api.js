@@ -101,28 +101,51 @@ async function ensureCSRF() {
 }
 
 /* ======================================================
-   AUTH SERVICE
+   UNIFORM AUTH SERVICE
 ====================================================== */
 export const authService = {
+  // Authentication
   login: async (credentials) => {
-    await ensureCSRF();
-    return api.post("/accounts/login/", credentials);
+    return api.post('/accounts/login/', credentials);
   },
 
   register: async (data) => {
-    await ensureCSRF();
-    return api.post("/accounts/register/", data);
+    return api.post('/accounts/register/', data);
   },
 
   logout: async () => {
-    await ensureCSRF();
-    return api.post("/accounts/logout/");
+    return api.post('/accounts/logout/');
   },
 
-  getProfile: () =>
-    api.get("/accounts/profile/", {
+  // Password Reset
+  requestPasswordReset: async (email) => {
+    return api.post('/accounts/password/reset/', { email });
+  },
+
+  resetPasswordConfirm: async (uid, token, new_password1, new_password2) => {
+    return api.post('/accounts/password/reset/confirm/', {
+      uid,
+      token,
+      new_password1,
+      new_password2,
+    });
+  },
+
+  // Profile
+  getProfile: async () => {
+    return api.get('/accounts/profile/', {
       skipAuthRedirect: true,
-    }),
+    });
+  },
+
+  updateProfile: async (data) => {
+    return api.patch('/accounts/profile/', data);
+  },
+
+  // CSRF Token
+  getCSRFToken: async () => {
+    return api.get('/accounts/csrf/', { skipCSRF: true });
+  },
 };
 
 /* ======================================================

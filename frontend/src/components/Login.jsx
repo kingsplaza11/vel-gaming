@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { authService } from '../services/api';
 import { Icon } from '@iconify/react';
 import './Auth.css';
+import { Link } from 'react-router-dom'; // Add this import
 
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -112,6 +113,11 @@ const Login = ({ onLogin }) => {
               {error}
             </div>
           )}
+          <div className="auth-links">
+            <Link to="/password-reset" className="auth-link">
+              Forgot Password?
+            </Link>
+          </div>
 
           <button 
             type="submit" 

@@ -306,7 +306,7 @@ def cash_out(request):
             wallet = Wallet.objects.select_for_update().get(user=user)
             
             # Credit winnings to main balance
-            wallet.balance += payout
+            wallet.spot_balance += payout
             wallet.save(update_fields=['balance'])
             
             # Update bet
