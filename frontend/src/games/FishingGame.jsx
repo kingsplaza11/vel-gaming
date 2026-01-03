@@ -8,7 +8,7 @@ const MINIMUM_STAKE = 100; // Minimum stake of 100 naira
 
 const FishingGame = ({ user, onBalanceUpdate }) => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet(); // Get wallet data from context
+  const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet(); // Get wallet data from context
 
   /* ---------------- STATE ---------------- */
   const [betAmount, setBetAmount] = useState(1000); // Start with minimum stake
@@ -25,7 +25,7 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
   /* ---------------- HELPER FUNCTIONS ---------------- */
   // Get wallet balance with fallback to user.balance
   const getWalletBalance = () => {
-    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
+    return availableBalance !== undefined ? availableBalance : (availableBalance);
   };
 
   // Get current balance

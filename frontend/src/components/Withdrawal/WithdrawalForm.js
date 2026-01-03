@@ -23,7 +23,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton
+  IconButton,
+  Divider
 } from "@mui/material";
 import { 
   AccountBalanceWallet, 
@@ -31,7 +32,10 @@ import {
   Security, 
   AccessTime,
   ArrowBack,
-  Close
+  Close,
+  AccountBalance,
+  Wallet,
+  Paid
 } from "@mui/icons-material";
 
 /* ======================================================
@@ -73,7 +77,12 @@ const NIGERIAN_BANKS = [
 
 const WithdrawalForm = () => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, fetchWallet } = useWallet();
+  const { 
+    wallet, 
+    loading: walletLoading, 
+    fetchWallet,
+    availableBalance // This is total balance (betOutBalance + spotBalance)
+  } = useWallet();
   
   const [formData, setFormData] = useState({
     amount: "",
@@ -88,6 +97,13 @@ const WithdrawalForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [successDialog, setSuccessDialog] = useState(false);
   const [withdrawalDetails, setWithdrawalDetails] = useState(null);
+
+  /* ======================================================
+     CALCULATE BALANCES
+  ====================================================== */
+  const betOutBalance = Number(wallet?.balance) || 0;
+  const spotBalance = Number(wallet?.spot_balance) || 0;
+  const totalBalance = availableBalance || (betOutBalance + spotBalance);
 
   /* ======================================================
      AUTO RESOLVE ACCOUNT NAME
@@ -163,9 +179,9 @@ const WithdrawalForm = () => {
       return;
     }
 
-    if (!wallet || amount > wallet.spot_balance) {
+    if (!wallet || amount > spotBalance) {
       setErrors({
-        amount: `Insufficient spot balance. Available: ₦${wallet?.spot_balance?.toLocaleString() || '0'}`,
+        amount: `Insufficient available balance. Available: ₦${spotBalance.toLocaleString() || '0'}`,
       });
       return;
     }
@@ -261,59 +277,11 @@ const WithdrawalForm = () => {
         Back to Games
       </Button>
 
-      {/* Balance Summary */}
-      {wallet && (
-        <Card sx={{ mb: 4 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">
-              Your Balances
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ 
-                  p: 2, 
-                  background: '#e8f5e9', 
-                  borderRadius: 1,
-                  textAlign: 'center'
-                }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Available Balance (Game Winnings)
-                  </Typography>
-                  <Typography variant="h4" color="success.main" fontWeight="bold">
-                    ₦{wallet.spot_balance?.toLocaleString() || '0'}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Available for withdrawal
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ 
-                  p: 2, 
-                  background: '#f5f5f5', 
-                  borderRadius: 1,
-                  textAlign: 'center'
-                }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Bet Out Balance
-                  </Typography>
-                  <Typography variant="h4" color="primary" fontWeight="bold">
-                    ₦{wallet.balance?.toLocaleString() || '0'}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    For playing games
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Withdrawal Form */}
-      <Card sx={{ maxWidth: 600, mx: "auto", mt: 4 }}>
+      <Card sx={{ maxWidth: 600, mx: "auto", mt: 4, borderRadius: 2, boxShadow: 3 }}>
         <CardContent>
-          <Typography variant="h5" gutterBottom color="primary">
+          <Typography variant="h5" gutterBottom color="primary" sx={{ mb: 3 }}>
+            <AttachMoney sx={{ mr: 1, verticalAlign: 'middle' }} />
             Withdraw Funds
           </Typography>
 
@@ -323,10 +291,12 @@ const WithdrawalForm = () => {
             </Alert>
           )}
 
-          <Alert severity="info" sx={{ my: 2 }}>
-            💰 <strong>Available for Withdrawal:</strong> ₦{wallet?.spot_balance?.toLocaleString() || '0'}
-            <br />
-            <small>Minimum withdrawal: ₦{MIN_WITHDRAWAL_AMOUNT.toLocaleString()} (₦{PROCESSING_FEE} processing fee applies)</small>
+          <Alert severity="info" sx={{ my: 2, borderRadius: 1 }}>
+            <Typography variant="body2">
+              <strong>💰 Available for Withdrawal:</strong> ₦{spotBalance.toLocaleString() || '0'}
+              <br />
+              <small>Minimum withdrawal: ₦{MIN_WITHDRAWAL_AMOUNT.toLocaleString()} (₦{PROCESSING_FEE} processing fee applies)</small>
+            </Typography>
           </Alert>
 
           <Box component="form" onSubmit={handleSubmit} mt={2}>
@@ -343,6 +313,7 @@ const WithdrawalForm = () => {
                   inputProps={{
                     min: MIN_WITHDRAWAL_AMOUNT,
                     step: 100,
+                    max: spotBalance
                   }}
                   error={!!errors.amount}
                   helperText={
@@ -413,12 +384,15 @@ const WithdrawalForm = () => {
                   type="submit"
                   variant="contained"
                   size="large"
-                  disabled={submitting || resolving || walletLoading}
+                  disabled={submitting || resolving || walletLoading || spotBalance < MIN_WITHDRAWAL_AMOUNT}
                   sx={{ 
                     py: 1.5,
                     background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
                     '&:hover': {
                       background: 'linear-gradient(135deg, #45a049 0%, #1b5e20 100%)',
+                    },
+                    '&:disabled': {
+                      background: 'linear-gradient(135deg, #cccccc 0%, #999999 100%)',
                     }
                   }}
                 >
@@ -434,35 +408,53 @@ const WithdrawalForm = () => {
 
           {/* Important Notes */}
           <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #eee' }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+              <Security sx={{ mr: 1, fontSize: '1rem' }} />
               <strong>Important Notes:</strong>
             </Typography>
             <List dense>
               <ListItem sx={{ py: 0.5 }}>
                 <ListItemIcon sx={{ minWidth: 32 }}>
-                  <span>✅</span>
+                  <span style={{ color: '#4CAF50' }}>✅</span>
                 </ListItemIcon>
                 <ListItemText 
                   primary="Processing fee of ₦50 applies" 
                   secondary="Deducted from withdrawal amount"
+                  primaryTypographyProps={{ variant: 'body2' }}
+                  secondaryTypographyProps={{ variant: 'caption' }}
                 />
               </ListItem>
               <ListItem sx={{ py: 0.5 }}>
                 <ListItemIcon sx={{ minWidth: 32 }}>
-                  <span>✅</span>
+                  <span style={{ color: '#4CAF50' }}>✅</span>
                 </ListItemIcon>
                 <ListItemText 
                   primary="Processing time: 24-48 hours" 
                   secondary="On business days only (Mon-Fri, 9am-5pm)"
+                  primaryTypographyProps={{ variant: 'body2' }}
+                  secondaryTypographyProps={{ variant: 'caption' }}
                 />
               </ListItem>
               <ListItem sx={{ py: 0.5 }}>
                 <ListItemIcon sx={{ minWidth: 32 }}>
-                  <span>✅</span>
+                  <span style={{ color: '#4CAF50' }}>✅</span>
                 </ListItemIcon>
                 <ListItemText 
                   primary="Contact support for issues" 
                   secondary="Email: support@veltrogames.com | WhatsApp: +1 (825) 572-0351"
+                  primaryTypographyProps={{ variant: 'body2' }}
+                  secondaryTypographyProps={{ variant: 'caption' }}
+                />
+              </ListItem>
+              <ListItem sx={{ py: 0.5 }}>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  <span style={{ color: '#2196F3' }}>ℹ️</span>
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Only Available Balance can be withdrawn" 
+                  secondary="Bet Out Balance must be converted to winnings first"
+                  primaryTypographyProps={{ variant: 'body2' }}
+                  secondaryTypographyProps={{ variant: 'caption' }}
                 />
               </ListItem>
             </List>
@@ -476,54 +468,76 @@ const WithdrawalForm = () => {
         onClose={() => setSuccessDialog(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" color="success.main">
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)',
+          color: 'white'
+        }}>
+          <Typography variant="h6" fontWeight="bold">
             ✅ Withdrawal Request Submitted!
           </Typography>
-          <IconButton onClick={() => setSuccessDialog(false)}>
+          <IconButton 
+            onClick={() => setSuccessDialog(false)} 
+            sx={{ color: 'white' }}
+          >
             <Close />
           </IconButton>
         </DialogTitle>
         
-        <DialogContent>
+        <DialogContent sx={{ pt: 3 }}>
           {withdrawalDetails && (
             <Box>
-              <Alert severity="success" sx={{ mb: 2 }}>
+              <Alert severity="success" sx={{ mb: 2, borderRadius: 1 }}>
                 Your withdrawal request has been received and is pending admin approval.
               </Alert>
               
-              <Card sx={{ mb: 2 }}>
+              <Card sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
                 <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Transaction Details:
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
+                    <strong>Transaction Details:</strong>
                   </Typography>
-                  <Grid container spacing={1}>
+                  <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Typography variant="body2">Reference:</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Reference:
+                      </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" fontWeight="bold">
+                      <Typography variant="body2" fontWeight="bold" color="primary">
                         {withdrawalDetails.reference}
                       </Typography>
                     </Grid>
                     
                     <Grid item xs={6}>
-                      <Typography variant="body2">Amount:</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Amount:
+                      </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2">₦{withdrawalDetails.amount.toLocaleString()}</Typography>
-                    </Grid>
-                    
-                    <Grid item xs={6}>
-                      <Typography variant="body2">Processing Fee:</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="body2">-₦{withdrawalDetails.processingFee.toLocaleString()}</Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        ₦{withdrawalDetails.amount.toLocaleString()}
+                      </Typography>
                     </Grid>
                     
                     <Grid item xs={6}>
-                      <Typography variant="body2" fontWeight="bold">Net Amount:</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Processing Fee:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="error.main">
+                        -₦{withdrawalDetails.processingFee.toLocaleString()}
+                      </Typography>
+                    </Grid>
+                    
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                        Net Amount:
+                      </Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="body2" fontWeight="bold" color="success.main">
@@ -532,23 +546,29 @@ const WithdrawalForm = () => {
                     </Grid>
                     
                     <Grid item xs={6}>
-                      <Typography variant="body2">Estimated Time:</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Estimated Time:
+                      </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2">{withdrawalDetails.estimatedTime}</Typography>
+                      <Typography variant="body2">
+                        {withdrawalDetails.estimatedTime}
+                      </Typography>
                     </Grid>
                   </Grid>
                 </CardContent>
               </Card>
               
-              <Typography variant="body2" color="text.secondary">
-                Please keep your reference number for tracking. You will receive a notification once your withdrawal is processed.
-              </Typography>
+              <Alert severity="info" sx={{ borderRadius: 1 }}>
+                <Typography variant="body2">
+                  Please keep your reference number for tracking. You will receive a notification once your withdrawal is processed.
+                </Typography>
+              </Alert>
             </Box>
           )}
         </DialogContent>
         
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button 
             onClick={() => {
               setSuccessDialog(false);
@@ -556,6 +576,8 @@ const WithdrawalForm = () => {
             }} 
             variant="contained"
             color="primary"
+            fullWidth
+            size="large"
           >
             Back to Games
           </Button>

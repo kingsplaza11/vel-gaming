@@ -4,12 +4,13 @@ import { Helmet } from "react-helmet"; // Add this import
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useWallet } from "../contexts/WalletContext";
+import toast from "react-hot-toast"; // Add this import
 import "./BaseLayout.css";
 
 const BaseLayout = ({ user, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { wallet, loading: walletLoading } = useWallet();
+  const { wallet, loading, availableBalance, refreshWallet } = useWallet();
 
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -109,9 +110,16 @@ const BaseLayout = ({ user, onLogout }) => {
               </div>
               <div className="profile-info">
                 <h3 className="profile-username">{user?.username || "Guest"}</h3>
+                <div className="profile-email" title={user?.email}>
+                  {user?.email ? (
+                    user.email.length > 20 ? `${user.email.substring(0, 20)}...` : user.email
+                  ) : (
+                    "No email"
+                  )}
+                </div>
                 <div className="profile-balance">
                   <Icon icon="mdi:currency-ngn" className="balance-icon" />
-                  <span className="balance-amount">{formatBalance(displayBalance)}</span>
+                  <span className="balance-amount">{loading ? "Loading..." : formatBalance(availableBalance)}</span>
                 </div>
               </div>
             </div>
@@ -193,7 +201,7 @@ const BaseLayout = ({ user, onLogout }) => {
           >
             <div className="balance-glow"></div>
             <Icon icon="mdi:currency-ngn" className="balance-icon" />
-            <span className="balance-text">{formatBalance(displayBalance)}</span>
+            <span className="balance-text">{formatBalance(availableBalance)}</span>
           </button>
         </header>
 
@@ -259,68 +267,111 @@ const BaseLayout = ({ user, onLogout }) => {
             </div>
         </footer>
 
-        {/* BOTTOM MENU MODAL */}
+        {/* BOTTOM MENU MODAL - PREMIUM DESIGN */}
         <div className={`bottom-menu-modal ${isBottomMenuOpen ? "open" : ""}`}>
           <div className="modal-backdrop" onClick={() => setIsBottomMenuOpen(false)}></div>
           <div className="modal-content">
+            {/* Modal Header with User Info */}
             <div className="modal-header">
-              <h3>Menu</h3>
+              <div className="modal-user-info">
+                <div className="modal-avatar">
+                  <Icon icon="mdi:account-circle" />
+                  <div className="modal-status"></div>
+                </div>
+                <div className="modal-user-details">
+                  <h4 className="modal-username">{user?.username || "Guest"}</h4>
+                  <p className="modal-user-email" title={user?.email}>
+                    {user?.email ? (user.email.length > 25 ? `${user.email.substring(0, 25)}...` : user.email) : "No email"}
+                  </p>
+                </div>
+              </div>
               <button
                 className="modal-close-btn"
                 onClick={() => setIsBottomMenuOpen(false)}
+                aria-label="Close menu"
               >
                 <Icon icon="mdi:close" />
               </button>
             </div>
-            <div className="modal-actions">
-              <button
-                className="modal-action-btn"
-                onClick={() => {
-                  navigate("/transactions");
-                  setIsBottomMenuOpen(false);
-                }}
-              >
-                <Icon icon="mdi:history" />
-                <span>Transactions</span>
-              </button>
-              <button
-                className="modal-action-btn"
-                onClick={() => {
-                  navigate("/referrals");
-                  setIsBottomMenuOpen(false);
-                }}
-              >
-                <Icon icon="mdi:account-multiple" />
-                <span>Referrals</span>
-              </button>
 
+            {/* Modal Body with Actions */}
+            <div className="modal-body">
+              <div className="modal-section">
+                <h5 className="section-title">Navigation</h5>
+                <div className="modal-actions">
+                  <button
+                    className="modal-action-btn"
+                    onClick={() => {
+                      navigate("/transactions");
+                      setIsBottomMenuOpen(false);
+                    }}
+                  >
+                    <div className="action-icon-wrapper">
+                      <Icon icon="mdi:history" />
+                    </div>
+                    <span className="action-text">Transactions</span>
+                    <Icon icon="mdi:chevron-right" className="action-arrow" />
+                  </button>
+
+                  <button
+                    className="modal-action-btn"
+                    onClick={() => {
+                      navigate("/referrals");
+                      setIsBottomMenuOpen(false);
+                    }}
+                  >
+                    <div className="action-icon-wrapper">
+                      <Icon icon="mdi:account-multiple" />
+                    </div>
+                    <span className="action-text">Referrals</span>
+                    <Icon icon="mdi:chevron-right" className="action-arrow" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-section">
+                <h5 className="section-title">Account</h5>
+                <div className="modal-actions">
+                  <button
+                    className="modal-action-btn"
+                    onClick={() => {
+                      navigate("/settings");
+                      setIsBottomMenuOpen(false);
+                    }}
+                  >
+                    <div className="action-icon-wrapper">
+                      <Icon icon="mdi:cog" />
+                    </div>
+                    <span className="action-text">Settings</span>
+                    <Icon icon="mdi:chevron-right" className="action-arrow" />
+                  </button>
+
+                  <button
+                    className="modal-action-btn"
+                    onClick={() => {
+                      navigate("/support");
+                      setIsBottomMenuOpen(false);
+                    }}
+                  >
+                    <div className="action-icon-wrapper">
+                      <Icon icon="mdi:headset" />
+                    </div>
+                    <span className="action-text">Support</span>
+                    <Icon icon="mdi:chevron-right" className="action-arrow" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="modal-footer">
               <button
-                className="modal-action-btn"
-                onClick={() => {
-                  navigate("/settings");
-                  setIsBottomMenuOpen(false);
-                }}
-              >
-                <Icon icon="mdi:cog" />
-                <span>Settings</span>
-              </button>
-              <button
-                className="modal-action-btn"
-                onClick={() => {
-                  navigate("/support");
-                  setIsBottomMenuOpen(false);
-                }}
-              >
-                <Icon icon="mdi:headset" />
-                <span>Support</span>
-              </button>
-              <button
-                className="modal-action-btn logout-action"
+                className="modal-logout-btn"
                 onClick={handleLogout}
               >
-
-                <Icon icon="mdi:logout" />
-                <span>Logout</span>
+                <Icon icon="mdi:logout" className="logout-icon" />
+                <span className="logout-text">Logout</span>
+                <div className="logout-glow"></div>
               </button>
             </div>
           </div>

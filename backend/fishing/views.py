@@ -102,11 +102,27 @@ def cast_line(request):
     with transaction.atomic():
         wallet = Wallet.objects.select_for_update().get(user=request.user)
 
-        if wallet.balance < bet_amount:
-            return Response({"error": "Insufficient wallet balance"}, status=400)
+        # Check combined balance first
+        combined_balance = wallet.balance + wallet.spot_balance
+        
+        if combined_balance < bet_amount:
+            return Response({'error': 'Insufficient balance'}, status=400)
+
+        remaining_cost = bet_amount
+        taken_from_wallet = Decimal('0')
+        taken_from_spot = Decimal('0')
 
         # Deduct stake
-        wallet.balance -= bet_amount
+        if wallet.balance > 0:
+            taken_from_wallet = min(wallet.balance, remaining_cost)
+            wallet.balance -= taken_from_wallet
+            remaining_cost -= taken_from_wallet
+
+        # 2️⃣ If still remaining, deduct from spot balance
+        if remaining_cost > 0 and wallet.spot_balance > 0:
+            taken_from_spot = min(wallet.spot_balance, remaining_cost)
+            wallet.spot_balance -= taken_from_spot
+            remaining_cost -= taken_from_spot
 
         catch = _choose_fish()
 
@@ -118,7 +134,7 @@ def cast_line(request):
             win_amount = min(raw_win, max_allowed)
 
         wallet.spot_balance += win_amount
-        wallet.save(update_fields=["balance"])
+        wallet.save(update_fields=["balance", "spot_balance"])
 
         FishingSession.objects.create(
             user=request.user,

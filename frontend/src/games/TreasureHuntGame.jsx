@@ -17,7 +17,7 @@ const MAP_LEVELS = [
 
 const TreasureHuntGame = ({ user }) => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet();
 
   /* ---------------- HELPER FUNCTIONS ---------------- */
   const getCombinedBalance = useCallback(() => {

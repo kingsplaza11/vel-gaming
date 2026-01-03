@@ -168,6 +168,8 @@ def start_heist(request):
             wallet.spot_balance -= taken_from_spot
             remaining_cost -= taken_from_spot
 
+        wallet.save(update_fields=["balance", "spot_balance"])
+
         # 3️⃣ Optional: Check if we covered the full amount
         # (This should already be validated before reaching this point)
 

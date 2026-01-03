@@ -16,7 +16,7 @@ const MINIMUM_STAKE = 200;
 
 export default function FortuneRabbit() {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const { wallet, loading: walletLoading, refreshWallet, availableBalance  } = useWallet();
 
   /* =========================
      STATE
@@ -105,7 +105,7 @@ export default function FortuneRabbit() {
   ========================= */
   
   const startGame = async () => {
-    const walletBalance = Number(wallet?.balance || 0);
+    const walletBalance = Number(availableBalance);
     const betAmount = Number(bet);
 
     const isStakeValid = (
@@ -445,7 +445,7 @@ export default function FortuneRabbit() {
   /* =========================
      RENDER
   ========================= */
-  const walletBalance = Number(wallet?.balance || 0);
+  const walletBalance = Number(availableBalance);
   const betAmount = Number(bet);
 
   const isStakeValid = useMemo(() => {

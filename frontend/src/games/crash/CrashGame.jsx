@@ -18,7 +18,7 @@ const MINIMUM_STAKE = 100; // Minimum stake of 100 naira
 
 export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet();
 
   /* ---------------- GAME STATE ---------------- */
   const [phase, setPhase] = useState("betting"); // betting | running | crashed
@@ -53,7 +53,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
   /* ---------------- WALLET HELPERS ---------------- */
   const getWalletBalance = () => {
-    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
+    return availableBalance !== undefined ? availableBalance : (availableBalance);
   };
 
   const balance = Number(getWalletBalance() || 0);

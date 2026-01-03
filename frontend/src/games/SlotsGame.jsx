@@ -157,7 +157,7 @@ SymbolDisplay.displayName = 'SymbolDisplay';
 ================================ */
 const SlotsGame = ({ user }) => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet();
 
   /* ===============================
      STATE MANAGEMENT
@@ -222,7 +222,7 @@ const SlotsGame = ({ user }) => {
      HELPER FUNCTIONS
   ================================ */
   const getWalletBalance = () => {
-    return wallet?.balance !== undefined ? wallet.balance : (user?.balance || 0);
+    return availableBalance !== undefined ? availableBalance : (availableBalance);
   };
 
   const balance = Number(getWalletBalance() || 0);

@@ -12,6 +12,7 @@ const WalletDashboard = () => {
     loading,
     error,
     refreshWallet,
+    availableBalance // This is the total balance (balance + spot_balance)
   } = useWallet();
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -22,6 +23,11 @@ const WalletDashboard = () => {
   ========================= */
   const safeWallet = wallet || {};
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
+
+  // Calculate total balance manually as fallback
+  const betOutBalance = Number(safeWallet.balance) || 0;
+  const spotBalance = Number(safeWallet.spot_balance) || 0;
+  const totalBalance = availableBalance || (betOutBalance + spotBalance);
 
   const formatDate = (dateString) => {
     if (!dateString) return '--';
@@ -113,10 +119,10 @@ const WalletDashboard = () => {
       </div>
 
       {/* =========================
-         TABS
+         TABS - UPDATED WITH TOTAL BALANCE TAB
       ========================= */}
       <div className="wallet-tabs">
-        {['overview', 'deposit', 'withdraw', 'transactions'].map(tab => (
+        {['overview', 'total', 'deposit', 'withdraw', 'transactions'].map(tab => (
           <button
             key={tab}
             className={`tab-button ${activeTab === tab ? 'active' : ''}`}
@@ -127,6 +133,8 @@ const WalletDashboard = () => {
               icon={
                 tab === 'overview'
                   ? 'mdi:view-dashboard'
+                  : tab === 'total'
+                  ? 'mdi:calculator'
                   : tab === 'deposit'
                   ? 'mdi:credit-card-plus'
                   : tab === 'withdraw'
@@ -136,7 +144,7 @@ const WalletDashboard = () => {
               className="tab-icon"
             />
             <span className="tab-label">
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'total' ? 'Total Balance' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </span>
             <div className="tab-indicator"></div>
           </button>
@@ -144,12 +152,32 @@ const WalletDashboard = () => {
       </div>
 
       {/* =========================
-         OVERVIEW TAB
+         OVERVIEW TAB - UPDATED WITH 3 BALANCE CARDS
       ========================= */}
       {activeTab === 'overview' && (
         <div className="overview-content">
-          {/* BALANCE CARDS */}
+          {/* BALANCE CARDS - UPDATED WITH 3 CARDS */}
           <div className="balance-cards">
+            {/* TOTAL FUNDS CARD */}
+            <div className="balance-card total">
+              <div className="card-glow"></div>
+              <div className="card-content">
+                <div className="card-header">
+                  <div className="card-icon">
+                    <Icon icon="mdi:wallet" />
+                  </div>
+                  <h3>Total Funds</h3>
+                </div>
+                <div className="card-balance">
+                  <span className="currency">₦</span>
+                  <span className="amount">{formatAmount(totalBalance)}</span>
+                </div>
+                <p className="card-description">All available funds</p>
+              </div>
+              <div className="card-decoration"></div>
+            </div>
+
+            {/* BET OUT BALANCE CARD */}
             <div className="balance-card available">
               <div className="card-glow"></div>
               <div className="card-content">
@@ -161,27 +189,28 @@ const WalletDashboard = () => {
                 </div>
                 <div className="card-balance">
                   <span className="currency">₦</span>
-                  <span className="amount">{formatAmount(safeWallet.balance)}</span>
+                  <span className="amount">{formatAmount(betOutBalance)}</span>
                 </div>
-                <p className="card-description">Ready to use</p>
+                <p className="card-description">Ready to use in games</p>
               </div>
               <div className="card-decoration"></div>
             </div>
 
+            {/* AVAILABLE BALANCE CARD (formerly Spot Balance) */}
             <div className="balance-card demo">
               <div className="card-glow"></div>
               <div className="card-content">
                 <div className="card-header">
                   <div className="card-icon">
-                    <Icon icon="mdi:gamepad" />
+                    <Icon icon="mdi:bank-transfer" />
                   </div>
                   <h3>Available Balance</h3>
                 </div>
                 <div className="card-balance">
                   <span className="currency">₦</span>
-                  <span className="amount">{formatAmount(safeWallet.spot_balance)}</span>
+                  <span className="amount">{formatAmount(spotBalance)}</span>
                 </div>
-                <p className="card-description">Withdrawable Funds</p>
+                <p className="card-description">Withdrawable funds</p>
               </div>
               <div className="card-decoration"></div>
             </div>
@@ -236,6 +265,19 @@ const WalletDashboard = () => {
                 <div className="action-text">
                   <span className="action-title">Refresh Balance</span>
                   <span className="action-subtitle">Update wallet status</span>
+                </div>
+                <Icon icon="mdi:arrow-right" className="action-arrow" />
+              </button>
+
+              <button 
+                className="action-btn total-action"
+                onClick={() => setActiveTab('total')}
+              >
+                <div className="action-glow"></div>
+                <Icon icon="mdi:calculator" className="action-icon" />
+                <div className="action-text">
+                  <span className="action-title">Balance Details</span>
+                  <span className="action-subtitle">View breakdown</span>
                 </div>
                 <Icon icon="mdi:arrow-right" className="action-arrow" />
               </button>
@@ -305,6 +347,141 @@ const WalletDashboard = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* =========================
+         TOTAL BALANCE TAB (NEW)
+      ========================= */}
+      {activeTab === 'total' && (
+        <div className="total-content">
+          <div className="total-header">
+            <div className="header-content">
+              <div className="header-icon">
+                <Icon icon="mdi:calculator" />
+                <div className="icon-glow"></div>
+              </div>
+              <h2>Total Available Balance</h2>
+              <p>Complete view of your funds</p>
+            </div>
+          </div>
+
+          <div className="total-balance-display">
+            <div className="total-card">
+              <div className="total-card-glow"></div>
+              <div className="total-card-content">
+                <div className="total-card-header">
+                  <Icon icon="mdi:wallet-plus" className="total-card-icon" />
+                  <h3>Total Available Funds</h3>
+                </div>
+                <div className="total-balance-amount">
+                  <span className="total-currency">₦</span>
+                  <span className="total-amount">{formatAmount(totalBalance)}</span>
+                </div>
+                <p className="total-description">Sum of Bet Out Balance + Available Balance</p>
+                
+                <div className="breakdown-section">
+                  <div className="breakdown-header">
+                    <Icon icon="mdi:chart-pie" />
+                    <h4>Balance Breakdown</h4>
+                  </div>
+                  
+                  <div className="breakdown-items">
+                    <div className="breakdown-item">
+                      <div className="breakdown-icon-container">
+                        <Icon icon="mdi:cash" className="breakdown-icon wallet" />
+                      </div>
+                      <div className="breakdown-details">
+                        <span className="breakdown-label">Bet Out Balance</span>
+                        <span className="breakdown-amount">
+                          ₦{formatAmount(betOutBalance)}
+                        </span>
+                      </div>
+                      <div className="breakdown-percentage">
+                        {totalBalance > 0 ? `${((betOutBalance / totalBalance) * 100).toFixed(1)}%` : '0%'}
+                      </div>
+                    </div>
+                    
+                    <div className="breakdown-item">
+                      <div className="breakdown-icon-container">
+                        <Icon icon="mdi:bank-transfer" className="breakdown-icon spot" />
+                      </div>
+                      <div className="breakdown-details">
+                        <span className="breakdown-label">Available Balance</span>
+                        <span className="breakdown-amount">
+                          ₦{formatAmount(spotBalance)}
+                        </span>
+                      </div>
+                      <div className="breakdown-percentage">
+                        {totalBalance > 0 ? `${((spotBalance / totalBalance) * 100).toFixed(1)}%` : '0%'}
+                      </div>
+                    </div>
+                    
+                    <div className="breakdown-item total-breakdown">
+                      <div className="breakdown-icon-container">
+                        <Icon icon="mdi:plus-circle" className="breakdown-icon total" />
+                      </div>
+                      <div className="breakdown-details">
+                        <span className="breakdown-label">Total Available</span>
+                        <span className="breakdown-amount highlight">
+                          ₦{formatAmount(totalBalance)}
+                        </span>
+                      </div>
+                      <div className="breakdown-percentage highlight">
+                        100%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="usage-section">
+                  <div className="usage-header">
+                    <Icon icon="mdi:information" />
+                    <h4>How to Use Your Funds</h4>
+                  </div>
+                  <div className="usage-tips">
+                    <div className="usage-tip">
+                      <Icon icon="mdi:check-circle" className="tip-icon" />
+                      <span><strong>Bet Out Balance:</strong> Use for game stakes and bets</span>
+                    </div>
+                    <div className="usage-tip">
+                      <Icon icon="mdi:check-circle" className="tip-icon" />
+                      <span><strong>Available Balance:</strong> Ready for withdrawal or transfers</span>
+                    </div>
+                    <div className="usage-tip">
+                      <Icon icon="mdi:check-circle" className="tip-icon" />
+                      <span><strong>Total Funds:</strong> All your available funds combined</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="total-actions">
+              <button 
+                className="total-action-btn deposit"
+                onClick={() => setActiveTab('deposit')}
+              >
+                <Icon icon="mdi:credit-card-plus" />
+                <span>Add Funds</span>
+              </button>
+              <button 
+                className="total-action-btn withdraw"
+                onClick={() => setActiveTab('withdraw')}
+              >
+                <Icon icon="mdi:credit-card-minus" />
+                <span>Cash Out</span>
+              </button>
+              <button 
+                className="total-action-btn refresh"
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                <Icon icon="mdi:refresh" />
+                <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

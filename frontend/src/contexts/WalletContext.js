@@ -1,71 +1,39 @@
-import React, {
-  createContext,
-  useState,
-  useContext,
-  useEffect,
-  useRef,
-  useCallback,
-} from "react";
 import api from "../services/api";
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 
 const WalletContext = createContext();
 
-/* ======================================================
-   NORMALIZER (CRITICAL)
-   Prevents spot_balance from being wiped
-====================================================== */
-const normalizeWallet = (data, prev = {}) => {
-  if (!data) return prev || null;
-
-  const balance = Number(
-    data.balance ?? prev?.balance ?? 0
-  );
-
-  const spot_balance = Number(
-    data.spot_balance ?? prev?.spot_balance ?? 0
-  );
-
-  const locked_balance = Number(
-    data.locked_balance ?? prev?.locked_balance ?? 0
-  );
-
-  return {
-    balance,
-    spot_balance,
-    locked_balance,
-    total_balance: balance + spot_balance,
-  };
+export const useWallet = () => {
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error('useWallet must be used within a WalletProvider');
+  }
+  return context;
 };
 
 export const WalletProvider = ({ children, user }) => {
   const [wallet, setWallet] = useState(null);
-  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  const intervalRef = useRef(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   /* ======================================================
-     HELPERS
+     NORMALIZE WALLET DATA
   ====================================================== */
-  const normalizeTransactions = (data) => {
-    if (Array.isArray(data)) return data;
-    if (data?.results && Array.isArray(data.results))
-      return data.results;
-    if (data?.data && Array.isArray(data.data))
-      return data.data;
-    return [];
-  };
-
-  const resetState = () => {
-    setWallet(null);
-    setTransactions([]);
-    setError(null);
-    setLoading(false);
+  const normalizeWallet = (apiData, prevWallet = {}) => {
+    return {
+      ...prevWallet,
+      balance: parseFloat(apiData.balance) || 0,
+      spot_balance: parseFloat(apiData.spot_balance) || 0,
+      locked_balance: parseFloat(apiData.locked_balance) || 0,
+      total_balance: parseFloat(apiData.total_balance) || 0,
+      updated_at: apiData.updated_at || new Date().toISOString(),
+      transactions: apiData.transactions || [],
+    };
   };
 
   /* ======================================================
-     SILENT WALLET FETCH (NO UI LOADING)
+     SILENT WALLET FETCH (BACKGROUND REFRESH)
   ====================================================== */
   const fetchWalletBalanceSilent = useCallback(async () => {
     if (!user) return;
@@ -73,8 +41,10 @@ export const WalletProvider = ({ children, user }) => {
     try {
       const res = await api.get("/wallet/balance/");
       setWallet((prev) => normalizeWallet(res.data, prev));
+      setLastUpdated(new Date().toISOString());
     } catch (err) {
-      console.warn("Silent wallet refresh failed");
+      console.warn("Silent wallet refresh failed:", err);
+      // Don't set error for silent refreshes
     }
   }, [user]);
 
@@ -85,156 +55,135 @@ export const WalletProvider = ({ children, user }) => {
     if (!user) return;
 
     setLoading(true);
+    setError(null);
     try {
       const res = await api.get("/wallet/balance/");
       setWallet((prev) => normalizeWallet(res.data, prev));
-      setError(null);
+      setLastUpdated(new Date().toISOString());
     } catch (err) {
       console.error("Wallet fetch failed:", err);
-      setError("Failed to load wallet");
+      setError("Failed to load wallet. Please try again.");
+      // Keep existing wallet data if available
     } finally {
       setLoading(false);
     }
   };
 
   /* ======================================================
-     FETCH TRANSACTIONS
-  ====================================================== */
-  const fetchTransactions = async () => {
-    if (!user) return;
-
-    try {
-      const res = await api.get("/wallet/transactions/");
-      setTransactions(normalizeTransactions(res.data));
-    } catch (err) {
-      console.error("Transactions fetch failed:", err);
-      setTransactions([]);
-    }
-  };
-
-  /* ======================================================
-     VERIFY FUNDING
-  ====================================================== */
-  const verifyTransaction = async (reference) => {
-    if (!reference) {
-      return { success: false, message: "Invalid reference" };
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await api.post("/wallet/verify/", { reference });
-
-      if (res.data?.status) {
-        await fetchWalletBalance();
-        await fetchTransactions();
-        return { success: true };
-      }
-
-      return {
-        success: false,
-        message: res.data?.message || "Verification failed",
-      };
-    } catch (err) {
-      console.error("Verification error:", err);
-      setError("Verification failed");
-      return { success: false, message: "Verification failed" };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ======================================================
-     WITHDRAW FUNDS
-  ====================================================== */
-  const withdrawFunds = async (payload) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await api.post("/wallet/withdraw/", payload);
-
-      if (res.data?.status) {
-        await fetchWalletBalance();
-        await fetchTransactions();
-        return { success: true };
-      }
-
-      return {
-        success: false,
-        message: res.data?.message || "Withdrawal failed",
-      };
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Withdrawal failed";
-
-      setError(msg);
-      return { success: false, message: msg };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ======================================================
-     MANUAL REFRESH (FOR GAMES)
-  ====================================================== */
-  const refreshWallet = async () => {
-    await fetchWalletBalance();
-    await fetchTransactions();
-  };
-
-  /* ======================================================
-     INITIAL LOAD + BACKGROUND POLLING
+     INITIAL FETCH ON MOUNT & USER CHANGE
   ====================================================== */
   useEffect(() => {
-    if (!user) {
-      resetState();
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      return;
+    if (user) {
+      fetchWalletBalance();
+    } else {
+      // Reset wallet if user logs out
+      setWallet(null);
+      setError(null);
+      setLastUpdated(null);
     }
+  }, [user]);
 
-    fetchWalletBalance();
-    fetchTransactions();
+  /* ======================================================
+     SETUP PERIODIC REFRESH
+  ====================================================== */
+  useEffect(() => {
+    if (!user) return;
 
-    intervalRef.current = setInterval(() => {
+    // Initial silent refresh after 30 seconds
+    const initialTimer = setTimeout(() => {
       fetchWalletBalanceSilent();
-    }, 5000);
+    }, 30000);
+
+    // Then refresh every 60 seconds
+    const interval = setInterval(() => {
+      fetchWalletBalanceSilent();
+    }, 60000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      clearTimeout(initialTimer);
+      clearInterval(interval);
     };
   }, [user, fetchWalletBalanceSilent]);
 
   /* ======================================================
-     PROVIDER
+     GETTERS FOR COMMON BALANCE VALUES
   ====================================================== */
+  const getAvailableBalance = () => {
+    if (!wallet) return 0;
+    return wallet.total_balance; // This is the sum of balance + spot_balance
+  };
+
+  const getSpotBalance = () => {
+    if (!wallet) return 0;
+    return wallet.spot_balance;
+  };
+
+  const getWalletBalance = () => {
+    if (!wallet) return 0;
+    return wallet.balance;
+  };
+
+  const getLockedBalance = () => {
+    if (!wallet) return 0;
+    return wallet.locked_balance;
+  };
+
+  /* ======================================================
+     REFRESH FUNCTION FOR EXTERNAL USE
+  ====================================================== */
+  const refreshWallet = async (silent = false) => {
+    if (silent) {
+      await fetchWalletBalanceSilent();
+    } else {
+      await fetchWalletBalance();
+    }
+  };
+
+  /* ======================================================
+     CONTEXT VALUE
+  ====================================================== */
+  const value = {
+    wallet,
+    loading,
+    error,
+    lastUpdated,
+    
+    // Fetch functions
+    fetchWalletBalance,
+    refreshWallet,
+    
+    // Balance getters
+    getAvailableBalance, // total available (balance + spot_balance)
+    getSpotBalance,
+    getWalletBalance,
+    getLockedBalance,
+    
+    // Helper properties for convenience
+    availableBalance: wallet ? wallet.total_balance : 0,
+    spotBalance: wallet ? wallet.spot_balance : 0,
+    walletBalance: wallet ? wallet.balance : 0,
+    lockedBalance: wallet ? wallet.locked_balance : 0,
+    
+    // State setters if needed
+    setWallet,
+    setLoading,
+    setError,
+  };
+
   return (
-    <WalletContext.Provider
-      value={{
-        wallet,
-        transactions,
-        loading,
-        error,
-        refreshWallet,
-        verifyTransaction,
-        withdrawFunds,
-      }}
-    >
+    <WalletContext.Provider value={value}>
       {children}
     </WalletContext.Provider>
   );
 };
 
-/* ======================================================
-   HOOK
-====================================================== */
-export const useWallet = () => {
-  const context = useContext(WalletContext);
-  if (!context) {
-    throw new Error("useWallet must be used within WalletProvider");
-  }
-  return context;
+// Optional: Export a hook for easy wallet balance access
+export const useWalletBalance = () => {
+  const { getAvailableBalance, getSpotBalance, getWalletBalance } = useWallet();
+  
+  return {
+    totalAvailable: getAvailableBalance(),
+    spotBalance: getSpotBalance(),
+    walletBalance: getWalletBalance(),
+  };
 };

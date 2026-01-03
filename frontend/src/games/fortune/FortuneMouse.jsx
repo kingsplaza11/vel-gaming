@@ -16,7 +16,12 @@ const MINIMUM_STAKE = 100;
 
 export default function FortuneMouse() {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const { 
+    wallet, 
+    loading: walletLoading, 
+    refreshWallet,
+    availableBalance // This now contains total balance (balance + spot_balance)
+  } = useWallet();
 
   /* =========================
      STATE
@@ -98,20 +103,21 @@ export default function FortuneMouse() {
   ========================= */
   
   const startGame = async () => {
-    const walletBalance = Number(wallet?.balance || 0);
+    // Use availableBalance instead of wallet.balance
+    const totalBalance = Number(availableBalance || 0);
     const betAmount = Number(bet);
 
     const isStakeValid = (
       Number.isFinite(betAmount) &&
       betAmount >= MINIMUM_STAKE &&
-      betAmount <= walletBalance
+      betAmount <= totalBalance
     );
 
     if (!isStakeValid || walletLoading) {
       console.log("[FortuneMouse] Cannot start game: invalid stake or wallet loading");
       if (betAmount < MINIMUM_STAKE) {
         toast.error(`Minimum stake is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`);
-      } else if (betAmount > walletBalance) {
+      } else if (betAmount > totalBalance) {
         toast.error("Insufficient balance");
       }
       return;
@@ -430,16 +436,16 @@ export default function FortuneMouse() {
   /* =========================
      RENDER
   ========================= */
-  const walletBalance = Number(wallet?.balance || 0);
+  const totalBalance = Number(availableBalance || 0); // Use availableBalance instead of wallet.balance
   const betAmount = Number(bet);
 
   const isStakeValid = useMemo(() => {
     return (
       Number.isFinite(betAmount) &&
       betAmount >= MINIMUM_STAKE &&
-      betAmount <= walletBalance
+      betAmount <= totalBalance
     );
-  }, [betAmount, walletBalance]);
+  }, [betAmount, totalBalance]);
 
   return (
     <div
@@ -565,9 +571,9 @@ export default function FortuneMouse() {
             </div>
 
             <div className="stake-balance">
-              <span className="label">Balance</span>
+              <span className="label">Available Balance</span>
               <span className="value">
-                ₦{walletBalance.toLocaleString("en-NG")}
+                ₦{totalBalance.toLocaleString("en-NG")}
               </span>
             </div>
 

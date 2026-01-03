@@ -37,7 +37,12 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
 
 class WalletSerializer(serializers.ModelSerializer):
     transactions = WalletTransactionSerializer(many=True, read_only=True)
+    total_balance = serializers.SerializerMethodField()
     
     class Meta:
         model = Wallet
-        fields = ['balance', 'spot_balance', 'updated_at', 'transactions']
+        fields = ['balance', 'spot_balance', 'locked_balance', 'total_balance', 'updated_at', 'transactions']
+    
+    def get_total_balance(self, obj):
+        # Calculate total available balance (balance + spot_balance, excluding locked_balance)
+        return obj.balance + obj.spot_balance
