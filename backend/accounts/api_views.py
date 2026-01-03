@@ -48,32 +48,55 @@ class PasswordResetAPIView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        email = request.data.get('email', '')
-        form = PasswordResetForm({'email': email})
-        
+        form = PasswordResetForm(request.data)
         if form.is_valid():
             # Get cleaned data
             email = form.cleaned_data['email']
             
-            # Use Django's built-in save method which handles everything
-            form.save(
-                request=request,
-                use_https=request.is_secure(),
-                email_template_name='registration/password_reset_email.html',
-                subject_template_name='registration/password_reset_subject.txt',
-                extra_email_context={
-                    'frontend_reset_url': 'https://veltrogames.com/password-reset-confirm'
-                }
-            )
+            # Prepare email context
+            context = {
+                'email': email,
+                'domain': request.get_host(),
+                'site_name': 'Veltora Games',
+                'uid': None,  # Will be set by form.save
+                'user': None,  # Will be set by form.save
+                'token': None,  # Will be set by form.save
+                'protocol': 'https' if request.is_secure() else 'http',
+            }
+            
+            # Custom email sending with HTML and plain text
+            users = form.get_users(email)
+            for user in users:
+                context['user'] = user
+                context['uid'] = form.make_uid(user)
+                context['token'] = form.make_token(user)
+                
+                # Render HTML email
+                html_content = render_to_string(
+                    'registration/password_reset_email.html', 
+                    context
+                )
+                
+                # Create plain text version by stripping HTML tags
+                text_content = strip_tags(html_content)
+                
+                # Send email
+                subject = "🔐 Reset Your Veltora Games Password"
+                email_msg = EmailMultiAlternatives(
+                    subject=subject,
+                    body=text_content,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[user.email],
+                )
+                
+                email_msg.attach_alternative(html_content, "text/html")
+                email_msg.send()
             
             return Response({
                 'detail': 'Password reset email has been sent.',
-                'message': 'If an account exists with this email, you will receive a reset link.'
+                'message': 'Check your email for the reset link.'
             })
-        
-        # Return form errors
-        return Response({'error': 'Please enter a valid email address'}, 
-                       status=status.HTTP_400_BAD_REQUEST)
+        return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PasswordResetConfirmAPIView(APIView):
     permission_classes = [AllowAny]
@@ -168,4 +191,3 @@ class PasswordResetConfirmAPIView(APIView):
                 'error': 'An error occurred while resetting password',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
