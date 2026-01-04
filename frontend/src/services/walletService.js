@@ -15,7 +15,7 @@ export const walletService = {
   },
 
   verifyDeposit: (reference) =>
-    api.post("/wallet/verify/", { reference }),
+    api.get(`/wallet/verify/?reference=${reference}`),
 
   resolveAccount: (bank_code, account_number) =>
     api.get("/wallet/resolve-account/", {

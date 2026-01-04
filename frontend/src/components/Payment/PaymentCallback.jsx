@@ -1,40 +1,18 @@
 // src/pages/PaymentCallback.jsx
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { walletService } from "../../services/walletService";
-import { CircularProgress, Box, Typography } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 
 const PaymentCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reference = params.get("reference");
-
-    if (!reference) {
+    // Give Paystack webhook time to process (1.5–2s is enough)
+    const timer = setTimeout(() => {
       navigate("/wallet", { replace: true });
-      return;
-    }
-    
+    }, 1800);
 
-    const verify = async () => {
-      try {
-        const res = await walletService.verifyDeposit(reference);
-
-        if (!res?.data?.status) {
-          throw new Error("Verification failed");
-        }
-
-        // Optional: refresh wallet context here
-        window.location.replace("/wallet");
-      } catch (err) {
-        console.error("Payment verification failed:", err);
-        navigate("/wallet?status=failed", { replace: true });
-      }
-    };
-
-
-    verify();
+    return () => clearTimeout(timer);
   }, [navigate]);
 
   return (
@@ -47,7 +25,7 @@ const PaymentCallback = () => {
     >
       <CircularProgress />
       <Typography mt={2}>
-        Verifying your payment, please wait…
+        Payment received. Updating your wallet…
       </Typography>
     </Box>
   );
