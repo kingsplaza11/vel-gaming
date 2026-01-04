@@ -25,3 +25,4 @@ export const walletService = {
   autoWithdraw: (payload) =>
     api.post("/wallet/withdraw/", payload),
 };
+

@@ -5,7 +5,6 @@ import { treasureService } from "../services/api";
 import "./TreasureHuntGame.css";
 
 const MIN_STAKE = 100;
-const MAX_WIN_RATIO = 0.48;
 
 const MAP_LEVELS = [
   { level: 1, name: "Beginner Island", icon: "🏝️", risk: "Low", color: "#4CAF50" },
@@ -45,6 +44,7 @@ const TreasureHuntGame = ({ user }) => {
   const [showLossModal, setShowLossModal] = useState(false);
   const [revealedTreasures, setRevealedTreasures] = useState([]);
   const [pulseAnimation, setPulseAnimation] = useState(false);
+  const [gameInfo, setGameInfo] = useState(null);
 
   const animationTimers = useRef([]);
   const isMounted = useRef(true);
@@ -58,6 +58,16 @@ const TreasureHuntGame = ({ user }) => {
   const selectedMap = MAP_LEVELS.find((m) => m.level === mapLevel);
   const levelMultiplier = mapLevel * 1.5;
   const totalCost = betAmount * levelMultiplier;
+
+  /* ---------------- FETCH GAME INFO ---------------- */
+  const fetchGameInfo = useCallback(async () => {
+    try {
+      const res = await treasureService.getGameInfo();
+      setGameInfo(res.data);
+    } catch (err) {
+      console.error("Failed to fetch game info:", err);
+    }
+  }, []);
 
   /* ---------------- DEEP REFRESH FUNCTION ---------------- */
   const deepRefresh = useCallback(async () => {
@@ -165,6 +175,8 @@ const TreasureHuntGame = ({ user }) => {
   /* ---------------- COMPONENT LIFECYCLE ---------------- */
   useEffect(() => {
     isMounted.current = true;
+    fetchGameInfo();
+    
     return () => {
       isMounted.current = false;
       clearTimers();
@@ -175,7 +187,7 @@ const TreasureHuntGame = ({ user }) => {
         "phase-revealing"
       );
     };
-  }, []);
+  }, [fetchGameInfo]);
 
   /* ---------------- START HUNT ---------------- */
   const startHunt = async () => {
@@ -215,12 +227,16 @@ const TreasureHuntGame = ({ user }) => {
       });
 
       const data = res.data;
-      const winAmount = Math.min(data.win_amount, betAmount * MAX_WIN_RATIO);
+      
+      // REMOVED THE WIN AMOUNT CAPPING - backend now handles 0.5x-3.5x multipliers
+      const winAmount = data.win_amount; // Use the full win amount from backend
+      const hasWon = winAmount > 0;
 
       setLastHunt({
         ...data,
-        capped_win: winAmount,
-        hasWon: winAmount > 0
+        win_amount: winAmount,
+        hasWon: hasWon,
+        win_multiplier: data.win_multiplier || data.total_multiplier || 0
       });
 
       // Start progressive treasure reveal
@@ -266,6 +282,35 @@ const TreasureHuntGame = ({ user }) => {
     await deepRefresh();
   };
 
+  /* ---------------- CALCULATE WIN TIER ---------------- */
+  const getWinTier = (multiplier) => {
+    if (multiplier <= 0) return "loss";
+    if (multiplier <= 1.5) return "low";
+    if (multiplier <= 2.5) return "normal";
+    if (multiplier <= 3.0) return "high";
+    return "great";
+  };
+
+  const getWinTierColor = (tier) => {
+    switch(tier) {
+      case "low": return "#4CAF50";
+      case "normal": return "#2196F3";
+      case "high": return "#FF9800";
+      case "great": return "#F44336";
+      default: return "#9E9E9E";
+    }
+  };
+
+  const getWinTierName = (tier) => {
+    switch(tier) {
+      case "low": return "Small Win";
+      case "normal": return "Good Win";
+      case "high": return "Great Win";
+      case "great": return "Amazing Win";
+      default: return "Loss";
+    }
+  };
+
   /* ================= RENDER ================= */
   return (
     <div className="treasure-hunt-game">
@@ -286,7 +331,6 @@ const TreasureHuntGame = ({ user }) => {
           <span className="game-title-icon">🧭</span>
           <div className="game-title-text">
             <h1>Treasure Expedition</h1>
-            <p>Choose a map, stake ₦100+, and hunt.</p>
           </div>
         </div>
       </header>
@@ -297,6 +341,7 @@ const TreasureHuntGame = ({ user }) => {
           <div className="panel-card animated-slideUp">
             <div className="panel-header-glow" style={{background: selectedMap.color}}>
               <h2 className="panel-title">Select Map & Stake</h2>
+              
             </div>
 
             <div className="map-level-grid">
@@ -471,26 +516,38 @@ const TreasureHuntGame = ({ user }) => {
               <div className="confetti"></div>
               <div className="confetti"></div>
               <div className="confetti"></div>
+              
+              {/* Win Tier Badge */}
+              {lastHunt.win_tier && lastHunt.win_tier !== "loss" && (
+                <div 
+                  className="win-tier-badge"
+                  style={{backgroundColor: getWinTierColor(lastHunt.win_tier)}}
+                >
+                  {getWinTierName(lastHunt.win_tier)}
+                </div>
+              )}
+              
               <div className="win-icon">🏆</div>
               <h2>Congratulations!</h2>
               <p className="win-subtitle">You found treasure!</p>
             </div>
             
+            
             <div className="win-amount-display animated-pulse-glow">
               <span className="win-amount-label">You won</span>
               <span className="win-amount">
-                {formatNaira(Math.min(lastHunt.win_amount, betAmount * MAX_WIN_RATIO))}
+                {formatNaira(lastHunt.win_amount)}
               </span>
-              <p className="win-note">Added to your Spot Balance</p>
             </div>
             
             <div className="win-treasures-summary">
-              <h4>Treasures Found:</h4>
+              <h4>Treasures Found ({lastHunt.treasures_found?.length || 0}):</h4>
               <div className="mini-treasures">
-                {lastHunt.treasures_found.map((t, i) => (
+                {lastHunt.treasures_found?.map((t, i) => (
                   <div key={i} className="mini-treasure">
                     <span>{t.image}</span>
                     <small>{t.name}</small>
+                    <small className="treasure-mult-value">×{t.multiplier}</small>
                   </div>
                 ))}
               </div>
@@ -511,9 +568,6 @@ const TreasureHuntGame = ({ user }) => {
               )}
             </button>
             
-            <p className="win-footer-note">
-              Ready for another expedition?
-            </p>
           </div>
         </div>
       )}
@@ -531,9 +585,9 @@ const TreasureHuntGame = ({ user }) => {
             <div className="loss-message animated-fadeIn">
               <div className="empty-chest-large">📭</div>
               <p className="loss-encouragement">
-                The treasure might be hiding better next time!
+                Don't worry! You still have a chance next time!
                 <br />
-                <span className="loss-tip">Tip: Try different maps for better odds!</span>
+                <span className="loss-tip">Tip: Your luck resets on each expedition!</span>
               </p>
             </div>
             

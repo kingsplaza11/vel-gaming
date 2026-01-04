@@ -15,6 +15,7 @@ const PaymentCallback = () => {
       navigate("/wallet", { replace: true });
       return;
     }
+    
 
     const verify = async () => {
       try {

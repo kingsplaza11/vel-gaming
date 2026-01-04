@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 import "./fortune.css";
 
 const GRID_SIZE = 16; // Tiger has smaller grid
-const MINIMUM_STAKE = 500; // Higher minimum for tiger
+const MINIMUM_STAKE = 100; // Higher minimum for tiger
 
 export default function FortuneTiger() {
   const navigate = useNavigate();

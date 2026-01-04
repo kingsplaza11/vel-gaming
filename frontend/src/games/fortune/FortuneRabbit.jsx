@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 import "./fortune.css";
 
 const GRID_SIZE = 25; // Rabbit has larger grid
-const MINIMUM_STAKE = 200;
+const MINIMUM_STAKE = 100;
 
 export default function FortuneRabbit() {
   const navigate = useNavigate();

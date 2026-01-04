@@ -130,16 +130,6 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
       <div className="top-bar">
         <button onClick={() => navigate("/")}>←</button>
         <span>🎣 Deep Sea Fishing</span>
-        <span className="balance-display">
-          {walletLoading ? (
-            <div className="balance-loading">
-              <span className="loading-spinner-small" />
-              Loading...
-            </div>
-          ) : (
-            `₦${formatMoney(safeBalance)}`
-          )}
-        </span>
       </div>
 
       {/* ================= STAKE MODAL ================= */}

@@ -501,10 +501,6 @@ const PyramidAdventureGame = ({ user }) => {
                 
                 <div className="bonus-summary">
                   <div className="bonus-item">
-                    <span>Artifact Bonus:</span>
-                    <span>+{(lastRun.artifact_bonus * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="bonus-item">
                     <span>Survival Rate:</span>
                     <span>{lastRun.survival_rate ? `${lastRun.survival_rate.toFixed(1)}%` : '0%'}</span>
                   </div>

@@ -36,15 +36,16 @@ const CyberHeistGame = ({ user }) => {
   const [showLossModal, setShowLossModal] = useState(false);
   const [revealedHacks, setRevealedHacks] = useState([]);
   const [pulseAnimation, setPulseAnimation] = useState(false);
+  const [gameInfo, setGameInfo] = useState(null);
 
   const animationTimers = useRef([]);
   const isMounted = useRef(true);
 
   const banks = [
-    { name: "Quantum Bank", security: 3, image: "🔒", difficulty: "easy", color: "#10B981", multiplier: "1.5x" },
-    { name: "Neo Financial", security: 5, image: "💳", difficulty: "medium", color: "#3B82F6", multiplier: "1.8x" },
-    { name: "Cyber Trust", security: 7, image: "🖥️", difficulty: "hard", color: "#8B5CF6", multiplier: "2.2x" },
-    { name: "Digital Vault", security: 9, image: "🏦", difficulty: "expert", color: "#EF4444", multiplier: "3.0x" },
+    { name: "Quantum Bank", security: 3, image: "🔒", difficulty: "easy", color: "#10B981", multiplier: "1.0x" },
+    { name: "Neo Financial", security: 5, image: "💳", difficulty: "medium", color: "#3B82F6", multiplier: "1.2x" },
+    { name: "Cyber Trust", security: 7, image: "🖥️", difficulty: "hard", color: "#8B5CF6", multiplier: "1.5x" },
+    { name: "Digital Vault", security: 9, image: "🏦", difficulty: "expert", color: "#EF4444", multiplier: "2.0x" },
   ];
 
   // Get balance values
@@ -52,14 +53,26 @@ const CyberHeistGame = ({ user }) => {
   const spotBalance = Number(getSpotBalance() || 0);
   const formatNaira = (v) => `₦${Number(v || 0).toLocaleString("en-NG")}`;
 
+  // Fetch game info
+  const fetchGameInfo = useCallback(async () => {
+    try {
+      const res = await heistService.getGameInfo();
+      setGameInfo(res.data);
+    } catch (err) {
+      console.error("Failed to fetch game info:", err);
+    }
+  }, []);
+
   // Cleanup
   useEffect(() => {
     isMounted.current = true;
+    fetchGameInfo();
+    
     return () => {
       isMounted.current = false;
       animationTimers.current.forEach(clearTimeout);
     };
-  }, []);
+  }, [fetchGameInfo]);
 
   // Deep refresh function
   const deepRefresh = useCallback(async () => {
@@ -93,12 +106,16 @@ const CyberHeistGame = ({ user }) => {
   }, [refreshWallet]);
 
   // Hack reveal animation
-  const revealHacksProgressively = (hacks) => {
+  const revealHacksProgressively = useCallback((hacks, resultData) => {
+    if (!isMounted.current) return;
+    
     setRevealedHacks([]);
     
     if (!hacks || hacks.length === 0) {
       setTimeout(() => {
-        setShowLossModal(true);
+        if (isMounted.current) {
+          setShowLossModal(true);
+        }
       }, 1500);
       return;
     }
@@ -112,8 +129,8 @@ const CyberHeistGame = ({ user }) => {
           
           if (index === hacks.length - 1) {
             setTimeout(() => {
-              if (isMounted.current) {
-                const hasWon = result?.escape_success;
+              if (isMounted.current && resultData) {
+                const hasWon = resultData.win_amount > 0;
                 if (hasWon) {
                   setShowWinModal(true);
                 } else {
@@ -125,7 +142,7 @@ const CyberHeistGame = ({ user }) => {
         }
       }, (index + 1) * 800);
     });
-  };
+  }, []);
 
   // Heist animation sequence
   const startHeistAnimation = () => {
@@ -136,6 +153,39 @@ const CyberHeistGame = ({ user }) => {
     animationTimers.current.push(setTimeout(() => setPhase('escaping'), 5400));
     animationTimers.current.push(setTimeout(() => setPhase('result'), 7200));
   };
+
+  // Get win tier functions
+  const getWinTier = (multiplier) => {
+    if (multiplier <= 0) return "failed";
+    if (multiplier <= 1.5) return "small";
+    if (multiplier <= 2.5) return "medium";
+    if (multiplier <= 3.0) return "large";
+    return "epic";
+  };
+
+  const getWinTierColor = (tier) => {
+    switch(tier) {
+      case 'small': return '#10B981';
+      case 'medium': return '#3B82F6';
+      case 'large': return '#8B5CF6';
+      case 'epic': return '#F59E0B';
+      default: return '#6B7280';
+    }
+  };
+
+  const getWinTierName = (tier) => {
+    switch(tier) {
+      case 'small': return 'Small Heist';
+      case 'medium': return 'Medium Heist';
+      case 'large': return 'Large Heist';
+      case 'epic': return 'Epic Heist';
+      default: return 'Failed Heist';
+    }
+  };
+
+  // Calculate potential win range
+  const potentialMinWin = betAmount * 0.5; // 0.5x multiplier
+  const potentialMaxWin = betAmount * 3.5; // 3.5x multiplier
 
   // Start heist
   const startHeist = async () => {
@@ -173,11 +223,14 @@ const CyberHeistGame = ({ user }) => {
       });
 
       const data = res.data;
+      console.log("Heist result:", data); // Debug log
       setResult(data);
 
-      // Start progressive hack reveal
+      // Start progressive hack reveal AFTER animations complete
       setTimeout(() => {
-        revealHacksProgressively(data.hacks_used || []);
+        if (isMounted.current) {
+          revealHacksProgressively(data.hacks_used || [], data);
+        }
       }, 7500);
 
       // Refresh wallet silently
@@ -188,6 +241,7 @@ const CyberHeistGame = ({ user }) => {
       }, 500);
 
     } catch (err) {
+      console.error("Heist error:", err);
       setError(err.response?.data?.error || "Heist failed");
       setShowModal(true);
       animationTimers.current.forEach(clearTimeout);
@@ -212,29 +266,8 @@ const CyberHeistGame = ({ user }) => {
     await deepRefresh();
   };
 
-  const getWinTierColor = (tier) => {
-    switch(tier) {
-      case 'small': return '#10B981';
-      case 'medium': return '#3B82F6';
-      case 'large': return '#8B5CF6';
-      case 'epic': return '#F59E0B';
-      case 'legendary': return '#EF4444';
-      case 'ultimate': return '#EC4899';
-      default: return '#6B7280';
-    }
-  };
-
-  const getWinTierName = (tier) => {
-    switch(tier) {
-      case 'small': return 'Small Heist';
-      case 'medium': return 'Medium Heist';
-      case 'large': return 'Large Heist';
-      case 'epic': return 'Epic Heist';
-      case 'legendary': return 'Legendary Heist';
-      case 'ultimate': return 'Ultimate Heist';
-      default: return 'Failed';
-    }
-  };
+  const selectedBank = banks.find(b => b.name === targetBank);
+  const winTier = result ? getWinTier(result.win_multiplier || 0) : null;
 
   return (
     <div className="cyber-heist-game">
@@ -253,27 +286,9 @@ const CyberHeistGame = ({ user }) => {
         
         <div className="cyber-title">
           <span className="cyber-title-icon">🕶️</span>
-          <h1>CYBER HEIST</h1>
-          <p>Hack the system, claim your prize</p>
-        </div>
-        
-        <div className="cyber-balance-display">
-          {walletLoading || refreshing ? (
-            <div className="balance-loading">
-              <span className="loading-spinner-small" />
-              {refreshing ? "Refreshing..." : "Loading..."}
-            </div>
-          ) : (
-            <div className="cyber-balance-details">
-              <div className="balance-total">
-                {formatNaira(combinedBalance)}
-              </div>
-              <div className="balance-breakdown">
-                <span className="balance-main">Main: {formatNaira(wallet?.balance || 0)}</span>
-                <span className="balance-spot">Spot: {formatNaira(spotBalance)}</span>
-              </div>
-            </div>
-          )}
+          <div className="cyber-title-text">
+            <h1>CYBER HEIST</h1>
+          </div>
         </div>
       </div>
 
@@ -281,10 +296,6 @@ const CyberHeistGame = ({ user }) => {
       {showModal && (
         <div className="cyber-modal-overlay animated-fadeIn">
           <div className="cyber-modal-card animated-slideUp">
-            <div className="cyber-modal-header" style={{background: banks.find(b => b.name === targetBank)?.color}}>
-              <h3>PLAN YOUR HEIST</h3>
-              <p>Select target and prepare infiltration</p>
-            </div>
 
             <div className="modal-section">
               <label className="cyber-label">TARGET BANK</label>
@@ -298,14 +309,13 @@ const CyberHeistGame = ({ user }) => {
                   >
                     <div className="bank-card-header">
                       <span className="bank-icon">{bank.image}</span>
-                      <div>
+                      <div className="bank-info">
                         <strong>{bank.name}</strong>
                         <div className="bank-details">
                           <span className="bank-difficulty" data-difficulty={bank.difficulty}>
                             {bank.difficulty}
                           </span>
-                          <span>Sec: {bank.security}/10</span>
-                          <span className="bank-multiplier">{bank.multiplier}</span>
+                          <span className="bank-security">Sec: {bank.security}/10</span>
                         </div>
                       </div>
                     </div>
@@ -330,7 +340,6 @@ const CyberHeistGame = ({ user }) => {
                 <div className="input-glow"></div>
               </div>
             </div>
-
             {error && <div className="cyber-error-banner animated-shake">{error}</div>}
 
             <button 
@@ -395,7 +404,8 @@ const CyberHeistGame = ({ user }) => {
             {phase === 'result' && (
               <div className="heist-reveal-container">
                 <div className="overlay-title animated-fadeIn">
-                  {result?.escape_success ? '💸 MISSION COMPLETE' : '🚨 ALERT: TRACE DETECTED'}
+                  {result?.win_amount > 0 ? '💸 MISSION COMPLETE' : 
+                   result?.was_failed_scenario ? '💀 HACK FAILED' : '🚨 ALERT: TRACE DETECTED'}
                 </div>
                 
                 <div className="hacks-grid-reveal">
@@ -404,7 +414,7 @@ const CyberHeistGame = ({ user }) => {
                       key={index} 
                       className={`hack-card-reveal animated-zoomIn ${
                         pulseAnimation ? 'pulse-once' : ''
-                      }`}
+                      } ${result?.was_failed_scenario && hack.success_rate === 0 ? 'failed-hack' : ''}`}
                       style={{animationDelay: `${index * 0.2}s`}}
                     >
                       <div className="hack-icon-reveal">
@@ -413,9 +423,15 @@ const CyberHeistGame = ({ user }) => {
                       <div className="hack-name-reveal">
                         {hack.name}
                       </div>
-                      <div className="hack-success-rate">
-                        {(hack.success_rate * 100).toFixed(0)}% success
-                      </div>
+                      {hack.success_rate > 0 ? (
+                        <div className="hack-success-rate">
+                          {(hack.success_rate * 100).toFixed(0)}% success
+                        </div>
+                      ) : (
+                        <div className="hack-failed">
+                          Failed Hack
+                        </div>
+                      )}
                     </div>
                   ))}
                   
@@ -434,47 +450,25 @@ const CyberHeistGame = ({ user }) => {
       )}
 
       {/* WIN MODAL */}
-      {showWinModal && result && (
+      {showWinModal && result && result.win_amount > 0 && (
         <div className="cyber-modal-overlay win-modal-overlay animated-fadeIn">
           <div className="cyber-win-modal animated-slideUp">
             <div className="win-modal-header">
               <div className="cyber-confetti"></div>
               <div className="cyber-confetti"></div>
               <div className="cyber-confetti"></div>
+              
               <div className="win-icon">💰</div>
-              <h2 style={{color: getWinTierColor(result.win_tier)}}>
-                {getWinTierName(result.win_tier).toUpperCase()}
-              </h2>
-              <p className="win-subtitle">Successful infiltration</p>
+              <h2>HEIST SUCCESS!</h2>
+              <p className="win-subtitle">Clean getaway</p>
             </div>
+            
             
             <div className="win-amount-display animated-pulse-glow">
               <span className="win-amount-label">You hacked</span>
               <span className="win-amount">
                 {formatNaira(result.win_amount)}
               </span>
-              <p className="win-note">Added to your Spot Balance</p>
-              <div className="win-multiplier">
-                Multiplier: {result.win_ratio?.toFixed(2)}x
-              </div>
-            </div>
-            
-            <div className="heist-bonus-summary">
-              <h4>Heist Analysis:</h4>
-              <div className="bonus-grid">
-                <div className="bonus-item">
-                  <span>Successful Hacks:</span>
-                  <span>{result.successful_hacks || 0}/3</span>
-                </div>
-                <div className="bonus-item">
-                  <span>Hack Bonus:</span>
-                  <span>+{(result.hack_bonus * 100).toFixed(1)}%</span>
-                </div>
-                <div className="bonus-item">
-                  <span>Target Security:</span>
-                  <span>{result.target_bank?.security}/10</span>
-                </div>
-              </div>
             </div>
             
             <button
@@ -500,17 +494,31 @@ const CyberHeistGame = ({ user }) => {
         <div className="cyber-modal-overlay loss-modal-overlay animated-fadeIn">
           <div className="cyber-loss-modal animated-slideUp">
             <div className="loss-modal-header">
-              <div className="loss-icon">💥</div>
-              <h2>HEIST FAILED</h2>
-              <p className="loss-subtitle">Trace detected by security</p>
+              <div className="loss-icon">{result?.was_failed_scenario ? '💀' : '💥'}</div>
+              <h2>{result?.was_failed_scenario ? 'HACK FAILED' : 'HEIST FAILED'}</h2>
+              <p className="loss-subtitle">
+                {result?.was_failed_scenario 
+                  ? 'Failed hack scenario detected!' 
+                  : 'Trace detected by security'}
+              </p>
             </div>
             
             <div className="loss-message animated-fadeIn">
-              <div className="security-alert">🚨</div>
+              <div className="security-alert">
+                {result?.was_failed_scenario ? '🛡️' : '🚨'}
+              </div>
               <p className="loss-encouragement">
-                The firewall detected your intrusion!
+                {result?.was_failed_scenario 
+                  ? "Sometimes hacks fail! (30% chance)"
+                  : "The firewall detected your intrusion!"
+                }
                 <br />
-                <span className="loss-tip">Tip: Try different hacks or lower security targets!</span>
+                <span className="loss-tip">
+                  {result?.was_failed_scenario 
+                    ? "Tip: You have a chance of successful heists!"
+                    : "Tip: Try different hacks or lower security targets!"
+                  }
+                </span>
               </p>
             </div>
             
@@ -521,7 +529,7 @@ const CyberHeistGame = ({ user }) => {
               </div>
               <div className="stat-item">
                 <span>Target:</span>
-                <span>{targetBank}</span>
+                <span>{selectedBank?.name}</span>
               </div>
             </div>
             
@@ -539,6 +547,7 @@ const CyberHeistGame = ({ user }) => {
                 "🔄 TRY AGAIN"
               )}
             </button>
+            
           </div>
         </div>
       )}

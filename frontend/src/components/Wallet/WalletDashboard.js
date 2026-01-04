@@ -433,27 +433,6 @@ const WalletDashboard = () => {
                     </div>
                   </div>
                 </div>
-                
-                <div className="usage-section">
-                  <div className="usage-header">
-                    <Icon icon="mdi:information" />
-                    <h4>How to Use Your Funds</h4>
-                  </div>
-                  <div className="usage-tips">
-                    <div className="usage-tip">
-                      <Icon icon="mdi:check-circle" className="tip-icon" />
-                      <span><strong>Bet Out Balance:</strong> Use for game stakes and bets</span>
-                    </div>
-                    <div className="usage-tip">
-                      <Icon icon="mdi:check-circle" className="tip-icon" />
-                      <span><strong>Available Balance:</strong> Ready for withdrawal or transfers</span>
-                    </div>
-                    <div className="usage-tip">
-                      <Icon icon="mdi:check-circle" className="tip-icon" />
-                      <span><strong>Total Funds:</strong> All your available funds combined</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 

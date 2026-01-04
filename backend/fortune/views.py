@@ -56,26 +56,40 @@ class FortuneMouseEngine:
         """
         roll = random.random()
         
-        # Safe probability decreases with each step
-        safe_prob = max(
-            Decimal("0.10"),
-            Decimal("0.55") - Decimal(session.step_index) * Decimal("0.05")
-        )
-        
-        if roll < float(safe_prob):
-            # Safe tile - increase multiplier
-            delta = Decimal(random.choice(["0.15", "0.25", "0.40"]))
+        # 70% chance to win (increase multiplier)
+        if roll < 0.70:
+            # Generate multiplier between 0.5x and 3.5x for winning steps
+            # Use a distribution that favors lower multipliers for better gameplay
+            multiplier_choices = [
+                Decimal("0.50"), Decimal("0.75"), Decimal("1.00"), 
+                Decimal("1.25"), Decimal("1.50"), Decimal("1.75"),
+                Decimal("2.00"), Decimal("2.25"), Decimal("2.50"),
+                Decimal("2.75"), Decimal("3.00"), Decimal("3.25"), Decimal("3.50")
+            ]
+            # Weight lower multipliers more heavily for balanced gameplay
+            weights = [0.15, 0.14, 0.13, 0.12, 0.11, 0.10, 
+                      0.08, 0.06, 0.04, 0.03, 0.02, 0.01, 0.01]
+            
+            delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
             new_multiplier = session.current_multiplier + delta
+            
+            # Ensure multiplier doesn't exceed reasonable bounds
+            if new_multiplier > Decimal("10.00"):
+                new_multiplier = Decimal("10.00")
+            
             return "safe", new_multiplier, False
-        elif roll < 0.70:
-            # Penalty tile - halve multiplier
-            new_multiplier = session.current_multiplier * Decimal("0.5")
-            return "penalty", max(new_multiplier, Decimal("0.45")), False
+        
+        # 15% chance for penalty (halve multiplier)
         elif roll < 0.85:
-            # Reset tile - back to minimum
-            return "reset", Decimal("0.45"), False
+            new_multiplier = session.current_multiplier * Decimal("0.5")
+            return "penalty", max(new_multiplier, Decimal("0.50")), False
+        
+        # 10% chance for reset
+        elif roll < 0.95:
+            return "reset", Decimal("1.00"), False
+        
+        # 5% chance for trap (game over)
         else:
-            # Trap tile - game over
             return "trap", session.current_multiplier, True
 
 
@@ -86,31 +100,42 @@ class FortuneTigerEngine:
     def calculate_step(session: GameSession, tile_id: int) -> tuple[str, Decimal, bool]:
         roll = random.random()
         
-        # Tiger has higher base risk but bigger rewards
-        tiger_base_safe_prob = Decimal("0.50")
-        safe_prob = max(
-            Decimal("0.08"),
-            tiger_base_safe_prob - Decimal(session.step_index) * Decimal("0.08")
-        )
-        
-        if roll < float(safe_prob):
-            # Safe tile - larger multiplier increase
-            delta = Decimal(random.choice(["0.25", "0.50", "0.75", "1.00"]))
+        # 60% chance to win (slightly lower than Mouse for higher risk)
+        if roll < 0.60:
+            # Higher potential multipliers for Tiger (0.5x to 5.0x)
+            multiplier_choices = [
+                Decimal("0.50"), Decimal("1.00"), Decimal("1.50"),
+                Decimal("2.00"), Decimal("2.50"), Decimal("3.00"),
+                Decimal("3.50"), Decimal("4.00"), Decimal("4.50"), Decimal("5.00")
+            ]
+            # More balanced weights for higher risk game
+            weights = [0.10, 0.15, 0.15, 0.14, 0.13, 
+                      0.12, 0.08, 0.06, 0.04, 0.03]
+            
+            delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
             new_multiplier = session.current_multiplier + delta
+            
+            if new_multiplier > Decimal("15.00"):
+                new_multiplier = Decimal("15.00")
+            
             return "safe", new_multiplier, False
-        elif roll < 0.65:
-            # Minor penalty
-            new_multiplier = session.current_multiplier * Decimal("0.7")
-            return "penalty", max(new_multiplier, Decimal("0.45")), False
+        
+        # 20% chance for minor penalty
         elif roll < 0.80:
-            # Major penalty
+            new_multiplier = session.current_multiplier * Decimal("0.7")
+            return "penalty", max(new_multiplier, Decimal("0.50")), False
+        
+        # 10% chance for major penalty
+        elif roll < 0.90:
             new_multiplier = session.current_multiplier * Decimal("0.4")
-            return "major_penalty", max(new_multiplier, Decimal("0.45")), False
-        elif roll < 0.95:
-            # Reset
-            return "reset", Decimal("0.45"), False
+            return "major_penalty", max(new_multiplier, Decimal("0.50")), False
+        
+        # 8% chance for reset
+        elif roll < 0.98:
+            return "reset", Decimal("1.00"), False
+        
+        # 2% chance for instant game over (lower than Mouse for balance)
         else:
-            # Instant game over
             return "trap", session.current_multiplier, True
 
 
@@ -121,37 +146,46 @@ class FortuneRabbitEngine:
     def calculate_step(session: GameSession, tile_id: int) -> tuple[str, Decimal, bool]:
         roll = random.random()
         
-        # Rabbit has more consistent safe probability
-        rabbit_base_safe_prob = Decimal("0.60")
-        safe_prob = max(
-            Decimal("0.15"),
-            rabbit_base_safe_prob - Decimal(session.step_index) * Decimal("0.04")
-        )
-        
-        # Check for carrot bonus (every 3rd step has higher chance)
-        has_carrot_bonus = (session.step_index + 1) % 3 == 0
-        
-        if roll < float(safe_prob):
-            if has_carrot_bonus and roll < float(safe_prob) * 0.3:
-                # Carrot bonus - double increase
-                delta = Decimal(random.choice(["0.20", "0.35", "0.50"])) * Decimal("2.0")
+        # 75% chance to win (highest among games)
+        if roll < 0.75:
+            # Check for carrot bonus (every 3rd step has higher chance)
+            has_carrot_bonus = (session.step_index + 1) % 3 == 0
+            
+            # Rabbit has moderate multipliers (0.5x to 3.0x)
+            multiplier_choices = [
+                Decimal("0.50"), Decimal("0.75"), Decimal("1.00"),
+                Decimal("1.25"), Decimal("1.50"), Decimal("1.75"),
+                Decimal("2.00"), Decimal("2.25"), Decimal("2.50"),
+                Decimal("2.75"), Decimal("3.00")
+            ]
+            
+            if has_carrot_bonus and roll < 0.60:  # 60% of wins get carrot bonus on 3rd steps
+                # Carrot bonus - use higher weighted multipliers
+                weights = [0.05, 0.07, 0.09, 0.11, 0.13, 
+                          0.15, 0.12, 0.10, 0.08, 0.06, 0.04]
+                delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
                 new_multiplier = session.current_multiplier + delta
                 return "carrot_bonus", new_multiplier, False
             else:
-                # Normal safe
-                delta = Decimal(random.choice(["0.20", "0.35", "0.50"]))
+                # Normal safe - favor lower multipliers
+                weights = [0.20, 0.18, 0.16, 0.14, 0.12,
+                          0.08, 0.05, 0.03, 0.02, 0.01, 0.01]
+                delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
                 new_multiplier = session.current_multiplier + delta
                 return "safe", new_multiplier, False
-        elif roll < 0.75:
-            # Minor penalty
-            new_multiplier = session.current_multiplier * Decimal("0.8")
-            return "penalty", max(new_multiplier, Decimal("0.45")), False
+        
+        # 15% chance for minor penalty
         elif roll < 0.90:
-            # Soft reset
-            new_multiplier = max(Decimal("0.45"), session.current_multiplier * Decimal("0.6"))
+            new_multiplier = session.current_multiplier * Decimal("0.8")
+            return "penalty", max(new_multiplier, Decimal("0.50")), False
+        
+        # 8% chance for soft reset
+        elif roll < 0.98:
+            new_multiplier = max(Decimal("0.50"), session.current_multiplier * Decimal("0.6"))
             return "reset", new_multiplier, False
+        
+        # 2% chance for trap (lowest among games)
         else:
-            # Trap (lower chance than other games)
             return "trap", session.current_multiplier, True
 
 

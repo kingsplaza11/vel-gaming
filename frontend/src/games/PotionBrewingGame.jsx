@@ -43,6 +43,7 @@ const PotionBrewingGame = ({ user }) => {
   const [showLossModal, setShowLossModal] = useState(false);
   const [revealedIngredients, setRevealedIngredients] = useState([]);
   const [pulseAnimation, setPulseAnimation] = useState(false);
+  const [gameInfo, setGameInfo] = useState(null);
 
   const timers = useRef([]);
   const isMounted = useRef(true);
@@ -53,14 +54,26 @@ const PotionBrewingGame = ({ user }) => {
 
   const formatNaira = (v) => `₦${Number(v || 0).toLocaleString("en-NG")}`;
 
+  /** ---------- FETCH GAME INFO ---------- */
+  const fetchGameInfo = useCallback(async () => {
+    try {
+      const res = await potionService.getGameInfo();
+      setGameInfo(res.data);
+    } catch (err) {
+      console.error("Failed to fetch game info:", err);
+    }
+  }, []);
+
   /** ---------- CLEANUP ---------- */
   useEffect(() => {
     isMounted.current = true;
+    fetchGameInfo();
+    
     return () => {
       isMounted.current = false;
       timers.current.forEach(clearTimeout);
     };
-  }, []);
+  }, [fetchGameInfo]);
 
   /** ---------- DEEP REFRESH ---------- */
   const deepRefresh = useCallback(async () => {
@@ -93,16 +106,21 @@ const PotionBrewingGame = ({ user }) => {
   }, [refreshWallet]);
 
   /** ---------- INGREDIENT REVEAL ---------- */
-  const revealIngredientsProgressively = (ingredients) => {
+  const revealIngredientsProgressively = useCallback((ingredients, resultData) => {
+    if (!isMounted.current) return;
+    
     setRevealedIngredients([]);
     
     if (!ingredients || ingredients.length === 0) {
       setTimeout(() => {
-        setShowLossModal(true);
+        if (isMounted.current) {
+          setShowLossModal(true);
+        }
       }, 1500);
       return;
     }
     
+    // Reveal ingredients one by one
     ingredients.forEach((ingredient, index) => {
       setTimeout(() => {
         if (isMounted.current) {
@@ -110,10 +128,13 @@ const PotionBrewingGame = ({ user }) => {
           setPulseAnimation(true);
           setTimeout(() => setPulseAnimation(false), 300);
           
+          // After all ingredients are revealed, show appropriate modal
           if (index === ingredients.length - 1) {
             setTimeout(() => {
-              if (isMounted.current) {
-                const hasWon = result?.win_amount > 0;
+              if (isMounted.current && resultData) {
+                const hasWon = resultData.win_amount > 0;
+                const isCursed = resultData.was_cursed;
+                
                 if (hasWon) {
                   setShowWinModal(true);
                 } else {
@@ -125,7 +146,7 @@ const PotionBrewingGame = ({ user }) => {
         }
       }, (index + 1) * 800);
     });
-  };
+  }, []);
 
   /** ---------- BREW FLOW ---------- */
   const startAnimation = () => {
@@ -134,6 +155,35 @@ const PotionBrewingGame = ({ user }) => {
     timers.current.push(setTimeout(() => setPhase('heating'), 1800));
     timers.current.push(setTimeout(() => setPhase('brewing'), 3600));
     timers.current.push(setTimeout(() => setPhase('result'), 5400));
+  };
+
+  /** ---------- GET WIN TIER ---------- */
+  const getWinTier = (multiplier) => {
+    if (multiplier <= 0) return "loss";
+    if (multiplier <= 1.5) return "small";
+    if (multiplier <= 2.5) return "good";
+    if (multiplier <= 3.0) return "great";
+    return "perfect";
+  };
+
+  const getWinTierColor = (tier) => {
+    switch(tier) {
+      case "small": return "#10B981";
+      case "good": return "#3B82F6";
+      case "great": return "#8B5CF6";
+      case "perfect": return "#F59E0B";
+      default: return "#6B7280";
+    }
+  };
+
+  const getWinTierName = (tier) => {
+    switch(tier) {
+      case "small": return "Small Brew";
+      case "good": return "Good Brew";
+      case "great": return "Great Brew";
+      case "perfect": return "Perfect Brew";
+      default: return "Failed Brew";
+    }
   };
 
   /** ---------- START BREW ---------- */
@@ -170,12 +220,15 @@ const PotionBrewingGame = ({ user }) => {
       });
 
       const data = res.data;
+      console.log("Brew result:", data); // Debug log
       setResult(data);
 
-      // Start progressive ingredient reveal
+      // Start progressive ingredient reveal AFTER animations complete
       setTimeout(() => {
-        revealIngredientsProgressively(data.ingredients || []);
-      }, 5500);
+        if (isMounted.current) {
+          revealIngredientsProgressively(data.ingredients || [], data);
+        }
+      }, 7000); // Increased delay to ensure animations complete
 
       // Refresh wallet silently
       setTimeout(() => {
@@ -185,8 +238,13 @@ const PotionBrewingGame = ({ user }) => {
       }, 500);
 
     } catch (err) {
+      console.error("Brew error:", err);
       alert(err.response?.data?.error || 'Brew failed');
-      setPhase('idle');
+      if (isMounted.current) {
+        setPhase('idle');
+        setBrewing(false);
+        setShowModal(true);
+      }
     } finally {
       setTimeout(() => {
         if (isMounted.current) {
@@ -207,6 +265,11 @@ const PotionBrewingGame = ({ user }) => {
     await deepRefresh();
   };
 
+  /** ---------- CALCULATE POTENTIAL WIN ---------- */
+  const potentialMinWin = betAmount * 0.5; // 0.5x multiplier
+  const potentialMaxWin = betAmount * 3.5; // 3.5x multiplier
+  const winTier = result ? getWinTier(result.visual_multiplier || 0) : null;
+
   /** ---------- RENDER ---------- */
   return (
     <div className="potion-game">
@@ -218,25 +281,6 @@ const PotionBrewingGame = ({ user }) => {
         <button className="back-button" onClick={() => navigate('/')} disabled={refreshing}>
           ← Back
         </button>
-        
-        <div className="balance-display">
-          {walletLoading || refreshing ? (
-            <div className="balance-loading">
-              <span className="loading-spinner-small" />
-              {refreshing ? "Refreshing..." : "Loading balance..."}
-            </div>
-          ) : (
-            <div className="balance-details">
-              <div className="balance-total">
-                {formatNaira(combinedBalance)}
-              </div>
-              <div className="balance-breakdown">
-                <span className="balance-main">Main: {formatNaira(wallet?.balance || 0)}</span>
-                <span className="balance-spot">Spot: {formatNaira(spotBalance)}</span>
-              </div>
-            </div>
-          )}
-        </div>
       </header>
 
       {/* ===== GAME AREA ===== */}
@@ -246,7 +290,6 @@ const PotionBrewingGame = ({ user }) => {
           {phase === 'idle' && (
             <div className="cauldron-ready">
               <div className="cauldron-icon animated-bounce">⚗️</div>
-              <p>Prepare your magical brew</p>
             </div>
           )}
 
@@ -288,7 +331,7 @@ const PotionBrewingGame = ({ user }) => {
           {phase === 'result' && (
             <div className="brew-reveal-container">
               <div className="overlay-title animated-fadeIn">
-                {result?.win_amount > 0 ? '✨ Brew Complete!' : '📭 Brew Failed'}
+                {result?.win_amount > 0 ? '✨ Brew Complete!' : result?.was_cursed ? '💀 Cursed Brew!' : '📭 Brew Failed'}
               </div>
               
               <div className="ingredients-grid-reveal">
@@ -297,7 +340,7 @@ const PotionBrewingGame = ({ user }) => {
                     key={index} 
                     className={`ingredient-card-reveal animated-zoomIn ${
                       pulseAnimation ? 'pulse-once' : ''
-                    }`}
+                    } ${ingredient.rarity === 'cursed' ? 'cursed-ingredient' : ''}`}
                     style={{animationDelay: `${index * 0.2}s`}}
                   >
                     <div className="ingredient-icon-reveal">
@@ -310,11 +353,12 @@ const PotionBrewingGame = ({ user }) => {
                       {ingredient.rarity}
                     </div>
                     <div className="ingredient-power">
-                      {ingredient.power}x
+                      {ingredient.power >= 0 ? '+' : ''}{ingredient.power}x
                     </div>
                   </div>
                 ))}
                 
+                {/* Show shimmer effect while revealing */}
                 {revealedIngredients.length < (result?.ingredients?.length || 0) && (
                   <div className="reveal-shimmer">
                     <div className="shimmer-dot"></div>
@@ -333,9 +377,6 @@ const PotionBrewingGame = ({ user }) => {
       {showModal && (
         <div className="modal-overlay animated-fadeIn">
           <div className="modal-card animated-slideUp">
-            <div className="modal-header-glow" style={{background: POTIONS.find(p => p.value === potionType)?.color}}>
-              <h3>Select Potion Type</h3>
-            </div>
 
             <div className="potion-types">
               {POTIONS.map(p => (
@@ -382,16 +423,27 @@ const PotionBrewingGame = ({ user }) => {
       )}
 
       {/* ===== WIN MODAL ===== */}
-      {showWinModal && result && (
+      {showWinModal && result && result.win_amount > 0 && (
         <div className="modal-overlay win-modal-overlay animated-fadeIn">
           <div className="win-modal-content animated-slideUp">
             <div className="win-modal-header">
               <div className="confetti"></div>
               <div className="confetti"></div>
               <div className="confetti"></div>
+              
+              {/* Win Tier Badge */}
+              {winTier && winTier !== "loss" && (
+                <div 
+                  className="win-tier-badge"
+                  style={{backgroundColor: getWinTierColor(winTier)}}
+                >
+                  {getWinTierName(winTier)}
+                </div>
+              )}
+              
               <div className="win-icon">🏆</div>
               <h2>Brew Success!</h2>
-              <p className="win-subtitle">{result.success_level.toUpperCase()} Brew</p>
+              <p className="win-subtitle">{result.success_level?.toUpperCase()} Brew</p>
             </div>
             
             <div className="win-amount-display animated-pulse-glow">
@@ -399,27 +451,41 @@ const PotionBrewingGame = ({ user }) => {
               <span className="win-amount">
                 {formatNaira(result.win_amount)}
               </span>
-              <p className="win-note">Added to your Spot Balance</p>
-              <div className="win-multiplier">
-                Multiplier: {result.visual_multiplier?.toFixed(2)}x
-              </div>
             </div>
             
             <div className="brew-bonus-summary">
-              <h4>Brew Bonuses:</h4>
+              <h4>Brew Details:</h4>
               <div className="bonus-grid">
-                <div className="bonus-item">
-                  <span>Ingredient Bonus:</span>
-                  <span>+{(result.ingredient_bonus * 100).toFixed(1)}%</span>
-                </div>
-                <div className="bonus-item">
-                  <span>Legendary Ingredients:</span>
-                  <span>{result.legendary_count || 0}</span>
-                </div>
-                <div className="bonus-item">
-                  <span>Preferred Matches:</span>
-                  <span>{result.preferred_matches || 0}</span>
-                </div>
+                {result.base_multiplier > 0 && (
+                  <div className="bonus-item">
+                    <span>Base Multiplier:</span>
+                    <span>{result.base_multiplier?.toFixed(2)}x</span>
+                  </div>
+                )}
+                {result.ingredient_power > 0 && (
+                  <div className="bonus-item">
+                    <span>Ingredient Power:</span>
+                    <span>{result.ingredient_power?.toFixed(2)}x</span>
+                  </div>
+                )}
+                {(result.legendary_count || 0) > 0 && (
+                  <div className="bonus-item">
+                    <span>Legendary Ingredients:</span>
+                    <span>{result.legendary_count || 0}</span>
+                  </div>
+                )}
+                {(result.preferred_matches || 0) > 0 && (
+                  <div className="bonus-item">
+                    <span>Preferred Matches:</span>
+                    <span>{result.preferred_matches || 0}</span>
+                  </div>
+                )}
+                {(result.cursed_count || 0) > 0 && (
+                  <div className="bonus-item cursed">
+                    <span>Cursed Ingredients:</span>
+                    <span>{result.cursed_count}</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -437,6 +503,7 @@ const PotionBrewingGame = ({ user }) => {
                 "⚗️ Brew Again"
               )}
             </button>
+            
           </div>
         </div>
       )}
@@ -446,17 +513,29 @@ const PotionBrewingGame = ({ user }) => {
         <div className="modal-overlay loss-modal-overlay animated-fadeIn">
           <div className="loss-modal-content animated-slideUp">
             <div className="loss-modal-header">
-              <div className="loss-icon">💔</div>
-              <h2>Brew Failed</h2>
-              <p className="loss-subtitle">The potion exploded!</p>
+              <div className="loss-icon">{result?.was_cursed ? '💀' : '💔'}</div>
+              <h2>{result?.was_cursed ? 'Cursed Brew!' : 'Brew Failed'}</h2>
+              <p className="loss-subtitle">
+                {result?.was_cursed ? 'Cursed ingredient ruined the potion!' : 'The potion exploded!'}
+              </p>
             </div>
             
             <div className="loss-message animated-fadeIn">
-              <div className="broken-cauldron">💥</div>
+              <div className="broken-cauldron">
+                {result?.was_cursed ? '🧪' : '💥'}
+              </div>
               <p className="loss-encouragement">
-                Even the best alchemists have failed brews!
+                {result?.was_cursed 
+                  ? "Bad ingredients can ruin any brew! (30% chance)"
+                  : "Even the best alchemists have failed brews!"
+                }
                 <br />
-                <span className="loss-tip">Tip: Try different ingredients for better results!</span>
+                <span className="loss-tip">
+                  {result?.was_cursed 
+                    ? "Tip: You have a 70% chance of successful brews!"
+                    : "Tip: Try different ingredients for better results!"
+                  }
+                </span>
               </p>
             </div>
             
@@ -485,6 +564,7 @@ const PotionBrewingGame = ({ user }) => {
                 "⚗️ Try Again"
               )}
             </button>
+            
           </div>
         </div>
       )}
