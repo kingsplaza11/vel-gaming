@@ -19,13 +19,20 @@ const PaymentCallback = () => {
 
     const verify = async () => {
       try {
-        await walletService.verifyDeposit(reference);
-      } catch (e) {
-        // silent fail — webhook will still reconcile
-      } finally {
-            window.location.replace("/wallet");
+        const res = await walletService.verifyDeposit(reference);
+
+        if (!res?.data?.status) {
+          throw new Error("Verification failed");
         }
+
+        // Optional: refresh wallet context here
+        window.location.replace("/wallet");
+      } catch (err) {
+        console.error("Payment verification failed:", err);
+        navigate("/wallet?status=failed", { replace: true });
+      }
     };
+
 
     verify();
   }, [navigate]);
