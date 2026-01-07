@@ -192,14 +192,10 @@ export const supportService = {
    SLOTS
 ====================================================== */
 export const slotsService = {
-  spin: (data) =>
-    api.post("/slots/spin/", {
-      ...data,
-      grid_size: "3x4",
-    }),
-
-  getStats: () => api.get("/slots/stats/"),
-  getHistory: () => api.get("/slots/history/"),
+  spin: (data) => api.post('/slots/spin/', data),
+  getStats: () => api.get('/slots/stats/'),
+  getHistory: () => api.get('/slots/history/'),
+  getInfo: () => api.get('/slots/info/'),
 };
 
 /* ======================================================

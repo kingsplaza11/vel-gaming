@@ -165,15 +165,17 @@ const SlotsGame = ({ user }) => {
   const [showSetup, setShowSetup] = useState(true);
   const [theme, setTheme] = useState("classic");
   const [betAmount, setBetAmount] = useState(MIN_STAKE.toString());
-  const [reels, setReels] = useState(Array(12).fill("seven"));
+  const [grid, setGrid] = useState([["seven", "seven", "seven"], ["seven", "seven", "seven"], ["seven", "seven", "seven"]]);
   const [spinning, setSpinning] = useState(false);
-  const [spinningReels, setSpinningReels] = useState([false, false, false, false]);
+  const [spinningReels, setSpinningReels] = useState([false, false, false]);
   const [lastWin, setLastWin] = useState(0);
+  const [lastMultiplier, setLastMultiplier] = useState(0);
   const [winAnimation, setWinAnimation] = useState(false);
   const [jackpotPulse, setJackpotPulse] = useState(false);
   const [error, setError] = useState("");
   const [spinHistory, setSpinHistory] = useState([]);
-  const [failedImages, setFailedImages] = useState({});
+  const [winningLines, setWinningLines] = useState([]);
+  const [gameInfo, setGameInfo] = useState(null);
 
   const spinSound = useRef(null);
   const winSound = useRef(null);
@@ -182,11 +184,27 @@ const SlotsGame = ({ user }) => {
   const bigWinSound = useRef(null);
   const spinTimeoutRef = useRef(null);
   const spinAnimationRef = useRef(null);
+  const lastTouchTime = useRef(0);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   /* ===============================
-     SOUND MANAGEMENT
+     FETCH GAME INFO
+  ================================ */
+  const fetchGameInfo = useCallback(async () => {
+    try {
+      const res = await slotsService.getInfo();
+      setGameInfo(res.data);
+    } catch (err) {
+      console.error("Failed to fetch game info:", err);
+    }
+  }, []);
+
+  /* ===============================
+     INITIALIZATION
   ================================ */
   useEffect(() => {
+    fetchGameInfo();
+    
     // Initialize sounds
     try {
       spinSound.current = new Audio("/sounds/spin.mp3");
@@ -195,6 +213,7 @@ const SlotsGame = ({ user }) => {
       reelStopSound.current = new Audio("/sounds/reel-stop.mp3");
       bigWinSound.current = new Audio("/sounds/big-win.mp3");
 
+      // Set volume levels
       spinSound.current.volume = 0.3;
       winSound.current.volume = 0.7;
       clickSound.current.volume = 0.4;
@@ -216,7 +235,7 @@ const SlotsGame = ({ user }) => {
         }
       });
     };
-  }, []);
+  }, [fetchGameInfo]);
 
   /* ===============================
      HELPER FUNCTIONS
@@ -235,6 +254,32 @@ const SlotsGame = ({ user }) => {
   const selectedTheme = THEME_INFO[theme];
 
   /* ===============================
+     MOBILE TOUCH HANDLING
+  ================================ */
+  const handleMobileClick = (handler) => (e) => {
+    if (isMobile) {
+      const now = Date.now();
+      // Prevent multiple rapid taps
+      if (now - lastTouchTime.current < 300) {
+        e.preventDefault();
+        return;
+      }
+      lastTouchTime.current = now;
+      
+      // Add visual feedback for mobile
+      if (e.currentTarget) {
+        e.currentTarget.classList.add('touch-active');
+        setTimeout(() => {
+          if (e.currentTarget) {
+            e.currentTarget.classList.remove('touch-active');
+          }
+        }, 200);
+      }
+    }
+    handler(e);
+  };
+
+  /* ===============================
      ANIMATION FUNCTIONS
   ================================ */
   const getRandomSymbol = () => {
@@ -242,27 +287,33 @@ const SlotsGame = ({ user }) => {
     return list[Math.floor(Math.random() * list.length)];
   };
 
-  const animateReelSpin = (reelIndex, duration = 2000) => {
+  const animateReelSpin = (reelIndex, duration = 1500) => {
     return new Promise((resolve) => {
       const startTime = Date.now();
+      const frames = [];
       
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
         
         if (elapsed < duration) {
-          // Update symbols in this column
-          setReels(prev => {
-            const newReels = [...prev];
+          // Update symbols in this column (3 rows)
+          setGrid(prev => {
+            const newGrid = [...prev];
             for (let row = 0; row < 3; row++) {
-              const index = row * 4 + reelIndex;
-              newReels[index] = getRandomSymbol();
+              newGrid[row][reelIndex] = getRandomSymbol();
             }
-            return newReels;
+            return newGrid;
           });
           
+          frames.push(Date.now());
           spinAnimationRef.current = requestAnimationFrame(animate);
         } else {
+          // Calculate average FPS for debugging
+          if (frames.length > 1) {
+            const avgFrameTime = (frames[frames.length - 1] - frames[0]) / frames.length;
+            console.log(`Reel ${reelIndex} avg FPS: ${Math.round(1000 / avgFrameTime)}`);
+          }
           resolve();
         }
       };
@@ -271,18 +322,24 @@ const SlotsGame = ({ user }) => {
     });
   };
 
-  const stopReelSequentially = async (finalReels) => {
-    for (let col = 0; col < 4; col++) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+  const stopReelSequentially = async (finalGrid) => {
+    for (let col = 0; col < 3; col++) {
+      await new Promise(resolve => setTimeout(resolve, isMobile ? 200 : 300));
       
       // Update final symbols for this column
-      setReels(prev => {
-        const newReels = [...prev];
+      setGrid(prev => {
+        const newGrid = [...prev];
         for (let row = 0; row < 3; row++) {
-          const index = row * 4 + col;
-          newReels[index] = finalReels[index];
+          newGrid[row][col] = finalGrid[row][col];
         }
-        return newReels;
+        return newGrid;
+      });
+
+      // Update spinning state
+      setSpinningReels(prev => {
+        const newState = [...prev];
+        newState[col] = false;
+        return newState;
       });
 
       // Play stop sound
@@ -329,8 +386,10 @@ const SlotsGame = ({ user }) => {
     setError("");
     setSpinning(true);
     setLastWin(0);
+    setLastMultiplier(0);
     setWinAnimation(false);
     setJackpotPulse(false);
+    setWinningLines([]);
 
     // Play click sound
     if (clickSound.current) {
@@ -343,7 +402,7 @@ const SlotsGame = ({ user }) => {
     }
 
     // Start all reels spinning
-    setSpinningReels([true, true, true, true]);
+    setSpinningReels([true, true, true]);
 
     // Start spin sound
     if (spinSound.current) {
@@ -359,11 +418,11 @@ const SlotsGame = ({ user }) => {
     try {
       // Start spinning animations
       const spinPromises = [];
-      for (let col = 0; col < 4; col++) {
+      for (let col = 0; col < 3; col++) {
         const delay = col * 100;
         spinPromises.push(
           new Promise(resolve => {
-            setTimeout(() => animateReelSpin(col, 2000).then(resolve), delay);
+            setTimeout(() => animateReelSpin(col, 1500).then(resolve), delay);
           })
         );
       }
@@ -376,8 +435,11 @@ const SlotsGame = ({ user }) => {
 
       // Wait for API response
       const res = await spinPromise;
-      const finalReels = res.data.reels;
+      const finalGrid = res.data.grid || [[], [], []];
       const winAmount = res.data.win_amount || 0;
+      const multiplier = res.data.multiplier || 0;
+      const lines = res.data.winning_lines || [];
+      const winTier = res.data.win_tier || 'loss';
 
       // Wait for animations to complete
       await Promise.all(spinPromises);
@@ -389,19 +451,21 @@ const SlotsGame = ({ user }) => {
       }
 
       // Stop reels sequentially with final results
-      await stopReelSequentially(finalReels);
+      await stopReelSequentially(finalGrid);
 
       // Update state with results
       setLastWin(winAmount);
+      setLastMultiplier(multiplier);
+      setWinningLines(lines);
       
       if (winAmount > 0) {
-        // Big win celebration
+        // Win celebration
         setWinAnimation(true);
         setJackpotPulse(true);
         
-        // Play win sound
+        // Play appropriate win sound
         try {
-          if (winAmount > amount * 10 && bigWinSound.current) {
+          if (multiplier >= 3.0 && bigWinSound.current) {
             bigWinSound.current.currentTime = 0;
             bigWinSound.current.play().catch(() => {});
           } else if (winSound.current) {
@@ -425,16 +489,18 @@ const SlotsGame = ({ user }) => {
       setSpinHistory(prev => [{
         bet: amount,
         win: winAmount,
+        multiplier: multiplier,
         timestamp: new Date().toLocaleTimeString(),
-        reels: finalReels
+        winTier: winTier,
+        theme: theme
       }, ...prev.slice(0, 9)]);
 
     } catch (err) {
       console.error("Spin failed:", err);
-      setError(err.response?.data?.detail || "Spin failed. Please try again.");
+      setError(err.response?.data?.detail || err.response?.data?.error || "Spin failed. Please try again.");
       
       // Emergency stop
-      setSpinningReels([false, false, false, false]);
+      setSpinningReels([false, false, false]);
       
       if (spinSound.current) {
         spinSound.current.pause();
@@ -445,7 +511,7 @@ const SlotsGame = ({ user }) => {
       
       // Ensure all reels are stopped
       setTimeout(() => {
-        setSpinningReels([false, false, false, false]);
+        setSpinningReels([false, false, false]);
       }, 500);
     }
   };
@@ -453,20 +519,23 @@ const SlotsGame = ({ user }) => {
   /* ===============================
      EVENT HANDLERS
   ================================ */
-  const handleQuickBet = (amount) => {
+  const handleQuickBet = handleMobileClick((amount) => {
     setBetAmount(amount.toString());
     playClickSound();
-  };
+  });
 
-  const handleThemeChange = (newTheme) => {
+  const handleThemeChange = handleMobileClick((newTheme) => {
     setTheme(newTheme);
-    // Reset reels to first symbol of new theme
-    setReels(Array(12).fill(SYMBOLS[newTheme][0]));
+    // Reset grid to first symbol of new theme
+    const firstSymbol = SYMBOLS[newTheme][0];
+    setGrid([[firstSymbol, firstSymbol, firstSymbol], 
+             [firstSymbol, firstSymbol, firstSymbol], 
+             [firstSymbol, firstSymbol, firstSymbol]]);
     playClickSound();
-  };
+  });
 
   const playClickSound = () => {
-    if (clickSound.current) {
+    if (clickSound.current && !isMobile) { // Reduce sounds on mobile
       try {
         clickSound.current.currentTime = 0;
         clickSound.current.play().catch(() => {});
@@ -479,6 +548,29 @@ const SlotsGame = ({ user }) => {
   const quickBets = [100, 500, 1000, 5000];
 
   /* ===============================
+     RENDER WIN TIER BADGE
+  ================================ */
+  const getWinTierColor = (tier) => {
+    switch(tier) {
+      case 'small': return '#10B981';
+      case 'medium': return '#3B82F6';
+      case 'good': return '#8B5CF6';
+      case 'big': return '#F59E0B';
+      default: return '#6B7280';
+    }
+  };
+
+  const getWinTierName = (tier) => {
+    switch(tier) {
+      case 'small': return 'Small Win';
+      case 'medium': return 'Good Win';
+      case 'good': return 'Great Win';
+      case 'big': return 'Big Win';
+      default: return 'No Win';
+    }
+  };
+
+  /* ===============================
      RENDER
   ================================ */
   return (
@@ -486,19 +578,13 @@ const SlotsGame = ({ user }) => {
       {/* ================= ARCADE HEADER ================= */}
       <header className="arcade-header">
         <button 
-          onClick={() => navigate("/")} 
+          onClick={handleMobileClick(() => navigate("/"))} 
           className="arcade-back-btn"
-          onMouseEnter={playClickSound}
           type="button"
         >
           <span className="btn-glow">◄</span>
           <span className="btn-text">ARCADE</span>
         </button>
-        
-        <div className="arcade-title">
-          <div className="title-glow">NEON SLOTS</div>
-          <div className="title-sub">ARCADE EDITION</div>
-        </div>
         
         <div className={`arcade-balance ${walletLoading ? 'loading' : ''}`}>
           <div className="balance-label">CREDITS</div>
@@ -553,14 +639,6 @@ const SlotsGame = ({ user }) => {
                     inputMode="decimal"
                   />
                 </div>
-
-                {/* Stake validation */}
-                {!isStakeValid() && betAmount.trim() !== '' && (
-                  <div className="stake-validation">
-                    <span className="validation-icon">⚠️</span>
-                    Minimum stake is ₦{MIN_STAKE.toLocaleString("en-NG")}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -602,21 +680,20 @@ const SlotsGame = ({ user }) => {
             <div className="modal-actions">
               <button
                 className="arcade-btn secondary"
-                onClick={() => navigate("/")}
+                onClick={handleMobileClick(() => navigate("/"))}
                 disabled={walletLoading}
-                onMouseEnter={playClickSound}
                 type="button"
               >
                 EXIT ARCADE
               </button>
               <button
                 className={`arcade-btn primary ${!isStakeValid() ? 'disabled' : ''}`}
-                onClick={() => {
+                onClick={handleMobileClick(() => {
                   if (isStakeValid()) {
                     setShowSetup(false);
                     playClickSound();
                   }
-                }}
+                })}
                 disabled={walletLoading || !isStakeValid()}
                 type="button"
               >
@@ -658,10 +735,6 @@ const SlotsGame = ({ user }) => {
                   <span className="stat-label">STAKE</span>
                   <span className="stat-value">{formatNGN(betAmount)}</span>
                 </div>
-                <div className="stat">
-                  <span className="stat-label">BALANCE</span>
-                  <span className="stat-value">{formatNGN(balance)}</span>
-                </div>
               </div>
             </div>
 
@@ -669,39 +742,40 @@ const SlotsGame = ({ user }) => {
             <div className="reels-display">
               <div className="display-frame">
                 <div className="reels-grid">
-                  {reels.map((symbol, i) => {
-                    const row = Math.floor(i / 4);
-                    const col = i % 4;
-                    const isSpinning = spinningReels[col];
-                    
-                    return (
-                      <div 
-                        key={i} 
-                        className={`reel-cell ${isSpinning ? 'spinning' : ''} row-${row} col-${col}`}
-                        data-spinning={isSpinning}
-                      >
-                        <div className="reel-inner">
-                          <div className="reel-content">
-                            <SymbolDisplay 
-                              symbol={symbol}
-                              theme={theme}
-                              isSpinning={isSpinning}
-                              themeColor={selectedTheme.color}
-                            />
+                  {grid.map((row, rowIndex) => (
+                    <div key={rowIndex} className="reels-row">
+                      {row.map((symbol, colIndex) => {
+                        const isSpinning = spinningReels[colIndex];
+                        
+                        return (
+                          <div 
+                            key={`${rowIndex}-${colIndex}`} 
+                            className={`reel-cell ${isSpinning ? 'spinning' : ''}`}
+                            data-spinning={isSpinning}
+                          >
+                            <div className="reel-inner">
+                              <div className="reel-content">
+                                <SymbolDisplay 
+                                  symbol={symbol}
+                                  theme={theme}
+                                  isSpinning={isSpinning}
+                                  themeColor={selectedTheme.color}
+                                />
+                              </div>
+                              <div className="reel-overlay"></div>
+                              {isSpinning && <div className="spin-glow"></div>}
+                            </div>
                           </div>
-                          <div className="reel-overlay"></div>
-                          {isSpinning && <div className="spin-glow"></div>}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
                 
                 {/* Grid Lines */}
                 <div className="grid-lines">
                   <div className="vertical-line v1"></div>
                   <div className="vertical-line v2"></div>
-                  <div className="vertical-line v3"></div>
                   <div className="horizontal-line h1"></div>
                   <div className="horizontal-line h2"></div>
                 </div>
@@ -709,12 +783,20 @@ const SlotsGame = ({ user }) => {
                 {/* Frame Glow */}
                 <div className="frame-glow"></div>
                 
-                {/* Win Lines Overlay */}
-                <div className={`win-lines ${winAnimation ? 'visible' : ''}`}>
-                  <div className="win-line line1"></div>
-                  <div className="win-line line2"></div>
-                  <div className="win-line line3"></div>
-                </div>
+                {/* Winning Lines Overlay */}
+                {winningLines.map((line, index) => {
+                  let lineClass = '';
+                  if (line.line === 0) lineClass = 'win-line-top';
+                  if (line.line === 1) lineClass = 'win-line-middle';
+                  if (line.line === 2) lineClass = 'win-line-bottom';
+                  if (line.line === 3) lineClass = 'win-line-diagonal-1';
+                  if (line.line === 4) lineClass = 'win-line-diagonal-2';
+                  if (line.line === 'bonus') lineClass = 'win-line-bonus';
+                  
+                  return (
+                    <div key={index} className={`win-line ${lineClass} ${winAnimation ? 'visible' : ''}`}></div>
+                  );
+                })}
               </div>
             </div>
 
@@ -726,14 +808,15 @@ const SlotsGame = ({ user }) => {
                     <div className="win-glow"></div>
                     <div className="win-content">
                       <span className="win-icon">💰</span>
-                      <span className="win-text">Winner!</span>
-                      <span className="win-amount">{formatNGN(lastWin)}</span>
+                      <div className="win-details">
+                        <span className="win-text">WINNER!</span>
+                        <span className="win-amount">{formatNGN(lastWin)}</span>
+                        
+                      </div>
                     </div>
                   </div>
                 ) : (
                   <div className="win-placeholder">
-                    <div className="placeholder-text">SPIN TO WIN!</div>
-                    <div className="placeholder-sub">Match 3+ symbols</div>
                   </div>
                 )}
               </div>
@@ -741,11 +824,13 @@ const SlotsGame = ({ user }) => {
               <div className="spin-controls">
                 <button
                   className={`spin-btn ${spinning ? 'spinning' : ''} ${jackpotPulse ? 'jackpot' : ''}`}
-                  onClick={handleSpin}
+                  onClick={handleMobileClick(handleSpin)}
                   disabled={walletLoading || spinning || !isStakeValid()}
                   onTouchStart={(e) => {
                     e.preventDefault();
-                    playClickSound();
+                    if (!spinning && isStakeValid()) {
+                      playClickSound();
+                    }
                   }}
                   type="button"
                 >

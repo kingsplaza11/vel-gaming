@@ -81,7 +81,6 @@ PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY")
 
 PAYSTACK_CALLBACK_URL = "https://veltoragames.com/payment/callback"
 
-
 WSGI_APPLICATION = 'gaming_app.wsgi.application'
 
 # Channels + Redis
