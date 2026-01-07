@@ -16,7 +16,6 @@ class Wallet(models.Model):
     def __str__(self):
         return f"Wallet({self.user_id})"
 
-
 class WalletTransaction(models.Model):
     DEBIT = "DEBIT"
     CREDIT = "CREDIT"
@@ -34,6 +33,7 @@ class WalletTransaction(models.Model):
     reference = models.CharField(max_length=64, unique=True)
     meta = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    first_deposit = models.BooleanField(default=False)  # Add this field
 
     class Meta:
         indexes = [
@@ -42,6 +42,7 @@ class WalletTransaction(models.Model):
 
     def __str__(self):
         return f"{self.tx_type} {self.amount} for {self.user_id}"
+    
 
 from django.conf import settings
 from decimal import Decimal

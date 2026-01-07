@@ -1,7 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Sum, Count, Prefetch
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, render
@@ -50,9 +50,21 @@ def referral_detail(request, user_id):
     referred_user = get_object_or_404(User, id=user_id)
     referrer = referred_user.referred_by
 
+    # Fetch wallet
     wallet = Wallet.objects.filter(user=referred_user).first()
 
-    # Same logic as API
+    # Fetch first deposit transaction
+    first_deposit_tx = WalletTransaction.objects.filter(
+        user=referred_user,
+        first_deposit=True,
+        tx_type=WalletTransaction.CREDIT
+    ).first()
+
+    # Calculate first deposit amount
+    first_deposit_amount = first_deposit_tx.amount if first_deposit_tx else 0
+    has_first_deposit = bool(first_deposit_tx)
+
+    # Same logic as API for credit transactions
     now = timezone.now()
     day = now - timedelta(days=1)
     week = now - timedelta(days=7)
@@ -64,16 +76,36 @@ def referral_detail(request, user_id):
         meta__status="completed"
     )
 
+    # Fetch all transactions for the table (with first deposit info)
+    all_transactions = WalletTransaction.objects.filter(
+        user=referred_user
+    ).order_by("-created_at")[:100]
+
+    # Calculate total balance
+    total_balance = 0
+    if wallet:
+        total_balance = (wallet.balance or 0) + (wallet.spot_balance or 0)
+
+    # Calculate referrer's total referral bonus
+    referrer_total_bonus = WalletTransaction.objects.filter(
+        user=referrer,
+        tx_type=WalletTransaction.CREDIT,
+        meta__has_key="referral_bonus"
+    ).aggregate(Sum("amount"))["amount__sum"] or 0
 
     context = {
         "referrer": referrer,
         "user": referred_user,
         "wallet": wallet,
+        "first_deposit_amount": first_deposit_amount,
+        "has_first_deposit": has_first_deposit,
         "daily": txs.filter(created_at__gte=day).aggregate(Sum("amount"))["amount__sum"] or 0,
         "weekly": txs.filter(created_at__gte=week).aggregate(Sum("amount"))["amount__sum"] or 0,
-        "monthly": txs.filter(created_at__gte=month).aggregate(Sum("amount"))["amount__sum"] or 0,
         "total": txs.aggregate(Sum("amount"))["amount__sum"] or 0,
-        "transactions": txs.order_by("-created_at")[:100],
+        "transactions": all_transactions,
+        "total_balance": total_balance,
+        "referrer_total_bonus": referrer_total_bonus,
+        "referrer_total_referrals": User.objects.filter(referred_by=referrer).count(),
     }
 
     return render(request, "sa/referral_detail.html", context)
@@ -81,11 +113,46 @@ def referral_detail(request, user_id):
 
 @staff_member_required
 def users(request):
-    users = (
+    users_qs = (
         User.objects
         .select_related("wallet")
+        .prefetch_related(
+            Prefetch(
+                "wallet_txs",
+                queryset=WalletTransaction.objects.filter(
+                    first_deposit=True,
+                    tx_type=WalletTransaction.CREDIT
+                ).only("amount", "user"),
+                to_attr="first_deposit_txs"
+            )
+        )
         .order_by("-date_joined")
     )
+
+    users = []
+
+    for u in users_qs:
+        wallet = getattr(u, "wallet", None)
+
+        # total balance = normal + spot
+        total_balance = 0
+        if wallet:
+            total_balance = (wallet.balance or 0) + (wallet.spot_balance or 0)
+
+        # first deposit
+        first_deposit_amount = None
+        has_first_deposit = False
+
+        if hasattr(u, "first_deposit_txs") and u.first_deposit_txs:
+            first_deposit_amount = u.first_deposit_txs[0].amount
+            has_first_deposit = True
+
+        # attach computed fields
+        u.total_balance = total_balance
+        u.first_deposit_amount = first_deposit_amount
+        u.has_first_deposit = has_first_deposit
+
+        users.append(u)
 
     return render(request, "sa/users.html", {
         "active": "users",
@@ -121,19 +188,47 @@ User = get_user_model()
 @staff_member_required
 def admin_user_detail(request, user_id):
     user = get_object_or_404(
-        User.objects.select_related("referred_by"),
+        User.objects
+        .select_related("wallet", "referred_by")
+        .prefetch_related(
+            Prefetch(
+                "wallet_txs",
+                queryset=WalletTransaction.objects.filter(
+                    first_deposit=True,
+                    tx_type=WalletTransaction.CREDIT
+                ).only("amount", "created_at"),
+                to_attr="first_deposit_txs"
+            )
+        ),
         id=user_id
     )
 
     wallet = getattr(user, "wallet", None)
+
+    total_balance = 0
+    if wallet:
+        total_balance = (wallet.balance or 0) + (wallet.spot_balance or 0)
+
+    first_deposit = None
+    has_first_deposit = False
+
+    if hasattr(user, "first_deposit_txs") and user.first_deposit_txs:
+        first_deposit = user.first_deposit_txs[0]
+        has_first_deposit = True
+
     referrals = user.referrals.all()
 
     context = {
         "user_obj": user,
         "wallet": wallet,
+        "total_balance": total_balance,
+        "first_deposit": first_deposit,
+        "has_first_deposit": has_first_deposit,
         "referrals": referrals,
     }
+
     return render(request, "sa/user_detail.html", context)
+
 
 @staff_member_required
 def admin_delete_user(request, user_id):

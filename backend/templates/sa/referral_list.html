@@ -3,134 +3,137 @@
 
 {% block content %}
 <!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-5">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5">
     <div>
-        <h1 class="h2 mb-2">Referral Management</h1>
+        <h1 class="h2 mb-1">Referral Management</h1>
+        <p class="text-muted mb-0">Track and manage referral relationships</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="search-container">
+            <div class="search-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <input 
+                type="text" 
+                class="search-input" 
+                placeholder="Search referrals..." 
+                autocomplete="off"
+                id="referralSearch"
+            >
+        </div>
+        <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i>
+            Refresh
+        </button>
     </div>
 </div>
 
 <!-- Stats Overview -->
-<div class="row g-4 mb-5">
-    <div class="col-xl-3 col-md-6">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon primary">
-                        <i class="fas fa-handshake"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Total Referrals</h6>
-                        <h3 class="mb-0">{{ referrals|length }}</h3>
-                    </div>
-                </div>
-                <span class="badge badge-soft-success">+8.3%</span>
+<div class="row g-3 mb-5">
+    <!-- Total Referrals -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-primary">
+            <div class="stat-icon">
+                <i class="fas fa-handshake"></i>
             </div>
-            <small class="text-muted d-flex align-items-center gap-1">
-                <i class="fas fa-chart-line"></i>
-                24 new this week
-            </small>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Total Referrals</h6>
+                <h3 class="mb-0">{{ referrals|length }}</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-chart-line"></i>
+                    <span>24 new this week</span>
+                </small>
+            </div>
+            <div class="stat-trend success">+8.3%</div>
         </div>
     </div>
-    
-    <div class="col-xl-3 col-md-6">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon" style="background: rgba(72, 187, 120, 0.2); color: #48bb78;">
-                        <i class="fas fa-user-check"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Active Users</h6>
-                        <h3 class="mb-0">{{ active_users|default:"0" }}</h3>
+</div>
+
+<!-- Filters Bar -->
+<div class="dashboard-card mb-4">
+    <div class="row g-3 align-items-center">
+        <div class="col-12 col-md-8">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <div class="filter-group">
+                    <label class="form-label small text-muted mb-1">Status</label>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="active">Active</button>
+                        <button class="filter-btn" data-filter="inactive">Inactive</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
                     </div>
                 </div>
-                <span class="badge badge-soft-success">+12.5%</span>
+                <div class="filter-group">
+                    <label class="form-label small text-muted mb-1">Date Range</label>
+                    <select class="form-select form-select-sm" style="width: 160px;">
+                        <option>Last 7 days</option>
+                        <option selected>Last 30 days</option>
+                        <option>Last 90 days</option>
+                        <option>This year</option>
+                        <option>All time</option>
+                    </select>
+                </div>
             </div>
-            <small class="text-muted d-flex align-items-center gap-1">
-                <i class="fas fa-users"></i>
-                85% engagement rate
-            </small>
         </div>
-    </div>
-    
-    <div class="col-xl-3 col-md-6">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon" style="background: rgba(237, 137, 54, 0.2); color: #ed8936;">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Total Rewards</h6>
-                        <h3 class="mb-0">₦{{ total_rewards|default:"0" }}</h3>
-                    </div>
-                </div>
-                <span class="badge badge-soft-warning">-2.1%</span>
-            </div>
-            <small class="text-muted d-flex align-items-center gap-1">
-                <i class="fas fa-exchange-alt"></i>
-                Avg: ₦{{ avg_reward|default:"0" }}
-            </small>
-        </div>
-    </div>
-    
-    <div class="col-xl-3 col-md-6">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon" style="background: rgba(245, 101, 101, 0.2); color: #f56565;">
-                        <i class="fas fa-percentage"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Conversion Rate</h6>
-                        <h3 class="mb-0">{{ conversion_rate|default:"0" }}%</h3>
-                    </div>
-                </div>
-                <span class="badge badge-soft-success">+15.7%</span>
-            </div>
-            <small class="text-muted d-flex align-items-center gap-1">
-                <i class="fas fa-trend-up"></i>
-                Industry avg: 28%
-            </small>
+        <div class="col-12 col-md-4 text-md-end">
+            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2 ms-auto" id="exportBtn">
+                <i class="fas fa-download"></i>
+                Export CSV
+            </button>
         </div>
     </div>
 </div>
 
 <!-- Main Table -->
 <div class="dashboard-card">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h5 class="mb-1">All Referral Relationships</h5>
-            <p class="text-muted mb-0">{{ referrals|length }} total relationships found</p>
+            <p class="text-muted mb-0" id="referralCount">{{ referrals|length }} total relationships found</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="refreshBtn">
-                <i class="fas fa-sync-alt"></i>
-                Refresh
-            </button>
+        <div class="search-results-info" id="searchResultsInfo" style="display: none;">
+            <span class="badge badge-soft-primary" id="matchCount">0 matches</span>
         </div>
     </div>
     
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
+    <div class="table-scroll-wrapper">
+        <table class="table table-hover align-middle mb-0 referrals-table">
             <thead>
                 <tr>
-                    <th>Referral ID</th>
-                    <th>Referrer</th>
-                    <th>Referred User</th>
-                    <th>Referral Code</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th class="text-end pe-4">Actions</th>
+                    <th class="sortable" data-sort="id">
+                        Referral ID <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="referrer">
+                        Referrer <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="referred">
+                        Referred User <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="code">
+                        Referral Code <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="date">
+                        Date <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="status">
+                        Status <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="text-end">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="referralsTableBody">
                 {% for r in referrals %}
-                <tr class="referral-row">
+                <tr class="referral-row" 
+                    data-id="{{ r.id }}"
+                    data-referrer="{{ r.referred_by.username|lower }}"
+                    data-referred="{{ r.username|lower }}"
+                    data-email="{{ r.email|lower }}"
+                    data-code="{{ r.referred_by.referral_code|default:''|lower }}"
+                    data-status="{% if r.is_active %}active{% else %}inactive{% endif %}"
+                    data-date="{{ r.date_joined|date:'U' }}">
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <div class="id-badge bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" 
-                                 style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.875rem;">
+                            <div class="id-badge">
                                 {{ forloop.counter }}
                             </div>
                             <div>
@@ -140,9 +143,8 @@
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <div class="avatar-circle bg-dark d-flex align-items-center justify-content-center" 
-                                 style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-gradient);">
-                                <span class="text-white">{{ r.referred_by.username|first|upper }}</span>
+                            <div class="avatar-circle referrer-avatar">
+                                {{ r.referred_by.username|first|upper }}
                             </div>
                             <div>
                                 <div class="fw-medium">{{ r.referred_by.username }}</div>
@@ -152,8 +154,7 @@
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <div class="avatar-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" 
-                                 style="width: 36px; height: 36px; border-radius: 50%;">
+                            <div class="avatar-circle referred-avatar">
                                 <i class="fas fa-user-plus"></i>
                             </div>
                             <div>
@@ -165,8 +166,10 @@
                     <td>
                         {% if r.referred_by.referral_code %}
                         <div class="d-flex align-items-center gap-2">
-                            <code class="bg-dark px-2 py-1 rounded">{{ r.referred_by.referral_code|truncatechars:12 }}</code>
-                            <button class="btn btn-sm btn-link text-primary p-0" onclick="copyToClipboard('{{ r.referred_by.referral_code }}')">
+                            <code class="referral-code">{{ r.referred_by.referral_code|truncatechars:12 }}</code>
+                            <button class="btn btn-sm btn-link text-primary p-0 copy-btn" 
+                                    data-code="{{ r.referred_by.referral_code }}"
+                                    title="Copy to clipboard">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
@@ -182,22 +185,23 @@
                     </td>
                     <td>
                         {% if r.is_active %}
-                        <span class="badge badge-soft-success d-inline-flex align-items-center gap-1">
-                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                        <span class="status-badge active">
+                            <i class="fas fa-circle"></i>
                             Active
                         </span>
                         {% else %}
-                        <span class="badge badge-soft-danger d-inline-flex align-items-center gap-1">
-                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                        <span class="status-badge inactive">
+                            <i class="fas fa-circle"></i>
                             Inactive
                         </span>
                         {% endif %}
                     </td>
-                    <td class="text-end pe-4">
-                        <div class="d-flex align-items-center justify-content-end gap-2">
+                    <td class="text-end">
+                        <div class="action-buttons">
                             <a href="{% url 'adminpanel:referral_detail' r.id %}" 
-                               class="btn btn-sm btn-outline-light d-flex align-items-center gap-2"
-                               data-bs-toggle="tooltip" data-bs-title="View Details">
+                               class="btn btn-sm btn-outline-light action-btn"
+                               data-bs-toggle="tooltip" 
+                               data-bs-title="View Details">
                                 <i class="fas fa-eye"></i>
                             </a>
                             <div class="dropdown">
@@ -208,17 +212,24 @@
                                     <li><a class="dropdown-item" href="{% url 'adminpanel:referral_detail' r.id %}">
                                         <i class="fas fa-eye me-2"></i>View Details
                                     </a></li>
+                                    <li><a class="dropdown-item copy-btn" href="#" data-code="{{ r.referred_by.referral_code|default:'' }}">
+                                        <i class="fas fa-copy me-2"></i>Copy Code
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#">
+                                        <i class="fas fa-trash me-2"></i>Delete
+                                    </a></li>
                                 </ul>
                             </div>
                         </div>
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="8" class="text-center py-5">
+                <tr id="noReferralsRow">
+                    <td colspan="7" class="text-center py-5">
                         <div class="empty-state">
                             <div class="empty-state-icon mb-3">
-                                <i class="fas fa-handshake text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <i class="fas fa-handshake"></i>
                             </div>
                             <h5 class="text-muted">No referral records found</h5>
                             <p class="text-muted mb-3">Start building your referral network today</p>
@@ -230,25 +241,35 @@
         </table>
     </div>
     
+    <!-- No Results Message -->
+    <div id="noResultsMessage" class="text-center py-5" style="display: none;">
+        <div class="py-4">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No matching referrals found</h5>
+            <p class="text-muted small">Try a different search term or adjust your filters</p>
+        </div>
+    </div>
+    
+    <!-- Mobile scroll hint -->
+    <div class="mobile-scroll-hint">
+        <i class="fas fa-arrow-left me-2"></i>Swipe left to see more columns
+    </div>
+    
     {% if referrals %}
-    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4 pt-3 border-top border-secondary">
         <div class="d-flex align-items-center gap-3">
-            <div class="selected-count d-none" id="selectedCount">
-                <span class="badge bg-primary">0 selected</span>
-            </div>
             <div class="dropdown">
-                <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" id="bulkActionsBtn" disabled>
-                    <i class="fas fa-tasks me-1"></i>Bulk Actions
+                <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i>Export
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" id="bulkExport"><i class="fas fa-download me-2"></i>Export Selected</a></li>
-                    <li><a class="dropdown-item" href="#" id="bulkEmail"><i class="fas fa-envelope me-2"></i>Email Selected</a></li>
-                    <li><a class="dropdown-item" href="#" id="bulkDelete"><i class="fas fa-trash me-2 text-danger"></i>Delete Selected</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-csv me-2"></i>CSV Format</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i>Excel Format</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-2"></i>PDF Report</a></li>
                 </ul>
             </div>
         </div>
         <div>
-            <small class="text-muted me-3">Page 1 of 5</small>
             <nav aria-label="Referral pagination">
                 <ul class="pagination pagination-sm mb-0">
                     <li class="page-item disabled">
@@ -271,289 +292,846 @@
     {% endif %}
 </div>
 
-<!-- Additional CSS for this page -->
 <style>
-    /* Custom styles for referral management */
-    .referral-row {
-        transition: all 0.2s ease;
+/* ===== Referral Management Styles ===== */
+
+/* Search Container */
+.search-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 200px;
+}
+
+.search-container:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-icon {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    flex: 1;
+    padding: 4px 0;
+    font-size: 0.9rem;
+    outline: none;
+    width: 100%;
+}
+
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+/* Stat Cards */
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.gradient-primary {
+    border-left: 4px solid #667eea;
+}
+
+.stat-card.gradient-success {
+    border-left: 4px solid #48bb78;
+}
+
+.stat-card.gradient-warning {
+    border-left: 4px solid #ed8936;
+}
+
+.stat-card.gradient-danger {
+    border-left: 4px solid #f56565;
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+}
+
+.gradient-primary .stat-icon {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(102, 126, 234, 0.1));
+    color: #667eea;
+}
+
+.gradient-success .stat-icon {
+    background: linear-gradient(135deg, rgba(72, 187, 120, 0.2), rgba(72, 187, 120, 0.1));
+    color: #48bb78;
+}
+
+.gradient-warning .stat-icon {
+    background: linear-gradient(135deg, rgba(237, 137, 54, 0.2), rgba(237, 137, 54, 0.1));
+    color: #ed8936;
+}
+
+.gradient-danger .stat-icon {
+    background: linear-gradient(135deg, rgba(245, 101, 101, 0.2), rgba(245, 101, 101, 0.1));
+    color: #f56565;
+}
+
+.stat-content h3 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.gradient-primary .stat-content h3 {
+    color: #667eea;
+}
+
+.gradient-success .stat-content h3 {
+    color: #48bb78;
+}
+
+.gradient-warning .stat-content h3 {
+    color: #ed8936;
+}
+
+.gradient-danger .stat-content h3 {
+    color: #f56565;
+}
+
+.stat-content h6 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.stat-content small {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.stat-trend {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.stat-trend.success {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+}
+
+.stat-trend.warning {
+    background: rgba(237, 137, 54, 0.2);
+    color: #ed8936;
+}
+
+/* Filter Groups */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.filter-btn {
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.filter-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+/* Table Styles */
+.table-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.referrals-table {
+    min-width: 1000px;
+}
+
+.id-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #fff;
+    font-size: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.referrer-avatar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.referred-avatar {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.referral-code {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-badge i {
+    font-size: 0.5rem;
+}
+
+.status-badge.active {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+}
+
+.status-badge.inactive {
+    background: rgba(245, 101, 101, 0.2);
+    color: #f56565;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+/* Empty State */
+.empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: #94a3b8;
+}
+
+/* Search Results Info */
+.search-results-info {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile scroll hint */
+.mobile-scroll-hint {
+    display: none;
+    padding: 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    color: #94a3b8;
+    border-top: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.mobile-scroll-hint i {
+    animation: bounceLeft 1.5s infinite;
+}
+
+@keyframes bounceLeft {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-4px); }
+}
+
+/* Sortable Headers */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.sortable:hover {
+    color: var(--primary);
+}
+
+.sortable i {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.sortable:hover i {
+    opacity: 1;
+}
+
+.sortable.sorted-asc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-asc::after {
+    content: "↑";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+.sortable.sorted-desc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-desc::after {
+    content: "↓";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    /* Header adjustments */
+    .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mb-5 {
+        flex-direction: column;
+        align-items: stretch !important;
     }
     
-    .referral-row:hover {
-        background: rgba(255, 255, 255, 0.03) !important;
-        transform: translateX(2px);
+    .search-container {
+        width: 100%;
+        margin-top: 8px;
     }
     
-    .avatar-circle {
-        transition: transform 0.2s ease;
+    /* Stats grid - 2 columns on mobile */
+    .row.g-3.mb-5 {
+        gap: 12px !important;
     }
     
-    .avatar-circle:hover {
-        transform: scale(1.1);
+    .col-12.col-sm-6.col-lg-3 {
+        width: calc(50% - 6px);
+        margin-bottom: 0;
     }
     
-    .id-badge {
-        font-weight: 600;
+    .stat-card {
+        padding: 12px;
     }
     
-    .empty-state {
-        padding: 3rem 2rem;
+    .stat-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
     }
     
-    .empty-state-icon {
-        opacity: 0.5;
+    .stat-content h3 {
+        font-size: 1.5rem;
     }
     
-    /* Bulk actions styles */
-    .selected-count {
-        animation: fadeIn 0.3s ease;
+    .stat-content h6 {
+        font-size: 0.7rem;
     }
     
-    /* Table row selection */
-    .table tbody tr.selected {
-        background: rgba(102, 126, 234, 0.1) !important;
-        border-left: 3px solid #667eea;
+    .stat-trend {
+        top: 12px;
+        right: 12px;
+        padding: 3px 6px;
+        font-size: 0.7rem;
     }
     
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .d-flex.justify-content-between.align-items-center.mb-5 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        .d-flex.align-items-center.gap-3 {
-            width: 100%;
-            justify-content: flex-start;
-            flex-wrap: wrap;
-            gap: 0.5rem !important;
-        }
-        
-        .input-group {
-            width: 100% !important;
-        }
-        
-        .dashboard-card .d-flex.justify-content-between.align-items-center.mb-4 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        .dashboard-card .d-flex.align-items-center.gap-2 {
-            width: 100%;
-            justify-content: flex-start;
-        }
-        
-        .table-responsive {
-            font-size: 0.875rem;
-        }
-        
-        .d-flex.justify-content-between.align-items-center.mt-4 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
+    /* Filter adjustments */
+    .filter-group {
+        width: 100%;
+        margin-bottom: 8px;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+    .filter-buttons {
+        width: 100%;
+        justify-content: stretch;
     }
+    
+    .filter-btn {
+        flex: 1;
+        text-align: center;
+        padding: 8px 12px;
+    }
+    
+    /* Table adjustments */
+    .referrals-table {
+        min-width: 1200px;
+    }
+    
+    .mobile-scroll-hint {
+        display: block;
+    }
+    
+    /* Table header adjustments */
+    .dashboard-card .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mb-4 {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .search-results-info {
+        align-self: flex-start;
+        margin-top: 8px;
+    }
+    
+    /* Pagination adjustments */
+    .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mt-4 {
+        flex-direction: column;
+        align-items: center !important;
+        gap: 1rem !important;
+    }
+    
+    .d-flex.align-items-center.gap-3 {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Single column on very small screens */
+    .col-12.col-sm-6.col-lg-3 {
+        width: 100%;
+    }
+    
+    /* Adjust stat cards for single column */
+    .stat-card {
+        padding: 16px;
+    }
+    
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 1.1rem;
+    }
+    
+    .stat-content h3 {
+        font-size: 1.8rem;
+    }
+    
+    /* Adjust search container */
+    .search-container {
+        padding: 8px 16px;
+    }
+    
+    /* Make buttons full width */
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Adjust pagination */
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* Animation for referral rows */
+.referral-row {
+    transition: all 0.2s ease;
+}
+
+.referral-row:hover {
+    background: rgba(255, 255, 255, 0.03) !important;
+    transform: translateX(2px);
+}
+
+/* Copy button animation */
+.copy-btn {
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    transform: scale(1.2);
+}
+
+/* Highlight effect for search */
+.highlight {
+    background-color: rgba(255, 193, 7, 0.15);
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #ffc107;
+}
 </style>
 
-<!-- JavaScript for this page -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Copy to clipboard function
-        window.copyToClipboard = function(text) {
-            navigator.clipboard.writeText(text).then(function() {
-                // Show success toast
-                const toast = document.createElement('div');
-                toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
-                toast.style.zIndex = '9999';
-                toast.innerHTML = `
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Copied to clipboard!</span>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-                
-                setTimeout(() => {
-                    toast.remove();
-                }, 2000);
-            });
-        };
-        
-        // Initialize tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        // Initialize modals
-        const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
-        
-        // Search functionality
-        const searchInput = document.querySelector('input[type="text"]');
-        if (searchInput) {
-            searchInput.addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
-                const rows = document.querySelectorAll('.referral-row');
-                let visibleCount = 0;
-                
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-                
-                // Update count display
-                const countElement = document.querySelector('.dashboard-card p.text-muted.mb-0');
-                if (countElement) {
-                    countElement.textContent = `${visibleCount} relationships found`;
-                }
-            });
-        }
-        
-        // Row selection and bulk actions
-        const selectAll = document.getElementById('selectAll');
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-        const selectedCount = document.getElementById('selectedCount');
-        const bulkActionsBtn = document.getElementById('bulkActionsBtn');
-        const bulkActions = document.getElementById('bulkActions');
-        
-        // Select all functionality
-        if (selectAll) {
-            selectAll.addEventListener('change', function() {
-                const isChecked = this.checked;
-                checkboxes.forEach(checkbox => {
-                    checkbox.checked = isChecked;
-                    toggleRowSelection(checkbox);
-                });
-                updateSelectionUI();
-            });
-        }
-        
-        // Individual checkbox functionality
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                toggleRowSelection(this);
-                updateSelectionUI();
-            });
-        });
-        
-        function toggleRowSelection(checkbox) {
-            const row = checkbox.closest('tr');
-            if (checkbox.checked) {
-                row.classList.add('selected');
-            } else {
-                row.classList.remove('selected');
-            }
-        }
-        
-        function updateSelectionUI() {
-            const selected = document.querySelectorAll('.row-checkbox:checked');
-            const count = selected.length;
+document.addEventListener('DOMContentLoaded', function() {
+    // Apply avatar colors
+    applyAvatarColors();
+    
+    // Initialize tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(el => new bootstrap.Tooltip(el));
+    
+    // Search functionality
+    const searchInput = document.getElementById('referralSearch');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const referralRows = document.querySelectorAll('.referral-row');
+    const referralCount = document.getElementById('referralCount');
+    const searchResultsInfo = document.getElementById('searchResultsInfo');
+    const matchCount = document.getElementById('matchCount');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const noReferralsRow = document.getElementById('noReferralsRow');
+    
+    let currentFilter = 'all';
+    let currentSearch = '';
+    
+    // Filter functionality
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
             
-            if (count > 0) {
-                selectedCount.classList.remove('d-none');
-                selectedCount.querySelector('span').textContent = `${count} selected`;
-                bulkActionsBtn.disabled = false;
-            } else {
-                selectedCount.classList.add('d-none');
-                bulkActionsBtn.disabled = true;
-                selectAll.checked = false;
-            }
-        }
-        
-        // Bulk actions
-        document.getElementById('bulkExport')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            const selected = getSelectedIds();
-            if (selected.length > 0) {
-                exportModal.show();
-            }
+            // Apply filter
+            currentFilter = this.dataset.filter;
+            applyFilters();
         });
+    });
+    
+    // Search input with debouncing
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentSearch = this.value.toLowerCase().trim();
+            applyFilters();
+        }, 300);
+    });
+    
+    // Apply both search and filter
+    function applyFilters() {
+        let visibleCount = 0;
         
-        document.getElementById('bulkDelete')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            const selected = getSelectedIds();
-            if (selected.length > 0) {
-                if (confirm(`Are you sure you want to delete ${selected.length} referral record(s)?`)) {
-                    // Here you would typically make an AJAX request
-                    console.log('Deleting:', selected);
-                }
-            }
-        });
-        
-        function getSelectedIds() {
-            const selected = [];
-            document.querySelectorAll('.row-checkbox:checked').forEach(checkbox => {
-                selected.push(checkbox.value);
-            });
-            return selected;
-        }
-        
-        // Refresh button
-        document.getElementById('refreshBtn')?.addEventListener('click', function() {
-            const btn = this;
-            const icon = btn.querySelector('i');
+        referralRows.forEach(row => {
+            const matchesFilter = currentFilter === 'all' || 
+                                 row.dataset.status === currentFilter;
             
-            // Add spinning animation
-            icon.classList.add('fa-spin');
-            btn.disabled = true;
+            const matchesSearch = !currentSearch || 
+                                 row.dataset.referrer.includes(currentSearch) ||
+                                 row.dataset.referred.includes(currentSearch) ||
+                                 row.dataset.email.includes(currentSearch) ||
+                                 row.dataset.code.includes(currentSearch);
             
-            // Simulate refresh
-            setTimeout(() => {
-                icon.classList.remove('fa-spin');
-                btn.disabled = false;
+            if (matchesFilter && matchesSearch) {
+                row.style.display = '';
+                visibleCount++;
                 
-                // Show success message
-                const toast = document.createElement('div');
-                toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
-                toast.style.zIndex = '9999';
-                toast.innerHTML = `
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Data refreshed successfully!</span>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-                
-                setTimeout(() => {
-                    toast.remove();
-                }, 2000);
-            }, 1000);
-        });
-        
-        // Animate stats on load
-        const stats = document.querySelectorAll('.dashboard-card h3.mb-0');
-        stats.forEach(stat => {
-            const text = stat.textContent;
-            const number = parseFloat(text.replace(/[^0-9.]/g, ''));
-            if (!isNaN(number)) {
-                animateNumber(stat, number);
-            }
-        });
-        
-        function animateNumber(element, finalValue) {
-            let current = 0;
-            const increment = finalValue / 50;
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= finalValue) {
-                    element.textContent = finalValue.toLocaleString();
-                    clearInterval(timer);
+                // Highlight search text
+                if (currentSearch) {
+                    highlightText(row, currentSearch);
                 } else {
-                    element.textContent = Math.floor(current).toLocaleString();
+                    removeHighlights(row);
                 }
-            }, 20);
+            } else {
+                row.style.display = 'none';
+                removeHighlights(row);
+            }
+        });
+        
+        // Update UI
+        updateResultsUI(visibleCount);
+    }
+    
+    // Highlight search text
+    function highlightText(element, searchTerm) {
+        const textElements = element.querySelectorAll('.fw-medium, .referral-code, small.text-muted');
+        
+        textElements.forEach(el => {
+            const text = el.textContent;
+            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            const highlighted = text.replace(regex, '<span class="highlight">$1</span>');
+            if (highlighted !== text) {
+                el.innerHTML = highlighted;
+            }
+        });
+    }
+    
+    // Remove highlights
+    function removeHighlights(element) {
+        const highlights = element.querySelectorAll('.highlight');
+        highlights.forEach(highlight => {
+            const parent = highlight.parentNode;
+            parent.textContent = parent.textContent;
+        });
+    }
+    
+    // Update results UI
+    function updateResultsUI(visibleCount) {
+        const totalCount = referralRows.length;
+        
+        if (visibleCount === 0) {
+            noResultsMessage.style.display = 'block';
+            if (noReferralsRow) noReferralsRow.style.display = 'none';
+            searchResultsInfo.style.display = 'none';
+        } else {
+            noResultsMessage.style.display = 'none';
+            if (noReferralsRow) noReferralsRow.style.display = 'none';
+            
+            if (currentSearch || currentFilter !== 'all') {
+                searchResultsInfo.style.display = 'block';
+                matchCount.textContent = `${visibleCount} match${visibleCount !== 1 ? 'es' : ''}`;
+            } else {
+                searchResultsInfo.style.display = 'none';
+            }
+        }
+        
+        if (referralCount) {
+            referralCount.textContent = `${visibleCount} of ${totalCount} relationships found`;
+        }
+    }
+    
+    // Sort functionality
+    let currentSort = { column: null, direction: 'asc' };
+    
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.sort;
+            
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            sortTable(column);
+            
+            // Update sort indicators
+            document.querySelectorAll('.sortable').forEach(h => {
+                h.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            this.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        });
+    });
+    
+    function sortTable(column) {
+        const tbody = document.getElementById('referralsTableBody');
+        const rows = Array.from(tbody.querySelectorAll('.referral-row'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch (column) {
+                case 'id':
+                    aValue = parseInt(a.dataset.id);
+                    bValue = parseInt(b.dataset.id);
+                    break;
+                case 'referrer':
+                    aValue = a.dataset.referrer;
+                    bValue = b.dataset.referrer;
+                    break;
+                case 'referred':
+                    aValue = a.dataset.referred;
+                    bValue = b.dataset.referred;
+                    break;
+                case 'code':
+                    aValue = a.dataset.code;
+                    bValue = b.dataset.code;
+                    break;
+                case 'date':
+                    aValue = parseInt(a.dataset.date);
+                    bValue = parseInt(b.dataset.date);
+                    break;
+                case 'status':
+                    aValue = a.dataset.status;
+                    bValue = b.dataset.status;
+                    break;
+                default:
+                    return 0;
+            }
+            
+            let comparison = 0;
+            if (aValue < bValue) comparison = -1;
+            if (aValue > bValue) comparison = 1;
+            
+            return currentSort.direction === 'asc' ? comparison : -comparison;
+        });
+        
+        // Reappend rows in sorted order
+        rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    // Copy to clipboard functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.copy-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.copy-btn');
+            const code = btn.dataset.code;
+            
+            if (code) {
+                navigator.clipboard.writeText(code).then(() => {
+                    // Show success message
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                        const originalClass = icon.className;
+                        icon.className = 'fas fa-check';
+                        setTimeout(() => {
+                            icon.className = originalClass;
+                        }, 2000);
+                    }
+                    
+                    // Show toast notification
+                    showToast('Code copied to clipboard!', 'success');
+                });
+            }
         }
     });
+    
+    // Refresh button
+    document.getElementById('refreshBtn')?.addEventListener('click', function() {
+        const btn = this;
+        const icon = btn.querySelector('i');
+        
+        // Add spinning animation
+        icon.classList.add('fa-spin');
+        btn.disabled = true;
+        
+        // Simulate refresh
+        setTimeout(() => {
+            icon.classList.remove('fa-spin');
+            btn.disabled = false;
+            showToast('Data refreshed successfully!', 'success');
+        }, 800);
+    });
+    
+    // Export button
+    document.getElementById('exportBtn')?.addEventListener('click', function() {
+        showToast('Export started...', 'info');
+        // In a real implementation, you would trigger a file download here
+    });
+    
+    // Avatar color generation
+    function applyAvatarColors() {
+        // For referrer avatars
+        document.querySelectorAll('.referrer-avatar').forEach(avatar => {
+            const text = avatar.textContent.trim();
+            if (text) {
+                avatar.style.background = getColorFromString(text);
+            }
+        });
+    }
+    
+    function getColorFromString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const colors = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
+        ];
+        
+        return colors[Math.abs(hash) % colors.length];
+    }
+    
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `position-fixed bottom-0 end-0 m-3 p-3 bg-${type} text-white rounded`;
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    
+    // Initialize filters
+    applyFilters();
+});
 </script>
 {% endblock %}

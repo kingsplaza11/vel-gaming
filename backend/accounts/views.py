@@ -157,35 +157,93 @@ def change_password(request):
     return Response({"success": True})
 
 
+from django.utils.timezone import now, localdate
+from datetime import timedelta
+import calendar
+from decimal import Decimal
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def referral_dashboard(request):
     user = request.user
     referrals = user.referrals.all()
 
-    now = timezone.now()
-    day = now - timedelta(days=1)
-    week = now - timedelta(days=7)
-    month = now - timedelta(days=30)
+    # Get current date for week calculation
+    today = localdate()
+    # Get start of current week (Monday)
+    start_of_week = today - timedelta(days=today.weekday())
+    # Get start of day (today at 00:00)
+    start_of_day = today
 
     data = []
-
+    successful_referrals = 0
+    
     for ref in referrals:
+        print(f"Processing referral: {ref.username}")  # Debug
+        
+        # Get user's credit transactions
         txs = WalletTransaction.objects.filter(
             user=ref,
             tx_type="CREDIT"
         )
-
+        
+        # Get the first deposit transaction (if exists)
+        first_deposit_tx = WalletTransaction.objects.filter(
+            user=ref,
+            tx_type="CREDIT",
+            first_deposit=True
+        ).first()
+        
+        # Get first deposit amount if exists, otherwise 0
+        first_deposit_amount = Decimal('0.00')
+        has_first_deposit = False
+        
+        if first_deposit_tx:
+            print(f"Found first deposit for {ref.username}: {first_deposit_tx.amount}")  # Debug
+            first_deposit_amount = first_deposit_tx.amount
+            has_first_deposit = True
+        else:
+            print(f"No first deposit found for {ref.username}")  # Debug
+        
+        # Calculate today's deposits (transactions created today)
+        daily_amount = sum(
+            t.amount for t in txs.filter(
+                created_at__date=start_of_day
+            )
+        ) or Decimal('0.00')
+        
+        # Calculate this week's deposits (Monday to Sunday)
+        weekly_amount = sum(
+            t.amount for t in txs.filter(
+                created_at__date__gte=start_of_week
+            )
+        ) or Decimal('0.00')
+        
+        # Calculate total deposits
+        total_amount = sum(t.amount for t in txs) or Decimal('0.00')
+        
+        # Count as successful if user has made first deposit
+        if has_first_deposit:
+            successful_referrals += 1
+        
         data.append({
             "username": ref.username,
-            "total": sum(t.amount for t in txs),
-            "daily": sum(t.amount for t in txs.filter(created_at__gte=day)),
-            "weekly": sum(t.amount for t in txs.filter(created_at__gte=week)),
-            "monthly": sum(t.amount for t in txs.filter(created_at__gte=month)),
+            "first_deposit": float(first_deposit_amount),  # Convert Decimal to float for JSON serialization
+            "has_first_deposit": has_first_deposit,  # Keep for status check
+            "deposit_today": float(daily_amount),
+            "deposit_this_week": float(weekly_amount),
+            "total_deposit": float(total_amount),
+            "status": "successful" if has_first_deposit else "pending",
         })
+        print(f"Data for {ref.username}: first_deposit={first_deposit_amount}, has_first_deposit={has_first_deposit}")  # Debug
 
+    print(f"Final data being sent: {data}")  # Debug
+    
     return Response({
         "referral_code": user.referral_code,
         "referral_link": f"https://veltoragames.com/register?ref={user.referral_code}",
+        "total_referrals": referrals.count(),
+        "successful_referrals": successful_referrals,
+        "pending_referrals": referrals.count() - successful_referrals,
         "referrals": data,
     })

@@ -2,516 +2,795 @@
 {% block title %}User Management • Admin Panel{% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-5">
+
+<!-- Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <h1 class="h2 mb-2">User Management</h1>
+        <h1 class="h3 mb-1">User Management</h1>
+        <p class="text-muted mb-0">Manage all registered users</p>
     </div>
+    <button id="refreshUsersBtn" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2">
+        <i class="fas fa-rotate"></i>
+        Refresh
+    </button>
 </div>
 
-<!-- User Stats Overview -->
-<div class="row g-4 mb-5">
-    <div class="col-xl-3 col-md-6">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon primary">
-                        <i class="fas fa-users"></i>
+<!-- Search & Stats Container -->
+<div class="dashboard-card mb-4">
+    <div class="row g-3">
+        <!-- Search Section -->
+        <div class="col-12 col-lg-8">
+            <div class="search-container">
+                <div class="search-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <input 
+                    type="text" 
+                    id="userSearch" 
+                    class="search-input" 
+                    placeholder="Search users by username, email, or UID..." 
+                    autocomplete="off"
+                >
+                <div class="search-actions">
+                    <button id="clearSearch" class="btn btn-sm btn-outline-light" title="Clear search">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                <small class="text-muted">Search in: </small>
+                <div class="search-filters">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input search-filter" type="checkbox" id="filterUsername" checked>
+                        <label class="form-check-label" for="filterUsername">Username</label>
                     </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Total Users</h6>
-                        <h3 class="mb-0">{{ users|length }}</h3>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input search-filter" type="checkbox" id="filterEmail" checked>
+                        <label class="form-check-label" for="filterEmail">Email</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input search-filter" type="checkbox" id="filterUID" checked>
+                        <label class="form-check-label" for="filterUID">UID</label>
                     </div>
                 </div>
-                <span class="badge badge-soft-success">+12.5%</span>
             </div>
-            <small class="text-muted d-flex align-items-center gap-1">
-                <i class="fas fa-user-plus text-success"></i>
-                24 new this month
-            </small>
         </div>
+        
     </div>
 </div>
 
-<!-- Users Table -->
-<div class="dashboard-card">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<!-- Users Table Card -->
+<div class="dashboard-card p-0">
+    <div class="px-4 pt-4 pb-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
-            <h5 class="mb-1">All Registered Users</h5>
-            <p class="text-muted mb-0">{{ users|length }} users found in the system</p>
+            <h5 class="mb-1">All Users</h5>
+            <small class="text-muted"><span id="visibleCount">{{ users|length }}</span> of {{ users|length }} users</small>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="refreshUsersBtn">
-                <i class="fas fa-sync-alt"></i>
-                Refresh
-            </button>
+        <div class="search-results-info" id="searchResultsInfo" style="display: none;">
+            <span class="badge badge-soft-primary" id="matchCount">0 matches</span>
         </div>
     </div>
-    
-    <div class="table-responsive">
-        <table class="table table-hover align-middle" id="usersTable">
+
+    <!-- Horizontal Scroll Wrapper -->
+    <div class="table-scroll-wrapper">
+        <table class="table table-hover align-middle mb-0 users-table">
             <thead>
                 <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Wallet Balance</th>
-                    <th>Joined Date</th>
-                    <th>Status</th>
-                    <th class="text-end pe-4">Actions</th>
+                    <th class="sortable" data-sort="username">
+                        User <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="email">
+                        Email <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="wallet">
+                        Wallet <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="joined">
+                        Joined <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="status">
+                        Status <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="text-end">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="usersTableBody">
                 {% for u in users %}
-                <tr class="user-row" data-user-id="{{ u.id }}">
+                <tr class="user-row" 
+                    data-username="{{ u.username|lower }}" 
+                    data-email="{{ u.email|lower }}"
+                    data-uid="{{ u.user_uid }}"
+                    data-status="{{ u.is_active|yesno:'active,blocked' }}"
+                    data-verified="{{ u.has_first_deposit|yesno:'true,false' }}"
+                    data-wallet="{{ u.wallet|yesno:'true,false' }}"
+                    data-joined="{{ u.date_joined|date:'U' }}"
+                    data-balance="{{ u.total_balance|default:'0' }}">
                     <td>
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="avatar-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-gradient);">
-                                <span class="text-white fw-medium">{{ u.username|first|upper }}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle" data-initial="{{ u.username|first|upper }}">
+                                {{ u.username|first|upper }}
                             </div>
                             <div>
-                                <div class="fw-medium">{{ u.username }}</div>
-                                <div class="d-flex align-items-center gap-2 mt-1">
-                                    {% if u.is_superuser %}
-                                    <span class="badge badge-soft-warning" style="font-size: 0.65rem;">Admin</span>
-                                    {% endif %}
-                                    {% if u.is_staff %}
-                                    <span class="badge badge-soft-info" style="font-size: 0.65rem;">Staff</span>
-                                    {% endif %}
-                                    <small class="text-muted">UID: {{ u.user_uid }}</small>
-                                </div>
+                                <div class="fw-semibold username">{{ u.username }}</div>
+                                <small class="text-muted uid">UID: {{ u.user_uid }}</small>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div class="d-flex flex-column">
-                            <a href="mailto:{{ u.email }}" class="text-decoration-none">{{ u.email }}</a>
-                            {% if u.is_verified %}
-                            <small class="text-success d-flex align-items-center gap-1 mt-1">
-                                <i class="fas fa-check-circle" style="font-size: 0.75rem;"></i>
-                                Verified
-                            </small>
+                        <a href="mailto:{{ u.email }}" class="text-decoration-none email">{{ u.email }}</a>
+                        <div>
+                            {% if u.has_first_deposit %}
+                                <small class="text-success d-flex align-items-center gap-1 mt-1">
+                                    <i class="fas fa-check-circle"></i>
+                                    Verified
+                                </small>
                             {% else %}
-                            <small class="text-warning d-flex align-items-center gap-1 mt-1">
-                                <i class="fas fa-exclamation-circle" style="font-size: 0.75rem;"></i>
-                                Unverified
-                            </small>
+                                <small class="text-warning d-flex align-items-center gap-1 mt-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    Unverified
+                                </small>
                             {% endif %}
                         </div>
                     </td>
-                    <td>
+                    <td class="wallet-cell">
                         {% if u.wallet %}
-                        <div class="d-flex flex-column">
-                            <div class="fw-semibold">₦{{ u.wallet.balance|floatformat:2 }}</div>
-                            <div class="d-flex gap-2 mt-1">
-                                <small class="text-muted" data-bs-toggle="tooltip" data-bs-title="Spot Balance">
-                                    <i class="fas fa-coins me-1"></i>₦{{ u.wallet.spot_balance|default:"0.00" }}
-                                </small>
+                            <div class="fw-semibold">
+                                ₦{{ u.total_balance|floatformat:2 }}
                             </div>
-                        </div>
+                            {% if u.first_deposit_amount %}
+                                <small class="text-muted d-block mt-1">
+                                    First deposit: ₦{{ u.first_deposit_amount|floatformat:2 }}
+                                </small>
+                            {% else %}
+                                <small class="text-muted d-block mt-1">
+                                    No first deposit
+                                </small>
+                            {% endif %}
                         {% else %}
-                        <span class="badge badge-soft-secondary">No Wallet</span>
+                            <span class="badge badge-soft-secondary">No Wallet</span>
                         {% endif %}
                     </td>
                     <td>
-                        <div class="d-flex flex-column">
-                            <span class="fw-medium">{{ u.date_joined|date:"M d, Y" }}</span>
-                            <small class="text-muted">{{ u.date_joined|timesince }} ago</small>
-                        </div>
+                        {{ u.date_joined|date:"M d, Y" }}
+                        <div class="text-muted small">{{ u.date_joined|timesince }} ago</div>
                     </td>
                     <td>
-                        <div class="d-flex flex-column gap-1">
-                            {% if u.is_active %}
-                            <span class="badge badge-soft-success d-inline-flex align-items-center gap-1" style="width: fit-content;">
-                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
-                                Active
-                            </span>
-                            {% else %}
-                            <span class="badge badge-soft-danger d-inline-flex align-items-center gap-1" style="width: fit-content;">
-                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
-                                Blocked
-                            </span>
-                            {% endif %}
-                            <small class="text-muted">
-                                {% if u.last_login %}
-                                Last login: {{ u.last_login|timesince }} ago
-                                {% else %}
-                                Never logged in
-                                {% endif %}
-                            </small>
-                        </div>
+                        {% if u.is_active %}
+                        <span class="badge badge-soft-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-soft-danger">Blocked</span>
+                        {% endif %}
                     </td>
-                    <td class="text-end pe-4">
-                        <div class="d-flex align-items-center justify-content-end gap-2">
-                            <a href="{% url 'adminpanel:admin_user_detail' u.id %}" class="btn btn-sm btn-outline-light d-flex align-items-center gap-2"
-                               data-bs-toggle="tooltip" data-bs-title="View Profile">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="{% url 'adminpanel:admin_user_detail' u.id %}">
-                                        <i class="fas fa-eye me-2"></i>View Profile
-                                    </a></li>
-                                    <li>
-                                        <form method="post"
-                                            action="{% url 'adminpanel:admin_delete_user' u.id %}"
-                                            onsubmit="return confirm('Are you sure you want to permanently delete this user?');">
-                                            {% csrf_token %}
-                                            <button type="submit" class="dropdown-item text-danger">
-                                                <i class="fas fa-trash me-2"></i>Delete User
-                                            </button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
+                    <td class="text-end">
+                        <a href="{% url 'adminpanel:admin_user_detail' u.id %}" class="btn btn-sm btn-outline-light">
+                            <i class="fas fa-eye"></i>
+                        </a>
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center py-5">
-                        <div class="empty-state">
-                            <div class="empty-state-icon mb-3">
-                                <i class="fas fa-users text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
-                            </div>
-                            <h5 class="text-muted">No users found</h5>
-                            <p class="text-muted mb-3">Start by adding your first user to the system</p>
-                            <button class="btn btn-primary d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                                <i class="fas fa-plus"></i>
-                                Add First User
-                            </button>
-                        </div>
-                    </td>
+                <tr id="noUsersRow">
+                    <td colspan="6" class="text-center py-5 text-muted">No users found</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    
+
+    <!-- No Results Message -->
+    <div id="noResultsMessage" class="text-center py-5" style="display: none;">
+        <div class="py-4">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No matching users found</h5>
+            <p class="text-muted small">Try a different search term or adjust your filters</p>
+        </div>
+    </div>
+
+    <!-- Mobile scroll hint -->
+    <div class="mobile-scroll-hint">
+        <i class="fas fa-arrow-left me-2"></i>Swipe left to see more columns
+    </div>
 </div>
 
-<!-- Additional CSS for this page -->
+<!-- Empty State (for when no users exist) -->
+<div id="emptyState" class="dashboard-card text-center py-5" style="display: none;">
+    <i class="fas fa-users fa-4x text-muted mb-4"></i>
+    <h4 class="text-muted">No Users Yet</h4>
+    <p class="text-muted mb-4">There are no users in the system at the moment.</p>
+</div>
+
 <style>
-    /* Custom styles for user management */
-    .user-row {
-        transition: all 0.2s ease;
+/* ===== Enhanced User Management Styles ===== */
+
+/* Search Container */
+.search-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.search-container:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.search-icon {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    flex: 1;
+    padding: 8px 0;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+.search-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Search Filters */
+.search-filters {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.search-filters .form-check-label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.search-filters .form-check-input:checked {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.stat-content h3 {
+    font-size: 1.4rem;
+    background: linear-gradient(135deg, var(--primary), #667eea);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Enhanced Avatar Colors */
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #fff;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Sortable Headers */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.sortable:hover {
+    color: var(--primary);
+}
+
+.sortable i {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.sortable:hover i {
+    opacity: 1;
+}
+
+.sortable.sorted-asc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-asc::after {
+    content: "↑";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+.sortable.sorted-desc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-desc::after {
+    content: "↓";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+/* Search Results Highlight */
+.highlight {
+    background-color: rgba(255, 193, 7, 0.15);
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #ffc107;
+}
+
+/* Mobile Scroll Hint Enhancement */
+.mobile-scroll-hint {
+    display: none;
+    padding: 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    color: #94a3b8;
+    border-top: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.mobile-scroll-hint i {
+    animation: bounceLeft 1.5s infinite;
+}
+
+@keyframes bounceLeft {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-4px); }
+}
+
+/* Loading State */
+.loading-row {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Empty State */
+#emptyState {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Search Results Info */
+.search-results-info {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Table Scroll */
+.table-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.users-table {
+    min-width: 900px;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .search-container {
+        padding: 6px 12px;
     }
     
-    .user-row:hover {
-        background: rgba(255, 255, 255, 0.03) !important;
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
     }
     
-    .avatar-circle {
-        transition: transform 0.2s ease;
+    .stat-item {
+        padding: 10px;
     }
     
-    .avatar-circle:hover {
-        transform: scale(1.1);
+    .users-table {
+        min-width: 1000px;
     }
     
-    .empty-state {
-        padding: 3rem 2rem;
+    .mobile-scroll-hint {
+        display: block;
     }
     
-    .empty-state-icon {
-        opacity: 0.5;
+    .search-filters {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 576px) {
+    .search-filters {
+        padding: 4px 8px;
     }
     
-    /* Badge styles */
-    .badge-soft {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 500;
+    .search-filters .form-check-label {
+        font-size: 0.8rem;
     }
-    
-    /* Table row selection */
-    #usersTable tbody tr.selected {
-        background: rgba(102, 126, 234, 0.1) !important;
-        border-left: 3px solid #667eea;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .d-flex.justify-content-between.align-items-center.mb-5 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        .d-flex.align-items-center.gap-3 {
-            width: 100%;
-            justify-content: flex-start;
-            flex-wrap: wrap;
-            gap: 0.5rem !important;
-        }
-        
-        .input-group {
-            width: 100% !important;
-        }
-        
-        .dashboard-card .d-flex.justify-content-between.align-items-center.mb-4 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        .dashboard-card .d-flex.align-items-center.gap-2 {
-            width: 100%;
-            justify-content: flex-start;
-        }
-        
-        .table-responsive {
-            font-size: 0.875rem;
-        }
-        
-        .d-flex.justify-content-between.align-items-center.mt-4 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        #usersTable th:nth-child(3),
-        #usersTable td:nth-child(3) {
-            display: none;
-        }
-        
-        #usersTable th:nth-child(6),
-        #usersTable td:nth-child(6) {
-            display: none;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        #usersTable th:nth-child(4),
-        #usersTable td:nth-child(4) {
-            display: none;
-        }
-    }
+}
 </style>
 
-<!-- JavaScript for this page -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
+// Color generation function for avatars
+function getColorFromString(str) {
+    if (!str) return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const colors = [
+        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+        'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+        'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+        'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+        'linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)'
+    ];
+    
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// Apply colors to avatars
+function applyAvatarColors() {
+    document.querySelectorAll('.avatar-circle').forEach(avatar => {
+        const initial = avatar.getAttribute('data-initial') || avatar.textContent.trim();
+        if (initial) {
+            avatar.style.background = getColorFromString(initial);
+        }
+    });
+}
+
+// User data cache
+let userData = [];
+
+// Initialize user data from table
+function initializeUserData() {
+    const rows = document.querySelectorAll('#usersTableBody .user-row');
+    userData = Array.from(rows).map(row => ({
+        element: row,
+        username: row.dataset.username,
+        email: row.dataset.email,
+        uid: row.dataset.uid,
+        status: row.dataset.status,
+        verified: row.dataset.verified === 'true',
+        hasWallet: row.dataset.wallet === 'true',
+        joined: parseInt(row.dataset.joined),
+        balance: parseFloat(row.dataset.balance)
+    }));
+}
+
+// Search functionality
+function performSearch() {
+    const searchInput = document.getElementById('userSearch');
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    const searchUsername = document.getElementById('filterUsername').checked;
+    const searchEmail = document.getElementById('filterEmail').checked;
+    const searchUID = document.getElementById('filterUID').checked;
+    
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const noUsersRow = document.getElementById('noUsersRow');
+    const searchResultsInfo = document.getElementById('searchResultsInfo');
+    const matchCount = document.getElementById('matchCount');
+    const visibleCount = document.getElementById('visibleCount');
+    
+    let matchCountValue = 0;
+    
+    if (userData.length === 0) initializeUserData();
+    
+    userData.forEach(user => {
+        const { element, username, email, uid } = user;
+        let matches = false;
         
-        // Initialize modals
-        const addUserModal = new bootstrap.Modal(document.getElementById('addUserModal'));
-        
-        // Search functionality
-        const userSearch = document.getElementById('userSearch');
-        if (userSearch) {
-            userSearch.addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
-                const rows = document.querySelectorAll('.user-row');
-                let visibleCount = 0;
-                
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-                
-                // Update count display
-                const countElement = document.querySelector('.dashboard-card p.text-muted.mb-0');
-                if (countElement) {
-                    countElement.textContent = `${visibleCount} users found`;
-                }
-            });
+        if (searchTerm) {
+            if (searchUsername && username.includes(searchTerm)) matches = true;
+            if (searchEmail && email.includes(searchTerm)) matches = true;
+            if (searchUID && uid.includes(searchTerm)) matches = true;
+        } else {
+            matches = true;
         }
         
-        // Row selection and bulk actions
-        const selectAllUsers = document.getElementById('selectAllUsers');
-        const userCheckboxes = document.querySelectorAll('.user-checkbox');
-        const selectedUserCount = document.getElementById('selectedUserCount');
-        const bulkUserActionsBtn = document.getElementById('bulkUserActionsBtn');
-        
-        // Select all functionality
-        if (selectAllUsers) {
-            selectAllUsers.addEventListener('change', function() {
-                const isChecked = this.checked;
-                userCheckboxes.forEach(checkbox => {
-                    checkbox.checked = isChecked;
-                    toggleUserRowSelection(checkbox);
-                });
-                updateUserSelectionUI();
-            });
-        }
-        
-        // Individual checkbox functionality
-        userCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                toggleUserRowSelection(this);
-                updateUserSelectionUI();
-            });
-        });
-        
-        function toggleUserRowSelection(checkbox) {
-            const row = checkbox.closest('tr');
-            if (checkbox.checked) {
-                row.classList.add('selected');
+        if (matches) {
+            element.style.display = '';
+            matchCountValue++;
+            
+            // Highlight matching text
+            if (searchTerm) {
+                highlightText(element, searchTerm);
             } else {
-                row.classList.remove('selected');
+                removeHighlights(element);
             }
+        } else {
+            element.style.display = 'none';
+            removeHighlights(element);
+        }
+    });
+    
+    // Update UI based on results
+    visibleCount.textContent = matchCountValue;
+    
+    if (searchTerm) {
+        if (matchCountValue === 0) {
+            noResultsMessage.style.display = 'block';
+            if (noUsersRow) noUsersRow.style.display = 'none';
+        } else {
+            noResultsMessage.style.display = 'none';
+            if (noUsersRow) noUsersRow.style.display = 'none';
         }
         
-        function updateUserSelectionUI() {
-            const selected = document.querySelectorAll('.user-checkbox:checked');
-            const count = selected.length;
+        searchResultsInfo.style.display = 'block';
+        matchCount.textContent = `${matchCountValue} match${matchCountValue !== 1 ? 'es' : ''}`;
+    } else {
+        noResultsMessage.style.display = 'none';
+        searchResultsInfo.style.display = 'none';
+        if (noUsersRow && userData.length === 0) {
+            noUsersRow.style.display = '';
+        }
+    }
+    
+    updateUserCounts();
+}
+
+// Highlight matching text
+function highlightText(element, searchTerm) {
+    const textElements = element.querySelectorAll('.username, .email, .uid');
+    
+    textElements.forEach(el => {
+        const text = el.textContent;
+        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        const highlighted = text.replace(regex, '<span class="highlight">$1</span>');
+        if (highlighted !== text) {
+            el.innerHTML = highlighted;
+        }
+    });
+}
+
+// Remove highlights
+function removeHighlights(element) {
+    const highlights = element.querySelectorAll('.highlight');
+    highlights.forEach(highlight => {
+        const parent = highlight.parentNode;
+        parent.textContent = parent.textContent;
+    });
+}
+
+// Sort functionality
+let currentSort = { column: null, direction: 'asc' };
+
+function sortTable(column) {
+    const tbody = document.getElementById('usersTableBody');
+    const rows = Array.from(tbody.querySelectorAll('.user-row'));
+    const sortableHeaders = document.querySelectorAll('.sortable');
+    
+    // Update sort headers
+    sortableHeaders.forEach(header => {
+        header.classList.remove('sorted-asc', 'sorted-desc');
+        if (header.dataset.sort === column) {
+            header.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        }
+    });
+    
+    // Sort rows
+    rows.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (column) {
+            case 'username':
+                aValue = a.dataset.username;
+                bValue = b.dataset.username;
+                break;
+            case 'email':
+                aValue = a.dataset.email;
+                bValue = b.dataset.email;
+                break;
+            case 'wallet':
+                aValue = a.dataset.balance;
+                bValue = b.dataset.balance;
+                break;
+            case 'joined':
+                aValue = parseInt(a.dataset.joined);
+                bValue = parseInt(b.dataset.joined);
+                break;
+            case 'status':
+                aValue = a.dataset.status;
+                bValue = b.dataset.status;
+                break;
+            default:
+                return 0;
+        }
+        
+        let comparison = 0;
+        if (aValue < bValue) comparison = -1;
+        if (aValue > bValue) comparison = 1;
+        
+        return currentSort.direction === 'asc' ? comparison : -comparison;
+    });
+    
+    // Reappend rows
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Update userData order
+    initializeUserData();
+}
+
+// Update user counts
+function updateUserCounts() {
+    const visibleRows = document.querySelectorAll('#usersTableBody .user-row[style=""]');
+    let verifiedCount = 0;
+    let walletCount = 0;
+    
+    visibleRows.forEach(row => {
+        if (row.dataset.verified === 'true') verifiedCount++;
+        if (row.dataset.wallet === 'true') walletCount++;
+    });
+    
+    document.getElementById('verifiedCount').textContent = verifiedCount;
+    document.getElementById('walletCount').textContent = walletCount;
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Search input
+    const searchInput = document.getElementById('userSearch');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const searchFilters = document.querySelectorAll('.search-filter');
+    
+    // Debounced search
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 300);
+    });
+    
+    // Clear search
+    clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        performSearch();
+        searchInput.focus();
+    });
+    
+    // Filter changes
+    searchFilters.forEach(filter => {
+        filter.addEventListener('change', performSearch);
+    });
+    
+    // Sort headers
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', () => {
+            const column = header.dataset.sort;
             
-            if (count > 0) {
-                selectedUserCount.classList.remove('d-none');
-                selectedUserCount.querySelector('span').textContent = `${count} users selected`;
-                bulkUserActionsBtn.disabled = false;
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
             } else {
-                selectedUserCount.classList.add('d-none');
-                bulkUserActionsBtn.disabled = true;
-                selectAllUsers.checked = false;
+                currentSort.column = column;
+                currentSort.direction = 'asc';
             }
-        }
-        
-        // Bulk actions for users
-        document.getElementById('bulkExportUsers')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            const selected = getSelectedUserIds();
-            if (selected.length > 0) {
-                console.log('Exporting users:', selected);
-            }
-        });
-        
-        document.getElementById('bulkActivateUsers')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            const selected = getSelectedUserIds();
-            if (selected.length > 0) {
-                if (confirm(`Activate ${selected.length} selected user(s)?`)) {
-                    console.log('Activating users:', selected);
-                }
-            }
-        });
-        
-        document.getElementById('bulkDeleteUsers')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            const selected = getSelectedUserIds();
-            if (selected.length > 0) {
-                if (confirm(`Are you sure you want to delete ${selected.length} user(s)? This action cannot be undone.`)) {
-                    console.log('Deleting users:', selected);
-                }
-            }
-        });
-        
-        function getSelectedUserIds() {
-            const selected = [];
-            document.querySelectorAll('.user-checkbox:checked').forEach(checkbox => {
-                selected.push(checkbox.value);
-            });
-            return selected;
-        }
-        
-        // Refresh button
-        document.getElementById('refreshUsersBtn')?.addEventListener('click', function() {
-            const btn = this;
-            const icon = btn.querySelector('i');
             
-            // Add spinning animation
-            icon.classList.add('fa-spin');
-            btn.disabled = true;
-            
-            // Simulate refresh
-            setTimeout(() => {
-                icon.classList.remove('fa-spin');
-                btn.disabled = false;
-                
-                // Show success message
-                const toast = document.createElement('div');
-                toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
-                toast.style.zIndex = '9999';
-                toast.innerHTML = `
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-check-circle"></i>
-                        <span>User list refreshed!</span>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-                
-                setTimeout(() => {
-                    toast.remove();
-                }, 2000);
-            }, 1000);
-        });
-        
-        // Animate stats on load
-        const stats = document.querySelectorAll('.dashboard-card h3.mb-0');
-        stats.forEach(stat => {
-            const text = stat.textContent;
-            const number = parseFloat(text.replace(/[^0-9.]/g, ''));
-            if (!isNaN(number)) {
-                animateNumber(stat, number);
-            }
-        });
-        
-        function animateNumber(element, finalValue) {
-            let current = 0;
-            const increment = finalValue / 50;
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= finalValue) {
-                    element.textContent = finalValue.toLocaleString();
-                    clearInterval(timer);
-                } else {
-                    element.textContent = Math.floor(current).toLocaleString();
-                }
-            }, 20);
-        }
-        
-        // Form submission for adding user
-        document.getElementById('addUserForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Here you would typically make an AJAX request to create the user
-            console.log('Creating new user...');
-            
-            // Show success message
-            const toast = document.createElement('div');
-            toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
-            toast.style.zIndex = '9999';
-            toast.innerHTML = `
-                <div class="d-flex align-items-center gap-2">
-                    <i class="fas fa-check-circle"></i>
-                    <span>User created successfully!</span>
-                </div>
-            `;
-            document.body.appendChild(toast);
-            
-            // Close modal
-            addUserModal.hide();
-            
-            // Clear form
-            this.reset();
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 2000);
-        });
-        
-        // Add hover effect to email links
-        document.querySelectorAll('a[href^="mailto:"]').forEach(link => {
-            link.addEventListener('mouseenter', function() {
-                this.style.textDecoration = 'underline';
-            });
-            link.addEventListener('mouseleave', function() {
-                this.style.textDecoration = 'none';
-            });
+            sortTable(column);
         });
     });
+    
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshUsersBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            const icon = refreshBtn.querySelector('i');
+            icon.classList.add('fa-spin');
+            refreshBtn.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                // In a real implementation, this would fetch fresh data
+                initializeUserData();
+                applyAvatarColors();
+                performSearch();
+                updateUserCounts();
+                
+                icon.classList.remove('fa-spin');
+                refreshBtn.disabled = false;
+                
+                // Show refresh success
+                const originalText = refreshBtn.innerHTML;
+                refreshBtn.innerHTML = '<i class="fas fa-check"></i> Refreshed';
+                setTimeout(() => {
+                    refreshBtn.innerHTML = originalText;
+                }, 1000);
+            }, 800);
+        });
+    }
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Focus search with Ctrl/Cmd + K
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+        }
+        
+        // Clear search with Escape
+        if (e.key === 'Escape' && document.activeElement === searchInput) {
+            searchInput.value = '';
+            performSearch();
+        }
+    });
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+    applyAvatarColors();
+    initializeUserData();
+    updateUserCounts();
+    setupEventListeners();
+    
+    // Check if no users exist
+    if (userData.length === 0) {
+        document.getElementById('emptyState').style.display = 'block';
+    }
+});
 </script>
+
 {% endblock %}

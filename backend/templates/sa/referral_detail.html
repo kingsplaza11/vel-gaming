@@ -1,16 +1,94 @@
+
 {% extends "sa/base.html" %}
 {% block title %}Referral Details • {{ user.username }}{% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-5">
-    <div>
-        <div class="d-flex align-items-center gap-3 mb-2">
-            <a href="{% url 'adminpanel:referral_list' %}" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2">
-                <i class="fas fa-arrow-left"></i>
-                <span>Back</span>
-            </a>
-            <h1 class="h2 mb-0">Referral Details</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'adminpanel:referral_list' %}" class="btn btn-outline-light btn-sm d-flex align-items-center gap-2">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back</span>
+        </a>
+        <div>
+            <h1 class="h2 mb-1">Referral Details</h1>
+            <p class="text-muted mb-0">View referral relationship between {{ referrer.username }} and {{ user.username }}</p>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i>
+            Refresh
+        </button>
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#" id="exportData">
+                    <i class="fas fa-download me-2"></i>Export Data
+                </a></li>
+                <li><a class="dropdown-item" href="#" id="sendEmail">
+                    <i class="fas fa-envelope me-2"></i>Send Email
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#" id="deleteReferral">
+                    <i class="fas fa-trash me-2"></i>Delete Record
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Connection Timeline -->
+<div class="dashboard-card mb-4">
+    <div class="connection-timeline">
+        <div class="row align-items-center">
+            <!-- Referrer -->
+            <div class="col-12 col-md-4">
+                <div class="timeline-node referrer-node">
+                    <div class="avatar-circle large" data-initial="{{ referrer.username|first|upper }}">
+                        {{ referrer.username|first|upper }}
+                    </div>
+                    <div class="mt-3 text-center">
+                        <h5 class="mb-1">{{ referrer.username }}</h5>
+                        <p class="text-muted small mb-2">Referrer</p>
+                        <span class="badge badge-soft-success">Active</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Connection -->
+            <div class="col-12 col-md-4">
+                <div class="text-center">
+                    <div class="connection-icon">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <div class="mt-3">
+                        <h6 class="text-muted mb-1">Referred On</h6>
+                        <p class="mb-0">{{ user.date_joined|date:"M d, Y" }}</p>
+                        <small class="text-muted">{{ user.date_joined|timesince }} ago</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Referred User -->
+            <div class="col-12 col-md-4">
+                <div class="timeline-node referred-node">
+                    <div class="avatar-circle large" data-initial="{{ user.username|first|upper }}">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <div class="mt-3 text-center">
+                        <h5 class="mb-1">{{ user.username }}</h5>
+                        <p class="text-muted small mb-2">Referred User</p>
+                        {% if has_first_deposit %}
+                        <span class="badge badge-soft-success">Verified</span>
+                        {% else %}
+                        <span class="badge badge-soft-warning">Unverified</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -18,73 +96,71 @@
 <!-- User Profile Cards -->
 <div class="row g-4 mb-5">
     <!-- Referrer Card -->
-    <div class="col-xl-6">
+    <div class="col-12 col-lg-6">
         <div class="dashboard-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" 
-                         style="width: 50px; height: 50px; border-radius: 12px; font-size: 1.25rem;">
+                    <div class="card-icon primary">
                         <i class="fas fa-user-tie"></i>
                     </div>
                     <div>
-                        <h6 class="text-uppercase text-muted mb-1">Referrer</h6>
+                        <h6 class="text-uppercase text-muted mb-1">Referrer Details</h6>
                         <h4 class="mb-0">{{ referrer.username }}</h4>
                     </div>
                 </div>
                 {% if referrer.referral_code %}
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-copy me-2"></i>Copy Code</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-share me-2"></i>Share Link</a></li>
-                    </ul>
-                </div>
+                <button class="btn btn-sm btn-outline-light copy-btn" data-text="{{ referrer.referral_code }}">
+                    <i class="fas fa-copy me-1"></i>Copy Code
+                </button>
                 {% endif %}
             </div>
             
-            <div class="row g-3 mt-4">
+            <div class="row g-3 mt-3">
                 <div class="col-md-6">
                     <div class="info-item">
-                        <small class="text-muted d-block mb-1">Email</small>
-                        <p class="mb-0">{{ referrer.email|default:"Not provided" }}</p>
+                        <small class="text-muted d-block mb-1">Email Address</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <a href="mailto:{{ referrer.email }}" class="text-decoration-none">{{ referrer.email|default:"Not provided" }}</a>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="info-item">
                         <small class="text-muted d-block mb-1">Referral Code</small>
-                        {% if referrer.referral_code %}
                         <div class="d-flex align-items-center gap-2">
-                            <code class="bg-dark px-2 py-1 rounded">{{ referrer.referral_code }}</code>
-                            <button class="btn btn-sm btn-link text-primary p-0" onclick="copyToClipboard('{{ referrer.referral_code }}')">
+                            <code class="referral-code">{{ referrer.referral_code|default:"No code" }}</code>
+                            {% if referrer.referral_code %}
+                            <button class="btn btn-sm btn-link text-primary p-0 copy-btn" data-text="{{ referrer.referral_code }}">
                                 <i class="fas fa-copy"></i>
                             </button>
+                            {% endif %}
                         </div>
-                        {% else %}
-                        <span class="text-muted">No referral code</span>
-                        {% endif %}
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="info-item">
                         <small class="text-muted d-block mb-1">Total Referrals</small>
-                        <p class="mb-0">{{ referrer.total_referrals|default:"0" }}</p>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-users text-primary"></i>
+                            <span class="fw-medium">{{ referrer_total_referrals|default:"0" }}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="info-item">
-                        <small class="text-muted d-block mb-1">Status</small>
-                        <span class="badge badge-soft-success d-inline-flex align-items-center gap-1">
-                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
-                            Active
-                        </span>
+                        <small class="text-muted d-block mb-1">Member Since</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-calendar text-primary"></i>
+                            <span>{{ referrer.date_joined|date:"M d, Y" }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <div class="mt-4 pt-3 border-top border-secondary">
-                <a href="#" class="btn btn-outline-light w-100 d-flex align-items-center justify-content-center gap-2">
+                <a href="{% url 'adminpanel:admin_user_detail' referrer.id %}" 
+                   class="btn btn-outline-light w-100 d-flex align-items-center justify-content-center gap-2">
                     <i class="fas fa-external-link-alt"></i>
                     View Full Profile
                 </a>
@@ -93,246 +169,315 @@
     </div>
     
     <!-- Referred User Card -->
-    <div class="col-xl-6">
+    <div class="col-12 col-lg-6">
         <div class="dashboard-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" 
-                         style="width: 50px; height: 50px; border-radius: 12px; font-size: 1.25rem;">
+                    <div class="card-icon success">
                         <i class="fas fa-user-plus"></i>
                     </div>
                     <div>
-                        <h6 class="text-uppercase text-muted mb-1">Referred User</h6>
+                        <h6 class="text-uppercase text-muted mb-1">Referred User Details</h6>
                         <h4 class="mb-0">{{ user.username }}</h4>
                     </div>
                 </div>
-                <span class="badge badge-soft-primary">New</span>
+                {% if has_first_deposit %}
+                <span class="badge badge-soft-success">Verified</span>
+                {% else %}
+                <span class="badge badge-soft-warning">Unverified</span>
+                {% endif %}
             </div>
             
-            <div class="row g-3 mt-4">
+            <div class="row g-3 mt-3">
                 <div class="col-md-6">
                     <div class="info-item">
-                        <small class="text-muted d-block mb-1">Email</small>
-                        <p class="mb-0">{{ user.email|default:"Not provided" }}</p>
+                        <small class="text-muted d-block mb-1">Email Address</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <a href="mailto:{{ user.email }}" class="text-decoration-none">{{ user.email|default:"Not provided" }}</a>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="info-item">
-                        <small class="text-muted d-block mb-1">Joined</small>
-                        <p class="mb-0 d-flex align-items-center gap-2">
-                            <i class="fas fa-calendar text-primary"></i>
-                            {{ user.date_joined|date:"M d, Y" }}
-                        </p>
+                        <small class="text-muted d-block mb-1">Account Created</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-calendar-plus text-primary"></i>
+                            <span>{{ user.date_joined|date:"M d, Y" }}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="info-item">
-                        <small class="text-muted d-block mb-1">Member Since</small>
-                        <p class="mb-0">{{ user.date_joined|timesince }}</p>
+                        <small class="text-muted d-block mb-1">Account Age</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-clock text-primary"></i>
+                            <span>{{ user.date_joined|timesince }}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="info-item">
-                        <small class="text-muted d-block mb-1">Account Status</small>
+                        <small class="text-muted d-block mb-1">Verification Status</small>
+                        {% if has_first_deposit %}
                         <span class="badge badge-soft-success d-inline-flex align-items-center gap-1">
                             <i class="fas fa-check-circle"></i>
                             Verified
                         </span>
+                        {% else %}
+                        <span class="badge badge-soft-warning d-inline-flex align-items-center gap-1">
+                            <i class="fas fa-exclamation-circle"></i>
+                            Unverified
+                        </span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
             
             <div class="mt-4 pt-3 border-top border-secondary">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <small class="text-muted d-block">Last Activity</small>
-                        <p class="mb-0">2 hours ago</p>
-                    </div>
-                    <a href="#" class="btn btn-primary btn-sm d-flex align-items-center gap-2">
-                        <i class="fas fa-edit"></i>
-                        Edit User
-                    </a>
-                </div>
+                <a href="{% url 'adminpanel:admin_user_detail' user.id %}" 
+                   class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
+                    <i class="fas fa-user-edit"></i>
+                    View & Edit Profile
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Wallet Balance Cards -->
-<div class="row g-4 mb-5">
-    <div class="col-xl-4 col-md-6">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon" style="background: rgba(102, 126, 234, 0.2); color: #667eea;">
-                        <i class="fas fa-wallet"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Main Balance</h6>
-                        <h3 class="mb-0">₦{{ wallet.balance|default:"0.00" }}</h3>
-                    </div>
-                </div>
-                <span class="badge badge-soft-success">+12%</span>
-            </div>
-            <div class="progress" style="height: 4px;">
-                <div class="progress-bar" role="progressbar" style="width: 75%"></div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-xl-4 col-md-6">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon" style="background: rgba(72, 187, 120, 0.2); color: #48bb78;">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Spot Balance</h6>
-                        <h3 class="mb-0">₦{{ wallet.spot_balance|default:"0.00" }}</h3>
-                    </div>
-                </div>
-                <span class="badge badge-soft-warning">-3%</span>
-            </div>
-            <div class="progress" style="height: 4px;">
-                <div class="progress-bar bg-success" role="progressbar" style="width: 45%"></div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-xl-4 col-md-12">
-        <div class="dashboard-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="card-icon" style="background: rgba(237, 137, 54, 0.2); color: #ed8936;">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-uppercase text-muted mb-1">Locked Balance</h6>
-                        <h3 class="mb-0">₦{{ wallet.locked_balance|default:"0.00" }}</h3>
-                    </div>
-                </div>
-                <span class="badge badge-soft-success">+5%</span>
-            </div>
-            <div class="progress" style="height: 4px;">
-                <div class="progress-bar bg-warning" role="progressbar" style="width: 30%"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Earnings Summary -->
+<!-- Financial Summary -->
 <div class="dashboard-card mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h5 class="mb-1">Credit Transactions Summary</h5>
-            <p class="text-muted mb-0">Earnings from this referral relationship</p>
+            <h5 class="mb-1">Financial Summary</h5>
+            <p class="text-muted mb-0">Earnings and transactions from this referral</p>
         </div>
         <div class="dropdown">
             <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                <i class="fas fa-filter me-1"></i>Filter
+                <i class="fas fa-calendar me-1"></i>Last 30 Days
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">All Time</a></li>
-                <li><a class="dropdown-item" href="#">Last 30 Days</a></li>
-                <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
                 <li><a class="dropdown-item" href="#">Today</a></li>
+                <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                <li><a class="dropdown-item active" href="#">Last 30 Days</a></li>
+                <li><a class="dropdown-item" href="#">Last 90 Days</a></li>
+                <li><a class="dropdown-item" href="#">All Time</a></li>
             </ul>
         </div>
     </div>
     
-    <div class="row g-4">
-        <div class="col-md-3 col-6">
-            <div class="text-center p-3 rounded" style="background: rgba(102, 126, 234, 0.1);">
-                <small class="text-muted d-block mb-2">Today</small>
-                <h4 class="mb-0">₦{{ daily }}</h4>
-                <small class="text-success d-flex align-items-center justify-content-center gap-1 mt-1">
-                    <i class="fas fa-arrow-up"></i>
-                    5 transactions
-                </small>
+    <div class="row g-3">
+        <!-- Today -->
+        <div class="col-6 col-sm-3">
+            <div class="stat-card-small gradient-info">
+                <div class="stat-icon">
+                    <i class="fas fa-sun"></i>
+                </div>
+                <div class="stat-content">
+                    <h6 class="text-uppercase">Today</h6>
+                    <h3 class="mb-0">₦{{ daily|default:"0.00"|floatformat:2 }}</h3>
+                </div>
             </div>
         </div>
-        <div class="col-md-3 col-6">
-            <div class="text-center p-3 rounded" style="background: rgba(72, 187, 120, 0.1);">
-                <small class="text-muted d-block mb-2">This Week</small>
-                <h4 class="mb-0">₦{{ weekly }}</h4>
-                <small class="text-success d-flex align-items-center justify-content-center gap-1 mt-1">
-                    <i class="fas fa-arrow-up"></i>
-                    24 transactions
-                </small>
+        
+        <!-- This Week -->
+        <div class="col-6 col-sm-3">
+            <div class="stat-card-small gradient-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar-week"></i>
+                </div>
+                <div class="stat-content">
+                    <h6 class="text-uppercase">This Week</h6>
+                    <h3 class="mb-0">₦{{ weekly|default:"0.00"|floatformat:2 }}</h3>
+                </div>
             </div>
         </div>
-        <div class="col-md-3 col-6">
-            <div class="text-center p-3 rounded" style="background: rgba(237, 137, 54, 0.1);">
-                <small class="text-muted d-block mb-2">This Month</small>
-                <h4 class="mb-0">₦{{ monthly }}</h4>
-                <small class="text-warning d-flex align-items-center justify-content-center gap-1 mt-1">
-                    <i class="fas fa-minus"></i>
-                    89 transactions
-                </small>
+        
+        <!-- First Deposit Amount -->
+        <div class="col-6 col-sm-3">
+            <div class="stat-card-small gradient-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-money-check-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <h6 class="text-uppercase">First Deposit</h6>
+                    <h3 class="mb-0">₦{{ first_deposit_amount|default:"0.00"|floatformat:2 }}</h3>
+                </div>
             </div>
         </div>
-        <div class="col-md-3 col-6">
-            <div class="text-center p-3 rounded" style="background: rgba(245, 101, 101, 0.1);">
-                <small class="text-muted d-block mb-2">Lifetime</small>
-                <h4 class="mb-0">₦{{ total }}</h4>
-                <small class="text-success d-flex align-items-center justify-content-center gap-1 mt-1">
-                    <i class="fas fa-arrow-up"></i>
-                    156 transactions
-                </small>
+        
+        <!-- Total -->
+        <div class="col-6 col-sm-3">
+            <div class="stat-card-small gradient-success">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="stat-content">
+                    <h6 class="text-uppercase">Total</h6>
+                    <h3 class="mb-0">₦{{ total|default:"0.00"|floatformat:2 }}</h3>
+                </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wallet Information -->
+<div class="row g-4 mb-5">
+    <!-- Total Balance -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon primary">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Total Balance</h6>
+                        <h3 class="mb-0">₦{{ total_balance|default:"0.00"|floatformat:2 }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar" role="progressbar" style="width: {% widthratio total_balance 1000000 100 %}%"></div>
+            </div>
+            <small class="text-muted d-flex align-items-center gap-1 mt-2">
+                <i class="fas fa-history"></i>
+                Main + Spot balance
+            </small>
+        </div>
+    </div>
+    
+    <!-- Spot Balance -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon success">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Spot Balance</h6>
+                        <h3 class="mb-0">₦{{ wallet.spot_balance|default:"0.00"|floatformat:2 }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio wallet.spot_balance|default:0 1000000 100 %}%"></div>
+            </div>
+            <small class="text-muted d-flex align-items-center gap-1 mt-2">
+                <i class="fas fa-trend-up"></i>
+                Active trading
+            </small>
+        </div>
+    </div>
+    
+    <!-- Referral Bonus -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon warning">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted mb-1">Referral Bonus</h6>
+                        <h3 class="mb-0">₦{{ referrer_total_bonus|default:"0.00"|floatformat:2 }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar bg-warning" role="progressbar" style="width: {% widthratio referrer_total_bonus|default:0 100000 100 %}%"></div>
+            </div>
+            <small class="text-muted d-flex align-items-center gap-1 mt-2">
+                <i class="fas fa-coins"></i>
+                From {{ referrer_total_referrals|default:"0" }} referrals
+            </small>
         </div>
     </div>
 </div>
 
 <!-- Transactions Table -->
 <div class="dashboard-card">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h5 class="mb-1">Recent Transactions</h5>
+            <p class="text-muted mb-0">{{ transactions|length }} transactions found</p>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <div class="input-group input-group-sm" style="width: 200px;">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" class="form-control" placeholder="Search transactions...">
+            <div class="search-container small">
+                <div class="search-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <input type="text" class="search-input" placeholder="Search transactions..." id="transactionSearch">
             </div>
+            <button class="btn btn-sm btn-outline-light" id="filterTransactions">
+                <i class="fas fa-filter"></i>
+            </button>
         </div>
     </div>
     
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
+    <div class="table-scroll-wrapper">
+        <table class="table table-hover align-middle mb-0 transactions-table">
             <thead>
                 <tr>
-                    <th>Date & Time</th>
-                    <th>Transaction Type</th>
-                    <th>Amount</th>
+                    <th class="sortable" data-sort="date">
+                        Date & Time <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="type">
+                        Type <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th class="sortable" data-sort="amount">
+                        Amount <i class="fas fa-sort ms-1"></i>
+                    </th>
                     <th>Reference</th>
-                    <th class="text-end pe-4">Actions</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="transactionsTableBody">
                 {% for tx in transactions %}
-                <tr>
+                <tr class="transaction-row" 
+                    data-date="{{ tx.created_at|date:'U' }}"
+                    data-type="{{ tx.tx_type|lower }}"
+                    data-amount="{{ tx.amount }}"
+                    data-status="{{ tx.status|default:'completed'|lower }}"
+                    data-first-deposit="{{ tx.first_deposit|yesno:'true,false' }}">
                     <td>
                         <div class="d-flex flex-column">
                             <span class="fw-medium">{{ tx.created_at|date:"M d, Y" }}</span>
-                            <small class="text-muted">{{ tx.created_at|date:"H:i A" }}</small>
+                            <small class="text-muted">{{ tx.created_at|time:"H:i A" }}</small>
+                            {% if tx.first_deposit %}
+                            <small class="text-warning d-flex align-items-center gap-1 mt-1">
+                                <i class="fas fa-star"></i>
+                                First Deposit
+                            </small>
+                            {% endif %}
                         </div>
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             {% if tx.tx_type == "CREDIT" %}
-                            <div class="transaction-icon bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" 
-                                 style="width: 32px; height: 32px; border-radius: 8px;">
+                            <div class="transaction-icon {% if tx.first_deposit %}first-deposit{% else %}credit{% endif %}">
                                 <i class="fas fa-arrow-down"></i>
                             </div>
                             <div>
-                                <span class="d-block fw-medium">Credit</span>
-                                <small class="text-muted">Incoming</small>
+                                <span class="d-block fw-medium">
+                                    {% if tx.first_deposit %}
+                                    First Deposit
+                                    {% else %}
+                                    Credit
+                                    {% endif %}
+                                </span>
+                                <small class="text-muted">
+                                    {% if tx.first_deposit %}
+                                    Initial deposit
+                                    {% else %}
+                                    Incoming
+                                    {% endif %}
+                                </small>
                             </div>
                             {% else %}
-                            <div class="transaction-icon bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center" 
-                                 style="width: 32px; height: 32px; border-radius: 8px;">
+                            <div class="transaction-icon debit">
                                 <i class="fas fa-arrow-up"></i>
                             </div>
                             <div>
@@ -344,43 +489,68 @@
                     </td>
                     <td>
                         <div class="d-flex flex-column">
-                            <span class="fw-bold {% if tx.tx_type == 'CREDIT' %}text-success{% else %}text-danger{% endif %}">
-                                ₦{{ tx.amount }}
+                            <span class="fw-bold {% if tx.tx_type == 'CREDIT' %}{% if tx.first_deposit %}text-warning{% else %}text-success{% endif %}{% else %}text-danger{% endif %}">
+                                ₦{{ tx.amount|floatformat:2 }}
                             </span>
                             <small class="text-muted">{{ tx.get_tx_type_display }}</small>
+                            {% if tx.first_deposit %}
+                            <small class="text-warning d-flex align-items-center gap-1 mt-1">
+                                <i class="fas fa-certificate"></i>
+                                Initial deposit
+                            </small>
+                            {% endif %}
                         </div>
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <code class="bg-dark px-2 py-1 rounded">{{ tx.reference|truncatechars:12 }}</code>
-                            <button class="btn btn-sm btn-link text-primary p-0" onclick="copyToClipboard('{{ tx.reference }}')">
+                            <code class="reference-code">{{ tx.reference|truncatechars:12 }}</code>
+                            <button class="btn btn-sm btn-link text-primary p-0 copy-btn" data-text="{{ tx.reference }}">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
                     </td>
-                    <td class="text-end pe-4">
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-ellipsis-v"></i>
+                    <td>
+                        {% if tx.status == 'completed' %}
+                        <span class="status-badge success">
+                            <i class="fas fa-check-circle"></i>
+                            Completed
+                        </span>
+                        {% elif tx.status == 'pending' %}
+                        <span class="status-badge warning">
+                            <i class="fas fa-clock"></i>
+                            Pending
+                        </span>
+                        {% elif tx.status == 'failed' %}
+                        <span class="status-badge danger">
+                            <i class="fas fa-times-circle"></i>
+                            Failed
+                        </span>
+                        {% else %}
+                        <span class="status-badge info">{{ tx.status|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="action-buttons">
+                            <a href="#" class="btn btn-sm btn-outline-light action-btn" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-light action-btn copy-btn" 
+                                    data-text="{{ tx.reference }}"
+                                    title="Copy Reference">
+                                <i class="fas fa-copy"></i>
                             </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View Details</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-receipt me-2"></i>Generate Receipt</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-flag me-2"></i>Report Issue</a></li>
-                            </ul>
                         </div>
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
+                <tr id="noTransactionsRow">
                     <td colspan="6" class="text-center py-5">
                         <div class="empty-state">
                             <div class="empty-state-icon mb-3">
-                                <i class="fas fa-exchange-alt text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <i class="fas fa-exchange-alt"></i>
                             </div>
                             <h5 class="text-muted">No transactions found</h5>
-                            <p class="text-muted mb-0">This user hasn't made any transactions yet</p>
+                            <p class="text-muted small mb-3">This user hasn't made any transactions yet</p>
                         </div>
                     </td>
                 </tr>
@@ -389,200 +559,787 @@
         </table>
     </div>
     
+    <!-- No Results Message -->
+    <div id="noResultsMessage" class="text-center py-5" style="display: none;">
+        <div class="py-4">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No matching transactions found</h5>
+            <p class="text-muted small">Try a different search term</p>
+        </div>
+    </div>
+    
+    <!-- Mobile scroll hint -->
+    <div class="mobile-scroll-hint">
+        <i class="fas fa-arrow-left me-2"></i>Swipe left to see more columns
+    </div>
+    
     {% if transactions %}
-    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4 pt-3 border-top border-secondary">
         <div>
-            <small class="text-muted">Showing {{ transactions|length }} of {{ total_transactions_count }} transactions</small>
+            <small class="text-muted">Showing {{ transactions|length }} of {{ transactions|length }} transactions</small>
         </div>
         <nav aria-label="Transaction pagination">
             <ul class="pagination pagination-sm mb-0">
                 <li class="page-item disabled">
-                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                    <a class="page-link" href="#">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
                 </li>
-                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item active"><span class="page-link">1</span></li>
                 <li class="page-item">
-                    <a class="page-link" href="#">Next</a>
+                    <a class="page-link" href="#">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
                 </li>
             </ul>
         </nav>
     </div>
     {% endif %}
 </div>
-
-<!-- Additional CSS for this page -->
 <style>
-    /* Custom styles for referral details */
-    .info-item {
-        padding: 0.5rem 0;
-    }
-    
-    .transaction-icon {
-        transition: transform 0.2s ease;
-    }
-    
-    .transaction-icon:hover {
-        transform: scale(1.1);
-    }
-    
-    .empty-state {
-        padding: 2rem;
-    }
-    
-    .empty-state-icon {
-        opacity: 0.5;
-    }
-    
-    /* Timeline style for connection */
-    .connection-timeline {
-        position: relative;
-        padding-left: 2rem;
-    }
-    
+/* ===== Referral Details Styles ===== */
+
+/* Connection Timeline */
+.connection-timeline {
+    position: relative;
+    padding: 2rem;
+}
+
+.connection-timeline::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 60px;
+    bottom: 60px;
+    width: 2px;
+    background: linear-gradient(180deg, #667eea, #764ba2);
+    opacity: 0.3;
+    transform: translateX(-50%);
+}
+
+@media (max-width: 768px) {
     .connection-timeline::before {
-        content: '';
-        position: absolute;
-        left: 0.5rem;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: var(--primary-gradient);
-        opacity: 0.3;
+        display: none;
+    }
+}
+
+.timeline-node {
+    text-align: center;
+    padding: 1rem;
+}
+
+.avatar-circle.large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.connection-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Card Icons */
+.card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.card-icon.primary {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+}
+
+.card-icon.success {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+}
+
+.card-icon.warning {
+    background: rgba(237, 137, 54, 0.2);
+    color: #ed8936;
+}
+
+.card-icon.info {
+    background: rgba(66, 153, 225, 0.2);
+    color: #4299e1;
+}
+
+/* Info Items */
+.info-item {
+    padding: 0.5rem 0;
+}
+
+.info-item small {
+    font-size: 0.85rem;
+}
+
+/* Stat Cards Small */
+.stat-card-small {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.stat-card-small:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card-small.gradient-info {
+    border-left: 4px solid #4299e1;
+}
+
+.stat-card-small.gradient-primary {
+    border-left: 4px solid #667eea;
+}
+
+.stat-card-small.gradient-warning {
+    border-left: 4px solid #ed8936;
+}
+
+.stat-card-small.gradient-success {
+    border-left: 4px solid #48bb78;
+}
+
+.stat-card-small .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+.stat-card-small.gradient-info .stat-icon {
+    background: rgba(66, 153, 225, 0.2);
+    color: #4299e1;
+}
+
+.stat-card-small.gradient-primary .stat-icon {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+}
+
+.stat-card-small.gradient-warning .stat-icon {
+    background: rgba(237, 137, 54, 0.2);
+    color: #ed8936;
+}
+
+.stat-card-small.gradient-success .stat-icon {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+}
+
+.stat-card-small h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.stat-card-small h6 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+/* Transaction Icons */
+.transaction-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.transaction-icon.credit {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+}
+
+.transaction-icon.debit {
+    background: rgba(245, 101, 101, 0.2);
+    color: #f56565;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-badge.success {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+    border: 1px solid rgba(72, 187, 120, 0.3);
+}
+
+.status-badge.warning {
+    background: rgba(237, 137, 54, 0.2);
+    color: #ed8936;
+    border: 1px solid rgba(237, 137, 54, 0.3);
+}
+
+.status-badge.danger {
+    background: rgba(245, 101, 101, 0.2);
+    color: #f56565;
+    border: 1px solid rgba(245, 101, 101, 0.3);
+}
+
+.status-badge.info {
+    background: rgba(66, 153, 225, 0.2);
+    color: #4299e1;
+    border: 1px solid rgba(66, 153, 225, 0.3);
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+    transform: translateY(-2px);
+}
+
+/* Empty State */
+.empty-state {
+    padding: 2rem;
+    text-align: center;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: #94a3b8;
+}
+
+/* Reference Code */
+.reference-code {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.referral-code {
+    background: rgba(102, 126, 234, 0.1);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+/* Search Container */
+.search-container.small {
+    width: 200px;
+    padding: 4px 8px;
+}
+
+.search-container.small .search-icon {
+    font-size: 0.8rem;
+}
+
+.search-container.small .search-input {
+    font-size: 0.85rem;
+    padding: 2px 0;
+}
+
+/* Table Scroll */
+.table-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.transactions-table {
+    min-width: 900px;
+}
+
+/* Mobile scroll hint */
+.mobile-scroll-hint {
+    display: none;
+    padding: 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    color: #94a3b8;
+    border-top: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.mobile-scroll-hint i {
+    animation: bounceLeft 1.5s infinite;
+}
+
+@keyframes bounceLeft {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-4px); }
+}
+
+/* Sortable Headers */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.sortable:hover {
+    color: var(--primary);
+}
+
+.sortable i {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.sortable:hover i {
+    opacity: 1;
+}
+
+.sortable.sorted-asc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-asc::after {
+    content: "↑";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+.sortable.sorted-desc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-desc::after {
+    content: "↓";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    /* Header adjustments */
+    .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mb-5 {
+        flex-direction: column;
+        align-items: stretch !important;
     }
     
-    .timeline-item {
-        position: relative;
-        margin-bottom: 1.5rem;
+    /* Timeline adjustments */
+    .connection-timeline .row.align-items-center {
+        flex-direction: column;
+        gap: 2rem;
     }
     
-    .timeline-item::before {
-        content: '';
-        position: absolute;
-        left: -1.5rem;
-        top: 0.25rem;
-        width: 1rem;
-        height: 1rem;
-        border-radius: 50%;
-        background: var(--primary-gradient);
-        border: 3px solid var(--sidebar-bg);
+    .timeline-node {
+        padding: 1rem 0;
     }
     
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .d-flex.justify-content-between.align-items-center.mb-5 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        .d-flex.align-items-center.gap-2 {
-            width: 100%;
-            justify-content: flex-start;
-            flex-wrap: wrap;
-            gap: 0.5rem !important;
-        }
-        
-        .table-responsive {
-            font-size: 0.875rem;
-        }
-        
-        .dashboard-card .d-flex.justify-content-between.align-items-center.mb-4 {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        .dashboard-card .d-flex.align-items-center.gap-2 {
-            width: 100%;
-            justify-content: flex-start;
-        }
+    /* Card adjustments */
+    .dashboard-card {
+        padding: 1rem;
     }
+    
+    .card-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    /* Stat cards adjustments */
+    .col-6.col-sm-3 {
+        width: 50%;
+        margin-bottom: 12px;
+    }
+    
+    .stat-card-small {
+        padding: 12px;
+    }
+    
+    .stat-card-small h3 {
+        font-size: 1.2rem;
+    }
+    
+    /* Search container */
+    .search-container.small {
+        width: 100%;
+        margin-top: 8px;
+    }
+    
+    /* Table adjustments */
+    .transactions-table {
+        min-width: 1000px;
+    }
+    
+    .mobile-scroll-hint {
+        display: block;
+    }
+    
+    /* Table header adjustments */
+    .dashboard-card .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mb-4 {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    /* Pagination adjustments */
+    .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mt-4 {
+        flex-direction: column;
+        align-items: center !important;
+        gap: 1rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Single column for stats */
+    .col-6.col-sm-3 {
+        width: 100%;
+    }
+    
+    /* Adjust buttons */
+    .btn {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 8px;
+    }
+    
+    /* Adjust timeline nodes */
+    .avatar-circle.large {
+        width: 60px;
+        height: 60px;
+        font-size: 1.25rem;
+    }
+    
+    /* Adjust connection icon */
+    .connection-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+}
+/* Add First Deposit Styles */
+.transaction-icon.first-deposit {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.badge-first-deposit {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
 </style>
 
-<!-- JavaScript for this page -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Copy to clipboard function
-        window.copyToClipboard = function(text) {
-            navigator.clipboard.writeText(text).then(function() {
-                // Show success toast
-                const toast = document.createElement('div');
-                toast.className = 'position-fixed bottom-0 end-0 m-3 p-3 bg-success text-white rounded';
-                toast.style.zIndex = '9999';
-                toast.innerHTML = `
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Copied to clipboard!</span>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-                
-                setTimeout(() => {
-                    toast.remove();
-                }, 2000);
-            }).catch(function(err) {
-                console.error('Failed to copy: ', err);
-            });
-        };
-        
-        // Initialize tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        // Animate balance numbers
-        function animateBalance(element, finalValue) {
-            const text = element.textContent;
-            const amount = parseFloat(text.replace(/[^0-9.]/g, ''));
-            if (!isNaN(amount)) {
-                let current = 0;
-                const increment = amount / 50;
-                const timer = setInterval(() => {
-                    current += increment;
-                    if (current >= amount) {
-                        element.textContent = text.replace(/[\d,.]+/, amount.toLocaleString('en-NG'));
-                        clearInterval(timer);
-                    } else {
-                        element.textContent = text.replace(/[\d,.]+/, Math.floor(current).toLocaleString('en-NG'));
+document.addEventListener('DOMContentLoaded', function() {
+    // Apply avatar colors
+    applyAvatarColors();
+    
+    // Copy to clipboard functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.copy-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.copy-btn');
+            const text = btn.dataset.text;
+            
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    // Show success message
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                        const originalClass = icon.className;
+                        icon.className = 'fas fa-check';
+                        setTimeout(() => {
+                            icon.className = originalClass;
+                        }, 2000);
                     }
-                }, 20);
+                    
+                    // Show toast notification
+                    showToast('Copied to clipboard!', 'success');
+                });
             }
         }
+    });
+    
+    // Refresh button
+    document.getElementById('refreshBtn')?.addEventListener('click', function() {
+        const btn = this;
+        const icon = btn.querySelector('i');
         
-        // Animate all balance numbers
-        document.querySelectorAll('h3.mb-0').forEach(animateBalance);
+        // Add spinning animation
+        icon.classList.add('fa-spin');
+        btn.disabled = true;
         
-        // Transaction filtering
-        const searchInput = document.querySelector('input[type="text"]');
-        if (searchInput) {
-            searchInput.addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
-                const rows = document.querySelectorAll('tbody tr');
-                
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-            });
-        }
-        
-        // Check all checkboxes
-        const selectAll = document.querySelector('thead .form-check-input');
-        const checkboxes = document.querySelectorAll('tbody .form-check-input');
-        
-        if (selectAll) {
-            selectAll.addEventListener('change', function() {
-                checkboxes.forEach(checkbox => {
-                    checkbox.checked = selectAll.checked;
-                });
-            });
+        // Simulate refresh
+        setTimeout(() => {
+            icon.classList.remove('fa-spin');
+            btn.disabled = false;
+            window.location.reload();
+        }, 800);
+    });
+    
+    // Export data
+    document.getElementById('exportData')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        showToast('Exporting referral data...', 'info');
+        // In a real implementation, trigger file download
+    });
+    
+    // Send email
+    document.getElementById('sendEmail')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        const subject = encodeURIComponent(`Referral Update - ${referrer.username} & ${user.username}`);
+        const body = encodeURIComponent(`Referral Relationship Details:\n\nReferrer: ${referrer.username}\nReferred User: ${user.username}\nDate: ${user.date_joined}\n\nBest regards,\nAdmin Team`);
+        window.open(`mailto:?subject=${subject}&body=${body}`);
+    });
+    
+    // Delete referral (with confirmation)
+    document.getElementById('deleteReferral')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (confirm('Are you sure you want to delete this referral record? This action cannot be undone.')) {
+            showToast('Deleting referral record...', 'warning');
+            // In a real implementation, make an AJAX request to delete
+            setTimeout(() => {
+                window.location.href = '{% url "adminpanel:referral_list" %}';
+            }, 1500);
         }
     });
+
+    // Add first deposit highlighting
+    document.querySelectorAll('.transaction-row[data-first-deposit="true"]').forEach(row => {
+        row.style.background = 'rgba(255, 193, 7, 0.05)';
+        row.style.borderLeft = '3px solid #ffc107';
+    });
+    
+    // Search transactions
+    const searchInput = document.getElementById('transactionSearch');
+    const transactionRows = document.querySelectorAll('.transaction-row');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const noTransactionsRow = document.getElementById('noTransactionsRow');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+            
+            transactionRows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (searchTerm === '' || text.includes(searchTerm)) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update UI based on results
+            if (searchTerm && visibleCount === 0) {
+                noResultsMessage.style.display = 'block';
+                if (noTransactionsRow) noTransactionsRow.style.display = 'none';
+            } else {
+                noResultsMessage.style.display = 'none';
+                if (noTransactionsRow && transactionRows.length === 0) {
+                    noTransactionsRow.style.display = '';
+                }
+            }
+        });
+    }
+    
+    // Sort functionality
+    let currentSort = { column: null, direction: 'asc' };
+    
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.sort;
+            
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            sortTable(column);
+            
+            // Update sort indicators
+            document.querySelectorAll('.sortable').forEach(h => {
+                h.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            this.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        });
+    });
+    
+    function sortTable(column) {
+        const tbody = document.getElementById('transactionsTableBody');
+        const rows = Array.from(tbody.querySelectorAll('.transaction-row'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch (column) {
+                case 'date':
+                    aValue = parseInt(a.dataset.date);
+                    bValue = parseInt(b.dataset.date);
+                    break;
+                case 'type':
+                    aValue = a.dataset.type;
+                    bValue = b.dataset.type;
+                    break;
+                case 'amount':
+                    aValue = parseFloat(a.dataset.amount);
+                    bValue = parseFloat(b.dataset.amount);
+                    break;
+                default:
+                    return 0;
+            }
+            
+            let comparison = 0;
+            if (aValue < bValue) comparison = -1;
+            if (aValue > bValue) comparison = 1;
+            
+            return currentSort.direction === 'asc' ? comparison : -comparison;
+        });
+        
+        // Reappend rows in sorted order
+        rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    // Avatar color generation
+    function applyAvatarColors() {
+        document.querySelectorAll('.avatar-circle').forEach(avatar => {
+            const initial = avatar.getAttribute('data-initial') || avatar.textContent.trim();
+            if (initial) {
+                avatar.style.background = getColorFromString(initial);
+            }
+        });
+    }
+    
+    function getColorFromString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const colors = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
+        ];
+        
+        return colors[Math.abs(hash) % colors.length];
+    }
+    
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `position-fixed bottom-0 end-0 m-3 p-3 bg-${type} text-white rounded`;
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    
+    // Animate numbers on load
+    function animateNumbers() {
+        document.querySelectorAll('.stat-card-small h3').forEach(element => {
+            const text = element.textContent;
+            const amount = parseFloat(text.replace(/[^0-9.]/g, ''));
+            if (!isNaN(amount) && amount > 0) {
+                animateCounter(element, amount);
+            }
+        });
+    }
+    
+    function animateCounter(element, finalValue) {
+        let current = 0;
+        const duration = 1000; // 1 second
+        const increment = finalValue / (duration / 16); // 60fps
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= finalValue) {
+                element.textContent = '₦' + finalValue.toFixed(2);
+                clearInterval(timer);
+            } else {
+                element.textContent = '₦' + Math.floor(current).toFixed(2);
+            }
+        }, 16);
+    }
+    
+    // Initialize animations
+    animateNumbers();
+});
 </script>
 {% endblock %}

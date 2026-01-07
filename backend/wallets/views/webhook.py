@@ -88,6 +88,18 @@ def paystack_webhook(request):
                     user=wallet_tx.user
                 )
 
+                # Check if this is the first successful deposit for this user
+                if wallet_tx.tx_type == WalletTransaction.CREDIT:
+                    has_previous_successful_deposit = WalletTransaction.objects.filter(
+                        user=wallet_tx.user,
+                        tx_type=WalletTransaction.CREDIT,
+                        meta__status="completed"
+                    ).exclude(id=wallet_tx.id).exists()
+                    
+                    # Set first_deposit to True if this is the first successful deposit
+                    # and keep it False otherwise
+                    wallet_tx.first_deposit = not has_previous_successful_deposit
+
                 total = wallet_tx.amount
                 half = (total / Decimal("2")).quantize(Decimal("0.01"))
 
@@ -107,9 +119,12 @@ def paystack_webhook(request):
                     "paystack_data": data,
                     "webhook_processed": True,
                 })
-                wallet_tx.save(update_fields=["meta"])
+                # Save both meta and first_deposit field
+                wallet_tx.save(update_fields=["meta", "first_deposit"])
 
                 logger.info("✅ Wallet funded via webhook: %s", reference)
+                if wallet_tx.first_deposit:
+                    logger.info("🎉 First deposit for user %s", wallet_tx.user_id)
                 return HttpResponse(status=200)
 
             # ❌ FAILED / ABANDONED
@@ -119,6 +134,7 @@ def paystack_webhook(request):
                 "paystack_data": data,
                 "webhook_processed": True,
             })
+            # Keep first_deposit as False for failed transactions
             wallet_tx.save(update_fields=["meta"])
 
             return HttpResponse(status=200)
