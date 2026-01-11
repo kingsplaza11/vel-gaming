@@ -31,19 +31,87 @@ def dashboard(request):
     return render(request, "sa/dashboard.html", context)
 
 
+from collections import defaultdict
+from django.db.models import Exists, OuterRef
+from django.shortcuts import render
+
+from django.conf import settings
+
+
 @staff_member_required
 def referral_list(request):
-    referrals = (
+    """
+    Referral overview grouped by referrer.
+
+    Successful referral:
+    - Referred user has at least ONE WalletTransaction with first_deposit=True
+    """
+
+    # ----------------------------------------------------
+    # Subquery: does a user have a first deposit?
+    # ----------------------------------------------------
+    first_deposit_subquery = WalletTransaction.objects.filter(
+        user=OuterRef("pk"),
+        first_deposit=True,
+    )
+
+    # ----------------------------------------------------
+    # Fetch all referred users (annotated)
+    # ----------------------------------------------------
+    referred_users = (
         User.objects
         .filter(referred_by__isnull=False)
         .select_related("referred_by")
+        .annotate(
+            has_first_deposit=Exists(first_deposit_subquery)
+        )
         .order_by("-date_joined")
     )
 
-    return render(request, "sa/referral_list.html", {
-        "referrals": referrals
+    # ----------------------------------------------------
+    # Group data by referrer
+    # ----------------------------------------------------
+    grouped = defaultdict(lambda: {
+        "user": None,
+        "total": 0,
+        "successful": 0,
+        "referrals": [],
     })
 
+    for user in referred_users:
+        referrer = user.referred_by
+
+        bucket = grouped[referrer.id]
+
+        # Set referrer once
+        if bucket["user"] is None:
+            bucket["user"] = referrer
+
+        bucket["total"] += 1
+
+        if user.has_first_deposit:
+            bucket["successful"] += 1
+
+        bucket["referrals"].append(user)
+
+    # ----------------------------------------------------
+    # Convert grouped dict → list (template-friendly)
+    # ----------------------------------------------------
+    referral_summary = list(grouped.values())
+
+    # Optional: sort by highest conversions
+    referral_summary.sort(
+        key=lambda x: (x["successful"], x["total"]),
+        reverse=True
+    )
+
+    return render(
+        request,
+        "sa/referral_list.html",
+        {
+            "referral_summary": referral_summary,
+        }
+    )
 
 @staff_member_required
 def referral_detail(request, user_id):

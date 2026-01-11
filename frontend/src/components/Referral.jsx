@@ -121,239 +121,101 @@ const Referral = () => {
             </p>
           </div>
 
-          {/* STATS SECTION - Desktop */}
-          <div className="referral-stats-card">
-            <div className="stat-item">
-              <div className="stat-icon" style={{ background: "rgba(255, 215, 0, 0.1)" }}>
-                <Icon icon="mdi:account-multiple" color="var(--veltora-gold)" width="28" />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">{data.total_referrals || 0}</div>
-                <div className="stat-label">Total Referrals</div>
-              </div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon" style={{ background: "rgba(76, 175, 80, 0.1)" }}>
-                <Icon icon="mdi:check-circle" color="#4CAF50" width="28" />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">{data.successful_referrals || 0}</div>
-                <div className="stat-label">Successful</div>
-              </div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon" style={{ background: "rgba(255, 152, 0, 0.1)" }}>
-                <Icon icon="mdi:clock" color="#FF9800" width="28" />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">{data.pending_referrals || 0}</div>
-                <div className="stat-label">Pending</div>
+          {/* =========================
+          REFERRAL STATS (4 GROUPS)
+          ========================= */}
+          <div className="referral-stats-grid">
+
+            {/* TODAY */}
+            <div className="stat-group">
+              <h4 className="stat-group-title">Today</h4>
+              <div className="stat-row-container">
+                <div className="stat-item">
+                  <span className="stat-label">Referrals</span>
+                  <strong className="stat-value">{data.stats.today.referrals}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Successful</span>
+                  <strong className="stat-value">{data.stats.today.successful}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.today.amount).toLocaleString()}
+                  </strong>
+                </div>
               </div>
             </div>
+
+            {/* YESTERDAY */}
+            <div className="stat-group">
+              <h4 className="stat-group-title">Yesterday</h4>
+              <div className="stat-row-container">
+                <div className="stat-item">
+                  <span className="stat-label">Referrals</span>
+                  <strong className="stat-value">{data.stats.yesterday.referrals}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Successful</span>
+                  <strong className="stat-value">{data.stats.yesterday.successful}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.yesterday.amount).toLocaleString()}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* THIS WEEK */}
+            <div className="stat-group">
+              <h4 className="stat-group-title">This Week</h4>
+              <div className="stat-row-container">
+                <div className="stat-item">
+                  <span className="stat-label">Referrals</span>
+                  <strong className="stat-value">{data.stats.this_week.referrals}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Successful</span>
+                  <strong className="stat-value">{data.stats.this_week.successful}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.this_week.amount).toLocaleString()}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* ALL TIME */}
+            <div className="stat-group total">
+              <h4 className="stat-group-title">All Time</h4>
+              <div className="stat-row-container">
+                <div className="stat-item">
+                  <span className="stat-label">Referrals</span>
+                  <strong className="stat-value">{data.stats.total.referrals}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Successful</span>
+                  <strong className="stat-value">{data.stats.total.successful}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.total.amount).toLocaleString()}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
         {/* MAIN CONTENT - INDEPENDENT SECTIONS */}
         <div className="referral-layout">
           
-          {/* REFERRALS TABLE SECTION - INDEPENDENT */}
-          <div className="referral-section independent-table">
-            <div className="auth-card referrals-table-card">
-              <div className="table-header">
-                <h3 style={{ color: "var(--veltora-gold)", margin: 0 }}>
-                  <Icon icon="mdi:account-group" style={{ marginRight: "10px" }} />
-                  Your Referrals
-                </h3>
-                <span className="table-count">{data.total_referrals || 0} users</span>
-              </div>
-
-              {data.referrals.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-icon">
-                    <Icon icon="mdi:account-plus-outline" width="48" />
-                  </div>
-                  <h4 style={{ color: "rgba(255, 255, 255, 0.9)", margin: "15px 0 10px" }}>
-                    No Referrals Yet
-                  </h4>
-                  <p style={{ color: "rgba(255, 255, 255, 0.6)", textAlign: "center", maxWidth: "300px" }}>
-                    Share your referral link to start earning rewards!
-                  </p>
-                  <button 
-                    className="copy-button"
-                    onClick={copyLink}
-                    style={{ marginTop: "20px", padding: "12px 24px" }}
-                  >
-                    <Icon icon="mdi:share" width="18" style={{ marginRight: "8px" }} />
-                    Copy Referral Link
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Desktop Table */}
-                  <div className="desktop-table">
-                    <div className="referrals-table-container">
-                      <table className="referrals-table">
-                        <thead>
-                          <tr className="table-header-row">
-                            <th>Username</th>
-                            <th>First Deposit</th>
-                            <th>This Week</th>
-                            <th>Today</th>
-                            <th>Total Deposit</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.referrals.map((ref) => {
-                            // Debug: log each referral object
-                            console.log('Referral data:', ref);
-                            console.log('First deposit value:', ref.first_deposit);
-                            console.log('First deposit type:', typeof ref.first_deposit);
-                            
-                            return (
-                              <tr key={ref.username} className="table-body-row">
-                                <td className="user-cell">
-                                  <div className="user-info">
-                                    <div className="user-avatar">
-                                      <Icon icon="mdi:account-circle" width="24" />
-                                    </div>
-                                    <div className="user-details">
-                                      <span className="username">{ref.username}</span>
-                                      <span className={`referral-status ${ref.has_first_deposit ? 'successful' : 'pending'}`}>
-                                        <Icon 
-                                          icon={ref.has_first_deposit ? 'mdi:check-circle' : 'mdi:clock'} 
-                                          width="12" 
-                                          style={{ marginRight: "4px" }}
-                                        />
-                                        {ref.has_first_deposit ? 'Successful' : 'Pending'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="first-deposit-cell">
-                                  <div className="first-deposit-amount">
-                                    <span className={`amount ${ref.first_deposit === 0 ? 'zero' : ''}`}>
-                                      {/* Debug display */}
-                                      ₦{Number(ref.first_deposit || 0).toLocaleString()}
-                                    </span>
-                                    <span className="amount-label">Initial Deposit</span>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div className="deposit-amount">
-                                    <span className="amount">₦{Number(ref.deposit_this_week || 0).toLocaleString()}</span>
-                                    <span className="amount-label">Mon-Sun</span>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div className="deposit-amount">
-                                    <span className="amount">₦{Number(ref.deposit_today || 0).toLocaleString()}</span>
-                                    <span className="amount-label">Today</span>
-                                  </div>
-                                </td>
-                                <td className="total-deposit-cell">
-                                  <div className="deposit-amount total">
-                                    <span className="amount">₦{Number(ref.total_deposit || 0).toLocaleString()}</span>
-                                    <span className="amount-label">All Time</span>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Mobile Table */}
-                  <div className="mobile-table">
-                    <div className="referrals-table-container">
-                      <table className="referrals-table">
-                        <thead>
-                          <tr className="table-header-row">
-                            <th>Username</th>
-                            <th>First Deposit</th>
-                            <th>This Week</th>
-                            <th>Today</th>
-                            <th>Total Deposit</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.referrals.map((ref) => (
-                            <tr key={ref.username} className="table-body-row">
-                              <td className="user-cell">
-                                <div className="user-info">
-                                  <div className="user-avatar">
-                                    <Icon icon="mdi:account-circle" width="24" />
-                                  </div>
-                                  <div className="user-details">
-                                    <span className="username">{ref.username}</span>
-                                    <span className={`referral-status ${ref.has_first_deposit ? 'successful' : 'pending'}`}>
-                                      <Icon 
-                                        icon={ref.has_first_deposit ? 'mdi:check-circle' : 'mdi:clock'} 
-                                        width="12" 
-                                        style={{ marginRight: "4px" }}
-                                      />
-                                      {ref.has_first_deposit ? 'Successful' : 'Pending'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="first-deposit-cell">
-                                <div className="first-deposit-amount">
-                                  <span className={`amount ${ref.first_deposit === 0 ? 'zero' : ''}`}>
-                                    ₦{Number(ref.first_deposit || 0).toLocaleString()}
-                                  </span>
-                                  <span className="amount-label">Initial</span>
-                                </div>
-                              </td>
-                              <td>
-                                <div className="deposit-amount">
-                                  <span className="amount">₦{Number(ref.deposit_this_week || 0).toLocaleString()}</span>
-                                  <span className="amount-label">This Week</span>
-                                </div>
-                              </td>
-                              <td>
-                                <div className="deposit-amount">
-                                  <span className="amount">₦{Number(ref.deposit_today || 0).toLocaleString()}</span>
-                                  <span className="amount-label">Today</span>
-                                </div>
-                              </td>
-                              <td className="total-deposit-cell">
-                                <div className="deposit-amount total">
-                                  <span className="amount">₦{Number(ref.total_deposit || 0).toLocaleString()}</span>
-                                  <span className="amount-label">Total</span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mobile-scroll-hint">
-                      <Icon icon="mdi:chevron-right" width="16" />
-                      <span>Swipe left to see more</span>
-                    </div>
-                  </div>
-
-                  {/* Table Summary - Now appears in a row on mobile too */}
-                  <div className="table-summary">
-                    <div className="summary-item">
-                      <span className="summary-label">Total Referrals:</span>
-                      <span className="summary-value">{data.total_referrals || 0}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span className="summary-label">Successful:</span>
-                      <span className="summary-value successful">{data.successful_referrals || 0}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span className="summary-label">Pending:</span>
-                      <span className="summary-value pending">{data.pending_referrals || 0}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
 
           {/* TWO-COLUMN LAYOUT FOR OTHER SECTIONS */}
           <div className="two-column-layout">

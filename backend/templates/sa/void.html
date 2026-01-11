@@ -1,0 +1,1283 @@
+{% extends "sa/base.html" %}
+{% block title %}Referral Management • Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5">
+    <div>
+        <h1 class="h2 mb-1">Referral Management</h1>
+        <p class="text-muted mb-0">Track and manage referral relationships</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="search-container">
+            <div class="search-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <input 
+                type="text" 
+                class="search-input" 
+                placeholder="Search users..." 
+                autocomplete="off"
+                id="userSearch"
+                value="{{ current_search }}"
+            >
+        </div>
+        <a href="{% url 'adminpanel:referral_list' %}" class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i>
+            Refresh
+        </a>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="row g-3 mb-5">
+    <!-- Total Referrers -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-primary">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Active Referrers</h6>
+                <h3 class="mb-0">{{ user_stats.total_referrers }}</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-chart-line"></i>
+                    <span>{{ user_stats.new_this_week }} new this week</span>
+                </small>
+            </div>
+            <div class="stat-trend success">+{{ user_stats.growth_rate }}%</div>
+        </div>
+    </div>
+    
+    <!-- Total Referrals -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-success">
+            <div class="stat-icon">
+                <i class="fas fa-handshake"></i>
+            </div>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Total Referrals</h6>
+                <h3 class="mb-0">{{ user_stats.total_referrals }}</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-user-plus"></i>
+                    <span>{{ user_stats.successful_referrals }} successful</span>
+                </small>
+            </div>
+            <div class="stat-trend success">+12.5%</div>
+        </div>
+    </div>
+    
+    <!-- Success Rate -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-warning">
+            <div class="stat-icon">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Success Rate</h6>
+                <h3 class="mb-0">{{ user_stats.success_rate }}%</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-trophy"></i>
+                    <span>Top referrer: {{ user_stats.top_referrer }}</span>
+                </small>
+            </div>
+            <div class="stat-trend warning">+2.1%</div>
+        </div>
+    </div>
+    
+    <!-- Avg. per User -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-danger">
+            <div class="stat-icon">
+                <i class="fas fa-user-friends"></i>
+            </div>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Avg. per User</h6>
+                <h3 class="mb-0">{{ user_stats.avg_per_user }}</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-crown"></i>
+                    <span>Max: {{ user_stats.max_referrals }}</span>
+                </small>
+            </div>
+            <div class="stat-trend success">+5.7%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="dashboard-card mb-4">
+    <div class="row g-3 align-items-center">
+        <div class="col-12 col-md-8">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <div class="filter-group">
+                    <label class="form-label small text-muted mb-1">Filter by</label>
+                    <select class="form-select form-select-sm" style="width: 160px;" id="filterType">
+                        <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All Users</option>
+                        <option value="has_referrals" {% if current_filter == 'has_referrals' %}selected{% endif %}>Has Referrals</option>
+                        <option value="no_referrals" {% if current_filter == 'no_referrals' %}selected{% endif %}>No Referrals</option>
+                        <option value="successful" {% if current_filter == 'successful' %}selected{% endif %}>Successful Only</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="form-label small text-muted mb-1">Sort by</label>
+                    <select class="form-select form-select-sm" style="width: 160px;" id="sortBy">
+                        <option value="total_desc" {% if current_sort == 'total_desc' %}selected{% endif %}>Total Referrals (High→Low)</option>
+                        <option value="total_asc" {% if current_sort == 'total_asc' %}selected{% endif %}>Total Referrals (Low→High)</option>
+                        <option value="success_desc" {% if current_sort == 'success_desc' %}selected{% endif %}>Successful (High→Low)</option>
+                        <option value="success_asc" {% if current_sort == 'success_asc' %}selected{% endif %}>Successful (Low→High)</option>
+                        <option value="name_asc" {% if current_sort == 'name_asc' %}selected{% endif %}>Name (A→Z)</option>
+                        <option value="name_desc" {% if current_sort == 'name_desc' %}selected{% endif %}>Name (Z→A)</option>
+                        <option value="recent" {% if current_sort == 'recent' %}selected{% endif %}>Most Recent</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="form-label small text-muted mb-1">Date Range</label>
+                    <select class="form-select form-select-sm" style="width: 160px;" id="dateRange">
+                        <option value="all" {% if current_date_range == 'all' %}selected{% endif %}>All Time</option>
+                        <option value="7days" {% if current_date_range == '7days' %}selected{% endif %}>Last 7 days</option>
+                        <option value="30days" {% if current_date_range == '30days' %}selected{% endif %}>Last 30 days</option>
+                        <option value="90days" {% if current_date_range == '90days' %}selected{% endif %}>Last 90 days</option>
+                        <option value="year" {% if current_date_range == 'year' %}selected{% endif %}>This Year</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4 text-md-end">
+            <a href="{% url 'adminpanel:export_referrals_csv' %}" class="btn btn-sm btn-outline-light d-flex align-items-center gap-2 ms-auto" id="exportBtn">
+                <i class="fas fa-download"></i>
+                Export CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Users Summary Table -->
+<div class="dashboard-card">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h5 class="mb-1">Referral Performance Summary</h5>
+            <p class="text-muted mb-0" id="userCount">Showing {{ users.start_index }} to {{ users.end_index }} of {{ paginator.count }} users</p>
+        </div>
+        <div class="search-results-info" id="searchResultsInfo" style="display: none;">
+            <span class="badge badge-soft-primary" id="matchCount">0 matches</span>
+        </div>
+    </div>
+    
+    <div class="table-scroll-wrapper">
+        <table class="table table-hover align-middle mb-0 users-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Total Referred</th>
+                    <th>Successful</th>
+                    <th>Success Rate</th>
+                    <th>Referral Code</th>
+                    <th>Joined</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                {% for user in users %}
+                <tr class="user-row" 
+                    data-id="{{ user.id }}"
+                    data-username="{{ user.username|lower }}"
+                    data-email="{{ user.email|lower }}"
+                    data-total="{{ user.total_referred }}"
+                    data-successful="{{ user.successful_referrals }}"
+                    data-rate="{{ user.success_rate }}"
+                    data-code="{{ user.referral_code|default:''|lower }}"
+                    data-joined="{{ user.date_joined|date:'U' }}"
+                    data-has-referrals="{% if user.total_referred > 0 %}yes{% else %}no{% endif %}">
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle user-avatar" data-username="{{ user.username }}">
+                                {{ user.username|first|upper }}
+                            </div>
+                            <div>
+                                <div class="fw-medium">{{ user.username }}</div>
+                                <small class="text-muted user-email">{{ user.email|truncatechars:20|default:"No email" }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge badge-soft-primary rounded-pill px-3 py-1">
+                                {{ user.total_referred }}
+                            </span>
+                            {% if user.total_referred > 0 %}
+                            <button class="btn btn-sm btn-link text-primary p-0 view-referrals-btn" 
+                                    data-user-id="{{ user.id }}"
+                                    data-username="{{ user.username }}"
+                                    title="View referrals">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge badge-soft-success rounded-pill px-3 py-1">
+                            {{ user.successful_referrals }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="progress-wrapper">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>{{ user.success_rate }}%</span>
+                                <span class="text-muted">of total</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: {{ user.success_rate }}%"
+                                     aria-valuenow="{{ user.success_rate }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if user.referral_code %}
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="referral-code">{{ user.referral_code|truncatechars:10 }}</code>
+                            <button class="btn btn-sm btn-link text-primary p-0 copy-btn" 
+                                    data-code="{{ user.referral_code }}"
+                                    title="Copy to clipboard">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        {% else %}
+                        <span class="badge badge-soft-secondary">No code</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span class="small">{{ user.date_joined|date:"M d, Y" }}</span>
+                            <small class="text-muted">{{ user.date_joined|timesince }} ago</small>
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-outline-light action-btn view-details-btn"
+                                    data-user-id="{{ user.id }}"
+                                    data-bs-toggle="tooltip" 
+                                    data-bs-title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if user.total_referred > 0 %}
+                            <button class="btn btn-sm btn-primary action-btn view-referrals-btn"
+                                    data-user-id="{{ user.id }}"
+                                    data-username="{{ user.username }}"
+                                    data-bs-toggle="tooltip" 
+                                    data-bs-title="View Referrals">
+                                <i class="fas fa-list"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr id="noUsersRow">
+                    <td colspan="7" class="text-center py-5">
+                        <div class="empty-state">
+                            <div class="empty-state-icon mb-3">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h5 class="text-muted">No users found</h5>
+                            <p class="text-muted mb-3">Start building your user base today</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- No Results Message -->
+    <div id="noResultsMessage" class="text-center py-5" style="display: none;">
+        <div class="py-4">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No matching users found</h5>
+            <p class="text-muted small">Try a different search term or adjust your filters</p>
+        </div>
+    </div>
+    
+    <!-- Mobile scroll hint -->
+    <div class="mobile-scroll-hint">
+        <i class="fas fa-arrow-left me-2"></i>Swipe left to see more columns
+    </div>
+    
+    {% if users %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4 pt-3 border-top border-secondary">
+        <div class="d-flex align-items-center gap-3">
+            <select class="form-select form-select-sm" style="width: 80px;" id="pageSize">
+                <option value="10" {% if current_page_size == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if current_page_size == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if current_page_size == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if current_page_size == 100 %}selected{% endif %}>100</option>
+            </select>
+            <span class="small text-muted">per page</span>
+        </div>
+        <div>
+            <nav aria-label="Users pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if users.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1&filter={{ current_filter }}&sort={{ current_sort }}&date_range={{ current_date_range }}&search={{ current_search }}&page_size={{ current_page_size }}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.previous_page_number }}&filter={{ current_filter }}&sort={{ current_sort }}&date_range={{ current_date_range }}&search={{ current_search }}&page_size={{ current_page_size }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in users.paginator.page_range %}
+                        {% if users.number == num %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                        {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}&filter={{ current_filter }}&sort={{ current_sort }}&date_range={{ current_date_range }}&search={{ current_search }}&page_size={{ current_page_size }}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if users.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.next_page_number }}&filter={{ current_filter }}&sort={{ current_sort }}&date_range={{ current_date_range }}&search={{ current_search }}&page_size={{ current_page_size }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.paginator.num_pages }}&filter={{ current_filter }}&sort={{ current_sort }}&date_range={{ current_date_range }}&search={{ current_search }}&page_size={{ current_page_size }}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Referrals Modal -->
+<div class="modal fade" id="referralsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Referrals by <span id="modalUsername"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h6 class="mb-1">Referral Details</h6>
+                        <p class="text-muted small mb-0" id="referralStats"></p>
+                    </div>
+                    <div class="search-container modal-search">
+                        <div class="search-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <input type="text" class="search-input" placeholder="Search referrals..." id="modalSearch">
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle" id="referralsTable">
+                        <thead>
+                            <tr>
+                                <th>UID</th>
+                                <th>Referred User</th>
+                                <th>Email</th>
+                                <th>Date Joined</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="referralsList">
+                            <!-- Referrals will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="noReferralsMessage" class="text-center py-4" style="display: none;">
+                    <i class="fas fa-user-plus fa-2x text-muted mb-3"></i>
+                    <h6 class="text-muted">No referrals found</h6>
+                    <p class="text-muted small mb-0">This user hasn't referred anyone yet</p>
+                </div>
+                
+                <div class="d-flex justify-content-center mt-3">
+                    <div class="spinner-border text-primary" role="status" id="loadingSpinner" style="display: none;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+.search-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 200px;
+}
+
+.search-container:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-container.modal-search {
+    width: 250px;
+    margin-bottom: 0;
+}
+
+.search-icon {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    flex: 1;
+    padding: 4px 0;
+    font-size: 0.9rem;
+    outline: none;
+    width: 100%;
+}
+
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+/* Stat Cards */
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.gradient-primary {
+    border-left: 4px solid #667eea;
+}
+
+.stat-card.gradient-success {
+    border-left: 4px solid #48bb78;
+}
+
+.stat-card.gradient-warning {
+    border-left: 4px solid #ed8936;
+}
+
+.stat-card.gradient-danger {
+    border-left: 4px solid #f56565;
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+}
+
+.gradient-primary .stat-icon {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(102, 126, 234, 0.1));
+    color: #667eea;
+}
+
+.gradient-success .stat-icon {
+    background: linear-gradient(135deg, rgba(72, 187, 120, 0.2), rgba(72, 187, 120, 0.1));
+    color: #48bb78;
+}
+
+.gradient-warning .stat-icon {
+    background: linear-gradient(135deg, rgba(237, 137, 54, 0.2), rgba(237, 137, 54, 0.1));
+    color: #ed8936;
+}
+
+.gradient-danger .stat-icon {
+    background: linear-gradient(135deg, rgba(245, 101, 101, 0.2), rgba(245, 101, 101, 0.1));
+    color: #f56565;
+}
+
+.stat-content h3 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.gradient-primary .stat-content h3 {
+    color: #667eea;
+}
+
+.gradient-success .stat-content h3 {
+    color: #48bb78;
+}
+
+.gradient-warning .stat-content h3 {
+    color: #ed8936;
+}
+
+.gradient-danger .stat-content h3 {
+    color: #f56565;
+}
+
+.stat-content h6 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.stat-content small {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.stat-trend {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.stat-trend.success {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+}
+
+.stat-trend.warning {
+    background: rgba(237, 137, 54, 0.2);
+    color: #ed8936;
+}
+
+/* Badges */
+.badge-soft-primary {
+    background-color: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.badge-soft-success {
+    background-color: rgba(72, 187, 120, 0.1);
+    color: #48bb78;
+}
+
+.badge-soft-secondary {
+    background-color: rgba(148, 163, 184, 0.1);
+    color: #94a3b8;
+}
+
+/* Progress bar */
+.progress {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+}
+
+/* Table Styles */
+.table-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.users-table {
+    min-width: 1000px;
+}
+
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #fff;
+    font-size: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.referral-code {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+/* Empty State */
+.empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: #94a3b8;
+}
+
+/* Search Results Info */
+.search-results-info {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile scroll hint */
+.mobile-scroll-hint {
+    display: none;
+    padding: 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    color: #94a3b8;
+    border-top: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.mobile-scroll-hint i {
+    animation: bounceLeft 1.5s infinite;
+}
+
+@keyframes bounceLeft {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-4px); }
+}
+
+/* Sortable Headers */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.sortable:hover {
+    color: var(--primary);
+}
+
+.sortable i {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.sortable:hover i {
+    opacity: 1;
+}
+
+.sortable.sorted-asc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-asc::after {
+    content: "↑";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+.sortable.sorted-desc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-desc::after {
+    content: "↓";
+    margin-left: 4px;
+    color: var(--primary);
+}
+
+/* Modal styles */
+.modal-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+}
+
+/* Animation for rows */
+.user-row {
+    transition: all 0.2s ease;
+}
+
+.user-row:hover {
+    background: rgba(255, 255, 255, 0.03) !important;
+    transform: translateX(2px);
+}
+
+/* Copy button animation */
+.copy-btn {
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    transform: scale(1.2);
+}
+
+/* Highlight effect for search */
+.highlight {
+    background-color: rgba(255, 193, 7, 0.15);
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #ffc107;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .search-container {
+        width: 100%;
+        margin-top: 8px;
+    }
+    
+    .search-container.modal-search {
+        width: 100%;
+        margin-top: 0;
+    }
+    
+    .users-table {
+        min-width: 1200px;
+    }
+    
+    .mobile-scroll-hint {
+        display: block;
+    }
+}
+
+/* Pagination styles */
+.pagination .page-link {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.pagination .page-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary);
+}
+
+.pagination .page-item.active .page-link {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+</style>
+
+<style>
+/* Keep all your existing CSS styles - they remain the same */
+.search-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 200px;
+}
+
+.search-container:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-container.modal-search {
+    width: 250px;
+    margin-bottom: 0;
+}
+
+/* ... keep all other CSS styles ... */
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Apply avatar colors
+    applyAvatarColors();
+    
+    // Initialize tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(el => new bootstrap.Tooltip(el));
+    
+    // Initialize modal
+    const referralsModal = new bootstrap.Modal(document.getElementById('referralsModal'));
+    let currentUserId = null;
+    let currentUsername = '';
+    
+    // Get CSRF token for AJAX requests
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    
+    // Search functionality
+    const searchInput = document.getElementById('userSearch');
+    const filterType = document.getElementById('filterType');
+    const sortBy = document.getElementById('sortBy');
+    const dateRange = document.getElementById('dateRange');
+    const pageSize = document.getElementById('pageSize');
+    
+    // Update URL when filters change (server-side filtering)
+    function updateUrlWithFilters() {
+        const params = new URLSearchParams();
+        
+        if (searchInput.value) params.set('search', searchInput.value);
+        if (filterType.value !== 'all') params.set('filter', filterType.value);
+        if (sortBy.value !== 'total_desc') params.set('sort', sortBy.value);
+        if (dateRange.value !== 'all') params.set('date_range', dateRange.value);
+        if (pageSize.value !== '25') params.set('page_size', pageSize.value);
+        
+        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    }
+    
+    // Event listeners for server-side filtering
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            updateUrlWithFilters();
+        }
+    });
+    
+    filterType.addEventListener('change', updateUrlWithFilters);
+    sortBy.addEventListener('change', updateUrlWithFilters);
+    dateRange.addEventListener('change', updateUrlWithFilters);
+    pageSize.addEventListener('change', updateUrlWithFilters);
+    
+    // View referrals buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.view-referrals-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.view-referrals-btn');
+            currentUserId = btn.dataset.userId;
+            currentUsername = btn.dataset.username;
+            
+            // Update modal title
+            document.getElementById('modalUsername').textContent = currentUsername;
+            
+            // Clear previous data and show loading
+            document.getElementById('referralsList').innerHTML = '';
+            document.getElementById('noReferralsMessage').style.display = 'none';
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('modalSearch').value = '';
+            
+            // Load referrals
+            loadUserReferrals(currentUserId);
+            
+            // Show modal
+            referralsModal.show();
+        }
+        
+        if (e.target.closest('.view-details-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.view-details-btn');
+            const userId = btn.dataset.userId;
+            // Redirect to user detail page if available
+            window.location.href = `/admin/users/${userId}/`;
+        }
+    });
+    
+    // Copy to clipboard functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.copy-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.copy-btn');
+            const code = btn.dataset.code;
+            
+            if (code) {
+                navigator.clipboard.writeText(code).then(() => {
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                        const originalClass = icon.className;
+                        icon.className = 'fas fa-check';
+                        setTimeout(() => {
+                            icon.className = originalClass;
+                        }, 2000);
+                    }
+                    showToast('Code copied to clipboard!', 'success');
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    showToast('Failed to copy code', 'error');
+                });
+            }
+        }
+    });
+    
+    // Modal search functionality
+    const modalSearch = document.getElementById('modalSearch');
+    modalSearch.addEventListener('input', debounce(() => {
+        const searchTerm = modalSearch.value.toLowerCase().trim();
+        filterReferralsInModal(searchTerm);
+    }, 300));
+    
+    // Load user referrals from API
+    async function loadUserReferrals(userId) {
+        try {
+            const response = await fetch(`/admin/referrals/${userId}/`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                updateReferralsModal(data);
+            } else {
+                throw new Error(data.error || 'Failed to load referrals');
+            }
+            
+        } catch (error) {
+            console.error('Error loading referrals:', error);
+            showToast('Failed to load referrals', 'error');
+            document.getElementById('noReferralsMessage').style.display = 'block';
+            document.getElementById('noReferralsMessage').innerHTML = `
+                <i class="fas fa-exclamation-triangle fa-2x text-muted mb-3"></i>
+                <h6 class="text-muted">Error loading referrals</h6>
+                <p class="text-muted small mb-0">${error.message}</p>
+            `;
+        } finally {
+            document.getElementById('loadingSpinner').style.display = 'none';
+        }
+    }
+    
+    function updateReferralsModal(data) {
+        const referralsList = document.getElementById('referralsList');
+        const noReferralsMessage = document.getElementById('noReferralsMessage');
+        const referralStats = document.getElementById('referralStats');
+        
+        // Update stats
+        const total = data.count;
+        const successful = data.referrals.filter(r => r.is_active).length;
+        const successRate = total > 0 ? Math.round((successful / total) * 100) : 0;
+        
+        referralStats.textContent = `${total} total • ${successful} successful • ${successRate}% success rate`;
+        
+        // Clear previous referrals
+        referralsList.innerHTML = '';
+        
+        if (total === 0) {
+            noReferralsMessage.style.display = 'block';
+            return;
+        }
+        
+        noReferralsMessage.style.display = 'none';
+        
+        // Add referral rows
+        data.referrals.forEach(ref => {
+            const row = document.createElement('tr');
+            const date = new Date(ref.date_joined);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            row.innerHTML = `
+                <td>
+                    <code class="small text-muted">${ref.user_uid || 'N/A'}</code>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-circle" style="width: 32px; height: 32px; font-size: 0.875rem;">
+                            ${ref.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="small fw-medium">${ref.username}</div>
+                            ${ref.full_name ? `<small class="text-muted">${ref.full_name}</small>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <small class="text-muted">${ref.email}</small>
+                </td>
+                <td>
+                    <div class="d-flex flex-column">
+                        <small class="text-muted">${formattedDate}</small>
+                        <small class="text-muted">${timeSince(ref.date_joined)} ago</small>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge badge-${ref.is_active ? 'success' : 'secondary'}">
+                        ${ref.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>
+                    <a href="/admin/users/${ref.id}/" class="btn btn-sm btn-outline-light" title="View User">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                </td>
+            `;
+            
+            // Add data attributes for filtering
+            row.dataset.username = ref.username.toLowerCase();
+            row.dataset.email = ref.email.toLowerCase();
+            row.dataset.fullname = (ref.full_name || '').toLowerCase();
+            
+            referralsList.appendChild(row);
+        });
+    }
+    
+    function filterReferralsInModal(searchTerm) {
+        const rows = document.querySelectorAll('#referralsList tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const username = row.dataset.username || '';
+            const email = row.dataset.email || '';
+            const fullname = row.dataset.fullname || '';
+            
+            if (!searchTerm || 
+                username.includes(searchTerm) || 
+                email.includes(searchTerm) ||
+                fullname.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Show/hide no results message
+        const noReferralsMessage = document.getElementById('noReferralsMessage');
+        if (visibleCount === 0 && rows.length > 0) {
+            noReferralsMessage.style.display = 'block';
+            noReferralsMessage.innerHTML = `
+                <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                <h6 class="text-muted">No matching referrals found</h6>
+                <p class="text-muted small mb-0">Try a different search term</p>
+            `;
+        } else {
+            noReferralsMessage.style.display = 'none';
+        }
+    }
+    
+    // Helper function to calculate time since
+    function timeSince(dateString) {
+        const date = new Date(dateString);
+        const seconds = Math.floor((new Date() - date) / 1000);
+        
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + " years";
+        
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + " months";
+        
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + " days";
+        
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + " hours";
+        
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + " minutes";
+        
+        return Math.floor(seconds) + " seconds";
+    }
+    
+    function applyAvatarColors() {
+        document.querySelectorAll('.user-avatar').forEach(avatar => {
+            const username = avatar.dataset.username;
+            if (username) {
+                avatar.style.background = getColorFromString(username);
+            }
+        });
+    }
+    
+    function getColorFromString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const colors = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
+        ];
+        
+        return colors[Math.abs(hash) % colors.length];
+    }
+    
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+    
+    function showToast(message, type = 'info') {
+        // Remove existing toasts
+        document.querySelectorAll('.custom-toast').forEach(toast => toast.remove());
+        
+        const toast = document.createElement('div');
+        toast.className = `custom-toast position-fixed bottom-0 end-0 m-3 p-3 rounded border-0`;
+        toast.style.zIndex = '9999';
+        toast.style.animation = 'slideIn 0.3s ease';
+        
+        let bgColor = 'bg-primary';
+        let icon = 'info-circle';
+        
+        if (type === 'success') {
+            bgColor = 'bg-success';
+            icon = 'check-circle';
+        } else if (type === 'error') {
+            bgColor = 'bg-danger';
+            icon = 'exclamation-circle';
+        } else if (type === 'warning') {
+            bgColor = 'bg-warning';
+            icon = 'exclamation-triangle';
+        }
+        
+        toast.innerHTML = `
+            <div class="d-flex align-items-center gap-2 text-white">
+                <i class="fas fa-${icon}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        toast.classList.add(bgColor);
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }, 3000);
+    }
+    
+    // Add CSS for toast animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(20px); }
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

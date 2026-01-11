@@ -1,12 +1,15 @@
 {% extends "sa/base.html" %}
-{% block title %}Referral Management • Admin Panel{% endblock %}
+{% load static %}
 
+{% block title %}Referral Management • Admin Panel{% endblock %}
 {% block content %}
-<!-- Page Header -->
+<!-- =========================
+PAGE HEADER
+========================= -->
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5">
     <div>
         <h1 class="h2 mb-1">Referral Management</h1>
-        <p class="text-muted mb-0">Track and manage referral relationships</p>
+        <p class="text-muted mb-0">Grouped referral overview & conversion tracking</p>
     </div>
     <div class="d-flex align-items-center gap-2">
         <div class="search-container">
@@ -15,10 +18,10 @@
             </div>
             <input 
                 type="text" 
+                id="globalSearch"
                 class="search-input" 
-                placeholder="Search referrals..." 
+                placeholder="Search username or email…" 
                 autocomplete="off"
-                id="referralSearch"
             >
         </div>
         <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="refreshBtn">
@@ -28,211 +31,202 @@
     </div>
 </div>
 
-<!-- Stats Overview -->
+<!-- =========================
+REFERRAL STATS OVERVIEW
+========================= -->
 <div class="row g-3 mb-5">
+    <!-- Total Referrers -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-info">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Total Referrers</h6>
+                <h3 class="mb-0">{{ referral_summary|length }}</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-user-check"></i>
+                    <span>Active referrers</span>
+                </small>
+            </div>
+        </div>
+    </div>
+
     <!-- Total Referrals -->
     <div class="col-12 col-sm-6 col-lg-3">
         <div class="stat-card gradient-primary">
             <div class="stat-icon">
-                <i class="fas fa-handshake"></i>
+                <i class="fas fa-user-plus"></i>
             </div>
             <div class="stat-content">
                 <h6 class="text-uppercase">Total Referrals</h6>
-                <h3 class="mb-0">{{ referrals|length }}</h3>
+                <h3 class="mb-0" id="totalReferrals">0</h3>
                 <small class="d-flex align-items-center gap-1 mt-2">
                     <i class="fas fa-chart-line"></i>
-                    <span>24 new this week</span>
+                    <span>All referrals</span>
                 </small>
             </div>
-            <div class="stat-trend success">+8.3%</div>
         </div>
     </div>
-</div>
 
-<!-- Filters Bar -->
-<div class="dashboard-card mb-4">
-    <div class="row g-3 align-items-center">
-        <div class="col-12 col-md-8">
-            <div class="d-flex flex-wrap align-items-center gap-3">
-                <div class="filter-group">
-                    <label class="form-label small text-muted mb-1">Status</label>
-                    <div class="filter-buttons">
-                        <button class="filter-btn active" data-filter="all">All</button>
-                        <button class="filter-btn" data-filter="active">Active</button>
-                        <button class="filter-btn" data-filter="inactive">Inactive</button>
-                        <button class="filter-btn" data-filter="pending">Pending</button>
-                    </div>
-                </div>
-                <div class="filter-group">
-                    <label class="form-label small text-muted mb-1">Date Range</label>
-                    <select class="form-select form-select-sm" style="width: 160px;">
-                        <option>Last 7 days</option>
-                        <option selected>Last 30 days</option>
-                        <option>Last 90 days</option>
-                        <option>This year</option>
-                        <option>All time</option>
-                    </select>
-                </div>
+    <!-- Successful Conversions -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-success">
+            <div class="stat-icon">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Successful</h6>
+                <h3 class="mb-0" id="totalSuccessful">0</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-percentage"></i>
+                    <span id="conversionRate">0% rate</span>
+                </small>
             </div>
         </div>
-        <div class="col-12 col-md-4 text-md-end">
-            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2 ms-auto" id="exportBtn">
-                <i class="fas fa-download"></i>
-                Export CSV
-            </button>
+    </div>
+
+    <!-- Pending Conversions -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card gradient-warning">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h6 class="text-uppercase">Pending</h6>
+                <h3 class="mb-0" id="totalPending">0</h3>
+                <small class="d-flex align-items-center gap-1 mt-2">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span>Awaiting deposit</span>
+                </small>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Main Table -->
-<div class="dashboard-card">
+<!-- =========================
+SUMMARY VIEW (DEFAULT)
+========================= -->
+<div class="dashboard-card" id="summaryView">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-            <h5 class="mb-1">All Referral Relationships</h5>
-            <p class="text-muted mb-0" id="referralCount">{{ referrals|length }} total relationships found</p>
+            <h5 class="mb-1">Referral Summary</h5>
+            <p class="text-muted mb-0" id="referralCount">{{ referral_summary|length }} referrers</p>
         </div>
         <div class="search-results-info" id="searchResultsInfo" style="display: none;">
             <span class="badge badge-soft-primary" id="matchCount">0 matches</span>
         </div>
     </div>
-    
+
     <div class="table-scroll-wrapper">
         <table class="table table-hover align-middle mb-0 referrals-table">
             <thead>
                 <tr>
-                    <th class="sortable" data-sort="id">
-                        Referral ID <i class="fas fa-sort ms-1"></i>
-                    </th>
                     <th class="sortable" data-sort="referrer">
                         Referrer <i class="fas fa-sort ms-1"></i>
                     </th>
-                    <th class="sortable" data-sort="referred">
-                        Referred User <i class="fas fa-sort ms-1"></i>
+                    <th>Email</th>
+                    <th class="sortable" data-sort="total">
+                        Total Referred <i class="fas fa-sort ms-1"></i>
                     </th>
-                    <th class="sortable" data-sort="code">
-                        Referral Code <i class="fas fa-sort ms-1"></i>
+                    <th class="sortable" data-sort="successful">
+                        Successful <i class="fas fa-sort ms-1"></i>
                     </th>
-                    <th class="sortable" data-sort="date">
-                        Date <i class="fas fa-sort ms-1"></i>
-                    </th>
-                    <th class="sortable" data-sort="status">
-                        Status <i class="fas fa-sort ms-1"></i>
+                    <th class="sortable" data-sort="conversion">
+                        Conversion Rate <i class="fas fa-sort ms-1"></i>
                     </th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
-            <tbody id="referralsTableBody">
-                {% for r in referrals %}
-                <tr class="referral-row" 
-                    data-id="{{ r.id }}"
-                    data-referrer="{{ r.referred_by.username|lower }}"
-                    data-referred="{{ r.username|lower }}"
-                    data-email="{{ r.email|lower }}"
-                    data-code="{{ r.referred_by.referral_code|default:''|lower }}"
-                    data-status="{% if r.is_active %}active{% else %}inactive{% endif %}"
-                    data-date="{{ r.date_joined|date:'U' }}">
+            <tbody>
+                {% for item in referral_summary %}
+                {% with total_ref=item.total successful_ref=item.successful conversion_rate=item.successful|default:0|floatformat:2 %}
+                <tr 
+                    class="summary-row clickable"
+                    data-user="{{ item.user.id }}"
+                    data-search="{{ item.user.username|lower }} {{ item.user.email|lower }}"
+                    data-total="{{ total_ref }}"
+                    data-successful="{{ successful_ref }}"
+                    data-conversion="{% if total_ref > 0 %}{{ successful_ref|floatformat:1 }}{% else %}0{% endif %}"
+                >
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <div class="id-badge">
-                                {{ forloop.counter }}
+                            <div class="avatar-circle" data-initial="{{ item.user.username|first|upper }}">
+                                {{ item.user.username|first|upper }}
                             </div>
                             <div>
-                                <code class="text-muted small">#REF-{{ r.id|stringformat:"06d" }}</code>
+                                <div class="fw-medium">{{ item.user.username }}</div>
+                                <small class="text-muted">ID: {{ item.user.id }}</small>
                             </div>
+                        </div>
+                    </td>
+                    <td class="text-muted">
+                        {{ item.user.email|default:"—" }}
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary rounded-pill px-3 py-2">
+                                {{ total_ref }}
+                            </span>
                         </div>
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <div class="avatar-circle referrer-avatar">
-                                {{ r.referred_by.username|first|upper }}
-                            </div>
-                            <div>
-                                <div class="fw-medium">{{ r.referred_by.username }}</div>
-                                <small class="text-muted">{{ r.referred_by.email|truncatechars:20|default:"No email" }}</small>
-                            </div>
+                            <span class="badge bg-success rounded-pill px-3 py-2">
+                                {{ successful_ref }}
+                            </span>
                         </div>
                     </td>
                     <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="avatar-circle referred-avatar">
-                                <i class="fas fa-user-plus"></i>
+                        <div class="conversion-display">
+                            <div class="progress" style="height: 6px; width: 120px;">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: {% if total_ref > 0 %}{{ successful_ref|floatformat:0 }}{% else %}0{% endif %}%">
+                                </div>
                             </div>
-                            <div>
-                                <div class="fw-medium">{{ r.username }}</div>
-                                <small class="text-muted">{{ r.email|truncatechars:20|default:"No email" }}</small>
-                            </div>
+                            <small class="text-muted d-block mt-1">
+                                {% if total_ref > 0 %}
+                                    {{ successful_ref|floatformat:1 }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </small>
                         </div>
-                    </td>
-                    <td>
-                        {% if r.referred_by.referral_code %}
-                        <div class="d-flex align-items-center gap-2">
-                            <code class="referral-code">{{ r.referred_by.referral_code|truncatechars:12 }}</code>
-                            <button class="btn btn-sm btn-link text-primary p-0 copy-btn" 
-                                    data-code="{{ r.referred_by.referral_code }}"
-                                    title="Copy to clipboard">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                        {% else %}
-                        <span class="badge badge-soft-secondary">No code</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="d-flex flex-column">
-                            <span class="fw-medium">{{ r.date_joined|date:"M d, Y" }}</span>
-                            <small class="text-muted">{{ r.date_joined|date:"H:i A" }}</small>
-                        </div>
-                    </td>
-                    <td>
-                        {% if r.is_active %}
-                        <span class="status-badge active">
-                            <i class="fas fa-circle"></i>
-                            Active
-                        </span>
-                        {% else %}
-                        <span class="status-badge inactive">
-                            <i class="fas fa-circle"></i>
-                            Inactive
-                        </span>
-                        {% endif %}
                     </td>
                     <td class="text-end">
                         <div class="action-buttons">
-                            <a href="{% url 'adminpanel:referral_detail' r.id %}" 
-                               class="btn btn-sm btn-outline-light action-btn"
-                               data-bs-toggle="tooltip" 
-                               data-bs-title="View Details">
+                            <button
+                                class="btn btn-sm btn-outline-light view-referrals-btn action-btn"
+                                data-user="{{ item.user.id }}"
+                                data-bs-toggle="tooltip"
+                                data-bs-title="View Referrals"
+                            >
                                 <i class="fas fa-eye"></i>
-                            </a>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="{% url 'adminpanel:referral_detail' r.id %}">
-                                        <i class="fas fa-eye me-2"></i>View Details
-                                    </a></li>
-                                    <li><a class="dropdown-item copy-btn" href="#" data-code="{{ r.referred_by.referral_code|default:'' }}">
-                                        <i class="fas fa-copy me-2"></i>Copy Code
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#">
-                                        <i class="fas fa-trash me-2"></i>Delete
-                                    </a></li>
-                                </ul>
-                            </div>
+                            </button>
+                            {% if item.user.email %}
+                            <button
+                                class="btn btn-sm btn-outline-light action-btn email-btn"
+                                data-bs-toggle="tooltip"
+                                data-bs-title="Email Referrer"
+                                data-email="{{ item.user.email }}"
+                            >
+                                <i class="fas fa-envelope"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
+                {% endwith %}
                 {% empty %}
                 <tr id="noReferralsRow">
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="6" class="text-center py-5">
                         <div class="empty-state">
                             <div class="empty-state-icon mb-3">
-                                <i class="fas fa-handshake"></i>
+                                <i class="fas fa-user-friends"></i>
                             </div>
-                            <h5 class="text-muted">No referral records found</h5>
-                            <p class="text-muted mb-3">Start building your referral network today</p>
+                            <h5 class="text-muted">No referral data found</h5>
+                            <p class="text-muted small mb-3">Users haven't made any referrals yet</p>
                         </div>
                     </td>
                 </tr>
@@ -241,55 +235,189 @@
         </table>
     </div>
     
-    <!-- No Results Message -->
-    <div id="noResultsMessage" class="text-center py-5" style="display: none;">
-        <div class="py-4">
-            <i class="fas fa-search fa-3x text-muted mb-3"></i>
-            <h5 class="text-muted">No matching referrals found</h5>
-            <p class="text-muted small">Try a different search term or adjust your filters</p>
-        </div>
-    </div>
-    
     <!-- Mobile scroll hint -->
     <div class="mobile-scroll-hint">
         <i class="fas fa-arrow-left me-2"></i>Swipe left to see more columns
     </div>
-    
-    {% if referrals %}
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4 pt-3 border-top border-secondary">
+</div>
+
+<!-- =========================
+DETAIL VIEW (DRILL DOWN)
+========================= -->
+<div class="dashboard-card d-none" id="detailView">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div class="d-flex align-items-center gap-3">
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-download me-1"></i>Export
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-csv me-2"></i>CSV Format</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i>Excel Format</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-2"></i>PDF Report</a></li>
-                </ul>
+            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="backBtn">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+            <div>
+                <h5 class="mb-0" id="detailTitle">Referral Details</h5>
             </div>
         </div>
-        <div>
-            <nav aria-label="Referral pagination">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">
-                            <i class="fas fa-chevron-left"></i>
-                        </a>
-                    </li>
-                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">
-                            <i class="fas fa-chevron-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+        <div class="d-flex align-items-center gap-2">
+            <div class="search-container">
+                <div class="search-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <input 
+                    type="text" 
+                    id="detailSearch"
+                    class="search-input" 
+                    placeholder="Search referred users…" 
+                    autocomplete="off"
+                >
+            </div>
+            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-2" id="exportDetailBtn">
+                <i class="fas fa-download"></i> Export
+            </button>
         </div>
     </div>
-    {% endif %}
+
+    <!-- Detail Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="detail-stat-card">
+                <div class="detail-stat-icon bg-primary">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Total Referred</h6>
+                    <h4 class="mb-0" id="detailTotal">0</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="detail-stat-card">
+                <div class="detail-stat-icon bg-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Successful</h6>
+                    <h4 class="mb-0" id="detailSuccessful">0</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="detail-stat-card">
+                <div class="detail-stat-icon bg-warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Conversion Rate</h6>
+                    <h4 class="mb-0" id="detailConversion">0%</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% for item in referral_summary %}
+    <div class="referral-detail d-none" data-owner="{{ item.user.id }}">
+        <div class="table-scroll-wrapper">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Referred User</th>
+                        <th>Email</th>
+                        <th>First Deposit</th>
+                        <th>Date Joined</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in item.referrals %}
+                    <tr
+                        class="detail-row"
+                        data-search="{{ r.username|lower }} {{ r.email|lower }}"
+                        data-deposit="{{ r.has_first_deposit|yesno:'true,false' }}"
+                    >
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-circle-sm" data-initial="{{ r.username|first|upper }}">
+                                    {{ r.username|first|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-medium">{{ r.username }}</div>
+                                    <small class="text-muted">ID: {{ r.id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-muted">
+                            {{ r.email|default:"—" }}
+                        </td>
+                        <td>
+                            {% if r.has_first_deposit %}
+                                <span class="status-badge status-success">
+                                    <i class="fas fa-check-circle"></i> Yes
+                                </span>
+                                <div class="text-success small mt-1">
+                                    <i class="fas fa-coins"></i> Active User
+                                </div>
+                            {% else %}
+                                <span class="status-badge status-pending">
+                                    <i class="fas fa-clock"></i> Pending
+                                </span>
+                                <div class="text-warning small mt-1">
+                                    <i class="fas fa-hourglass-half"></i> No deposit
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="date-display">
+                                <div>{{ r.date_joined|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ r.date_joined|time:"H:i" }}</small>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <div class="action-buttons">
+                                <a href="{% url 'adminpanel:referral_detail' r.id %}" 
+                                   class="btn btn-sm btn-outline-light action-btn"
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if r.email %}
+                                <button class="btn btn-sm btn-outline-light action-btn email-btn"
+                                        data-email="{{ r.email }}"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-title="Send Email">
+                                    <i class="fas fa-envelope"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="empty-state">
+                                <div class="empty-state-icon mb-3">
+                                    <i class="fas fa-user-slash"></i>
+                                </div>
+                                <h5 class="text-muted">No referrals found</h5>
+                                <p class="text-muted small mb-3">This user hasn't referred anyone yet</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile scroll hint -->
+        <div class="mobile-scroll-hint">
+            <i class="fas fa-arrow-left me-2"></i>Swipe left to see more columns
+        </div>
+    </div>
+    {% endfor %}
+    
+    <!-- No Results Message -->
+    <div id="noDetailResultsMessage" class="text-center py-5" style="display: none;">
+        <div class="py-4">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No matching referrals found</h5>
+            <p class="text-muted small">Try a different search term</p>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -306,7 +434,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 200px;
+    width: 260px;
 }
 
 .search-container:focus-within {
@@ -352,6 +480,10 @@
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
+.stat-card.gradient-warning {
+    border-left: 4px solid #ed8936;
+}
+
 .stat-card.gradient-primary {
     border-left: 4px solid #667eea;
 }
@@ -360,12 +492,8 @@
     border-left: 4px solid #48bb78;
 }
 
-.stat-card.gradient-warning {
-    border-left: 4px solid #ed8936;
-}
-
-.stat-card.gradient-danger {
-    border-left: 4px solid #f56565;
+.stat-card.gradient-info {
+    border-left: 4px solid #4299e1;
 }
 
 .stat-icon {
@@ -379,6 +507,11 @@
     font-size: 1.1rem;
 }
 
+.gradient-warning .stat-icon {
+    background: linear-gradient(135deg, rgba(237, 137, 54, 0.2), rgba(237, 137, 54, 0.1));
+    color: #ed8936;
+}
+
 .gradient-primary .stat-icon {
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(102, 126, 234, 0.1));
     color: #667eea;
@@ -389,20 +522,19 @@
     color: #48bb78;
 }
 
-.gradient-warning .stat-icon {
-    background: linear-gradient(135deg, rgba(237, 137, 54, 0.2), rgba(237, 137, 54, 0.1));
-    color: #ed8936;
-}
-
-.gradient-danger .stat-icon {
-    background: linear-gradient(135deg, rgba(245, 101, 101, 0.2), rgba(245, 101, 101, 0.1));
-    color: #f56565;
+.gradient-info .stat-icon {
+    background: linear-gradient(135deg, rgba(66, 153, 225, 0.2), rgba(66, 153, 225, 0.1));
+    color: #4299e1;
 }
 
 .stat-content h3 {
     font-size: 1.8rem;
     font-weight: 700;
     margin-bottom: 4px;
+}
+
+.gradient-warning .stat-content h3 {
+    color: #ed8936;
 }
 
 .gradient-primary .stat-content h3 {
@@ -413,12 +545,8 @@
     color: #48bb78;
 }
 
-.gradient-warning .stat-content h3 {
-    color: #ed8936;
-}
-
-.gradient-danger .stat-content h3 {
-    color: #f56565;
+.gradient-info .stat-content h3 {
+    color: #4299e1;
 }
 
 .stat-content h6 {
@@ -433,58 +561,19 @@
     opacity: 0.8;
 }
 
-.stat-trend {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    padding: 4px 8px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
+/* Dashboard Card */
+.dashboard-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
 }
 
-.stat-trend.success {
-    background: rgba(72, 187, 120, 0.2);
-    color: #48bb78;
-}
-
-.stat-trend.warning {
-    background: rgba(237, 137, 54, 0.2);
-    color: #ed8936;
-}
-
-/* Filter Groups */
-.filter-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.filter-buttons {
-    display: flex;
-    gap: 4px;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px;
-    border-radius: 8px;
-}
-
-.filter-btn {
-    padding: 6px 16px;
-    border: none;
-    background: transparent;
-    color: #94a3b8;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    transition: all 0.2s ease;
-}
-
-.filter-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-
-.filter-btn.active {
-    background: var(--primary);
-    color: white;
+.dashboard-card:hover {
+    border-color: rgba(102, 126, 234, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
 /* Table Styles */
@@ -492,25 +581,14 @@
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
 }
 
 .referrals-table {
-    min-width: 1000px;
+    min-width: 900px;
 }
 
-.id-badge {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
+/* Avatar Circles */
 .avatar-circle {
     width: 40px;
     height: 40px;
@@ -524,22 +602,40 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.referrer-avatar {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.referred-avatar {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-}
-
-.referral-code {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+.avatar-circle-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #fff;
     font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Badges */
+.badge {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.bg-success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+}
+
+.bg-warning {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%) !important;
+}
+
+/* Status Badges */
 .status-badge {
     padding: 6px 12px;
     border-radius: 20px;
@@ -550,20 +646,53 @@
     gap: 6px;
 }
 
-.status-badge i {
-    font-size: 0.5rem;
-}
-
-.status-badge.active {
+.status-success {
     background: rgba(72, 187, 120, 0.2);
     color: #48bb78;
+    border: 1px solid rgba(72, 187, 120, 0.3);
 }
 
-.status-badge.inactive {
-    background: rgba(245, 101, 101, 0.2);
-    color: #f56565;
+.status-pending {
+    background: rgba(237, 137, 54, 0.2);
+    color: #ed8936;
+    border: 1px solid rgba(237, 137, 54, 0.3);
 }
 
+/* Detail Stat Cards */
+.detail-stat-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.detail-stat-card:hover {
+    border-color: rgba(102, 126, 234, 0.3);
+    transform: translateY(-2px);
+}
+
+.detail-stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+}
+
+.detail-stat-card h4 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+/* Action Buttons */
 .action-buttons {
     display: flex;
     align-items: center;
@@ -578,6 +707,13 @@
     align-items: center;
     justify-content: center;
     border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+    transform: translateY(-2px);
 }
 
 /* Empty State */
@@ -618,6 +754,8 @@
     color: #94a3b8;
     border-top: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.02);
+    margin-top: 1rem;
+    border-radius: 0 0 8px 8px;
 }
 
 .mobile-scroll-hint i {
@@ -650,47 +788,44 @@
     opacity: 1;
 }
 
-.sortable.sorted-asc i.fa-sort {
-    display: none;
+/* Date Display */
+.date-display {
+    font-size: 0.9rem;
 }
 
-.sortable.sorted-asc::after {
-    content: "↑";
-    margin-left: 4px;
-    color: var(--primary);
+.date-display .text-muted {
+    font-size: 0.8rem;
 }
 
-.sortable.sorted-desc i.fa-sort {
-    display: none;
+/* Conversion Display */
+.conversion-display .progress {
+    background: rgba(255, 255, 255, 0.05);
 }
 
-.sortable.sorted-desc::after {
-    content: "↓";
-    margin-left: 4px;
-    color: var(--primary);
+/* Summary Row */
+.summary-row {
+    transition: all 0.2s ease;
+    cursor: pointer;
 }
 
-/* Responsive Design */
+.summary-row:hover {
+    background: rgba(102, 126, 234, 0.05) !important;
+    transform: translateX(4px);
+}
+
+/* Clickable effect */
+.clickable {
+    cursor: pointer;
+}
+
+/* Table responsive adjustments */
 @media (max-width: 768px) {
-    /* Header adjustments */
-    .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mb-5 {
-        flex-direction: column;
-        align-items: stretch !important;
+    .dashboard-card {
+        padding: 16px;
     }
     
     .search-container {
         width: 100%;
-        margin-top: 8px;
-    }
-    
-    /* Stats grid - 2 columns on mobile */
-    .row.g-3.mb-5 {
-        gap: 12px !important;
-    }
-    
-    .col-12.col-sm-6.col-lg-3 {
-        width: calc(50% - 6px);
-        margin-bottom: 0;
     }
     
     .stat-card {
@@ -701,395 +836,84 @@
         width: 36px;
         height: 36px;
         font-size: 0.9rem;
-        margin-bottom: 8px;
     }
     
     .stat-content h3 {
         font-size: 1.5rem;
     }
     
-    .stat-content h6 {
-        font-size: 0.7rem;
-    }
-    
-    .stat-trend {
-        top: 12px;
-        right: 12px;
-        padding: 3px 6px;
-        font-size: 0.7rem;
-    }
-    
-    /* Filter adjustments */
-    .filter-group {
-        width: 100%;
-        margin-bottom: 8px;
-    }
-    
-    .filter-buttons {
-        width: 100%;
-        justify-content: stretch;
-    }
-    
-    .filter-btn {
-        flex: 1;
-        text-align: center;
-        padding: 8px 12px;
-    }
-    
-    /* Table adjustments */
     .referrals-table {
-        min-width: 1200px;
+        min-width: 1000px;
     }
     
     .mobile-scroll-hint {
         display: block;
     }
     
-    /* Table header adjustments */
-    .dashboard-card .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mb-4 {
-        flex-direction: column;
-        align-items: flex-start !important;
+    .detail-stat-card {
+        padding: 12px;
     }
     
-    .search-results-info {
-        align-self: flex-start;
-        margin-top: 8px;
+    .detail-stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
     }
     
-    /* Pagination adjustments */
-    .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mt-4 {
-        flex-direction: column;
-        align-items: center !important;
-        gap: 1rem !important;
-    }
-    
-    .d-flex.align-items-center.gap-3 {
-        width: 100%;
-        justify-content: center;
+    .detail-stat-card h4 {
+        font-size: 1.5rem;
     }
 }
 
 @media (max-width: 576px) {
-    /* Single column on very small screens */
+    .dashboard-card {
+        padding: 12px;
+    }
+    
+    .d-flex.flex-wrap.justify-content-between.align-items-center.gap-3.mb-5 {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    
     .col-12.col-sm-6.col-lg-3 {
         width: 100%;
     }
-    
-    /* Adjust stat cards for single column */
-    .stat-card {
-        padding: 16px;
-    }
-    
-    .stat-icon {
-        width: 44px;
-        height: 44px;
-        font-size: 1.1rem;
-    }
-    
-    .stat-content h3 {
-        font-size: 1.8rem;
-    }
-    
-    /* Adjust search container */
-    .search-container {
-        padding: 8px 16px;
-    }
-    
-    /* Make buttons full width */
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    /* Adjust pagination */
-    .pagination {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-}
-
-/* Animation for referral rows */
-.referral-row {
-    transition: all 0.2s ease;
-}
-
-.referral-row:hover {
-    background: rgba(255, 255, 255, 0.03) !important;
-    transform: translateX(2px);
-}
-
-/* Copy button animation */
-.copy-btn {
-    transition: all 0.2s ease;
-}
-
-.copy-btn:hover {
-    transform: scale(1.2);
-}
-
-/* Highlight effect for search */
-.highlight {
-    background-color: rgba(255, 193, 7, 0.15);
-    padding: 2px 4px;
-    border-radius: 4px;
-    color: #ffc107;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Apply avatar colors
-    applyAvatarColors();
-    
     // Initialize tooltips
     const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltips.forEach(el => new bootstrap.Tooltip(el));
     
-    // Search functionality
-    const searchInput = document.getElementById('referralSearch');
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    const referralRows = document.querySelectorAll('.referral-row');
-    const referralCount = document.getElementById('referralCount');
-    const searchResultsInfo = document.getElementById('searchResultsInfo');
-    const matchCount = document.getElementById('matchCount');
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    const noReferralsRow = document.getElementById('noReferralsRow');
-    
-    let currentFilter = 'all';
-    let currentSearch = '';
-    
-    // Filter functionality
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Update active state
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Apply filter
-            currentFilter = this.dataset.filter;
-            applyFilters();
-        });
-    });
-    
-    // Search input with debouncing
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            currentSearch = this.value.toLowerCase().trim();
-            applyFilters();
-        }, 300);
-    });
-    
-    // Apply both search and filter
-    function applyFilters() {
-        let visibleCount = 0;
+    // Calculate totals
+    function calculateTotals() {
+        const rows = document.querySelectorAll('.summary-row');
+        let totalReferrals = 0;
+        let totalSuccessful = 0;
         
-        referralRows.forEach(row => {
-            const matchesFilter = currentFilter === 'all' || 
-                                 row.dataset.status === currentFilter;
-            
-            const matchesSearch = !currentSearch || 
-                                 row.dataset.referrer.includes(currentSearch) ||
-                                 row.dataset.referred.includes(currentSearch) ||
-                                 row.dataset.email.includes(currentSearch) ||
-                                 row.dataset.code.includes(currentSearch);
-            
-            if (matchesFilter && matchesSearch) {
-                row.style.display = '';
-                visibleCount++;
-                
-                // Highlight search text
-                if (currentSearch) {
-                    highlightText(row, currentSearch);
-                } else {
-                    removeHighlights(row);
-                }
-            } else {
-                row.style.display = 'none';
-                removeHighlights(row);
-            }
+        rows.forEach(row => {
+            totalReferrals += parseInt(row.dataset.total) || 0;
+            totalSuccessful += parseInt(row.dataset.successful) || 0;
         });
         
-        // Update UI
-        updateResultsUI(visibleCount);
+        const totalPending = totalReferrals - totalSuccessful;
+        const conversionRate = totalReferrals > 0 ? (totalSuccessful / totalReferrals * 100).toFixed(1) : 0;
+        
+        // Update stats
+        document.getElementById('totalReferrals').textContent = totalReferrals;
+        document.getElementById('totalSuccessful').textContent = totalSuccessful;
+        document.getElementById('totalPending').textContent = totalPending;
+        document.getElementById('conversionRate').textContent = conversionRate + '% rate';
     }
     
-    // Highlight search text
-    function highlightText(element, searchTerm) {
-        const textElements = element.querySelectorAll('.fw-medium, .referral-code, small.text-muted');
-        
-        textElements.forEach(el => {
-            const text = el.textContent;
-            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            const highlighted = text.replace(regex, '<span class="highlight">$1</span>');
-            if (highlighted !== text) {
-                el.innerHTML = highlighted;
-            }
-        });
-    }
-    
-    // Remove highlights
-    function removeHighlights(element) {
-        const highlights = element.querySelectorAll('.highlight');
-        highlights.forEach(highlight => {
-            const parent = highlight.parentNode;
-            parent.textContent = parent.textContent;
-        });
-    }
-    
-    // Update results UI
-    function updateResultsUI(visibleCount) {
-        const totalCount = referralRows.length;
-        
-        if (visibleCount === 0) {
-            noResultsMessage.style.display = 'block';
-            if (noReferralsRow) noReferralsRow.style.display = 'none';
-            searchResultsInfo.style.display = 'none';
-        } else {
-            noResultsMessage.style.display = 'none';
-            if (noReferralsRow) noReferralsRow.style.display = 'none';
-            
-            if (currentSearch || currentFilter !== 'all') {
-                searchResultsInfo.style.display = 'block';
-                matchCount.textContent = `${visibleCount} match${visibleCount !== 1 ? 'es' : ''}`;
-            } else {
-                searchResultsInfo.style.display = 'none';
-            }
-        }
-        
-        if (referralCount) {
-            referralCount.textContent = `${visibleCount} of ${totalCount} relationships found`;
-        }
-    }
-    
-    // Sort functionality
-    let currentSort = { column: null, direction: 'asc' };
-    
-    document.querySelectorAll('.sortable').forEach(header => {
-        header.addEventListener('click', function() {
-            const column = this.dataset.sort;
-            
-            if (currentSort.column === column) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort.column = column;
-                currentSort.direction = 'asc';
-            }
-            
-            sortTable(column);
-            
-            // Update sort indicators
-            document.querySelectorAll('.sortable').forEach(h => {
-                h.classList.remove('sorted-asc', 'sorted-desc');
-            });
-            this.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
-        });
-    });
-    
-    function sortTable(column) {
-        const tbody = document.getElementById('referralsTableBody');
-        const rows = Array.from(tbody.querySelectorAll('.referral-row'));
-        
-        rows.sort((a, b) => {
-            let aValue, bValue;
-            
-            switch (column) {
-                case 'id':
-                    aValue = parseInt(a.dataset.id);
-                    bValue = parseInt(b.dataset.id);
-                    break;
-                case 'referrer':
-                    aValue = a.dataset.referrer;
-                    bValue = b.dataset.referrer;
-                    break;
-                case 'referred':
-                    aValue = a.dataset.referred;
-                    bValue = b.dataset.referred;
-                    break;
-                case 'code':
-                    aValue = a.dataset.code;
-                    bValue = b.dataset.code;
-                    break;
-                case 'date':
-                    aValue = parseInt(a.dataset.date);
-                    bValue = parseInt(b.dataset.date);
-                    break;
-                case 'status':
-                    aValue = a.dataset.status;
-                    bValue = b.dataset.status;
-                    break;
-                default:
-                    return 0;
-            }
-            
-            let comparison = 0;
-            if (aValue < bValue) comparison = -1;
-            if (aValue > bValue) comparison = 1;
-            
-            return currentSort.direction === 'asc' ? comparison : -comparison;
-        });
-        
-        // Reappend rows in sorted order
-        rows.forEach(row => tbody.appendChild(row));
-    }
-    
-    // Copy to clipboard functionality
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.copy-btn')) {
-            e.preventDefault();
-            const btn = e.target.closest('.copy-btn');
-            const code = btn.dataset.code;
-            
-            if (code) {
-                navigator.clipboard.writeText(code).then(() => {
-                    // Show success message
-                    const icon = btn.querySelector('i');
-                    if (icon) {
-                        const originalClass = icon.className;
-                        icon.className = 'fas fa-check';
-                        setTimeout(() => {
-                            icon.className = originalClass;
-                        }, 2000);
-                    }
-                    
-                    // Show toast notification
-                    showToast('Code copied to clipboard!', 'success');
-                });
-            }
-        }
-    });
-    
-    // Refresh button
-    document.getElementById('refreshBtn')?.addEventListener('click', function() {
-        const btn = this;
-        const icon = btn.querySelector('i');
-        
-        // Add spinning animation
-        icon.classList.add('fa-spin');
-        btn.disabled = true;
-        
-        // Simulate refresh
-        setTimeout(() => {
-            icon.classList.remove('fa-spin');
-            btn.disabled = false;
-            showToast('Data refreshed successfully!', 'success');
-        }, 800);
-    });
-    
-    // Export button
-    document.getElementById('exportBtn')?.addEventListener('click', function() {
-        showToast('Export started...', 'info');
-        // In a real implementation, you would trigger a file download here
-    });
-    
-    // Avatar color generation
+    // Apply avatar colors
     function applyAvatarColors() {
-        // For referrer avatars
-        document.querySelectorAll('.referrer-avatar').forEach(avatar => {
-            const text = avatar.textContent.trim();
-            if (text) {
-                avatar.style.background = getColorFromString(text);
+        document.querySelectorAll('.avatar-circle, .avatar-circle-sm').forEach(avatar => {
+            const initial = avatar.getAttribute('data-initial') || avatar.textContent.trim();
+            if (initial) {
+                avatar.style.background = getColorFromString(initial);
             }
         });
     }
@@ -1112,14 +936,325 @@ document.addEventListener('DOMContentLoaded', function() {
         return colors[Math.abs(hash) % colors.length];
     }
     
+    // DOM Elements
+    const summaryView = document.getElementById('summaryView');
+    const detailView = document.getElementById('detailView');
+    const backBtn = document.getElementById('backBtn');
+    const globalSearch = document.getElementById('globalSearch');
+    const detailSearch = document.getElementById('detailSearch');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const searchResultsInfo = document.getElementById('searchResultsInfo');
+    const matchCount = document.getElementById('matchCount');
+    const noDetailResultsMessage = document.getElementById('noDetailResultsMessage');
+    const detailTitle = document.getElementById('detailTitle');
+    const detailTotal = document.getElementById('detailTotal');
+    const detailSuccessful = document.getElementById('detailSuccessful');
+    const detailConversion = document.getElementById('detailConversion');
+    const referralCount = document.getElementById('referralCount');
+    
+    let currentSort = { column: null, direction: 'asc' };
+    
+    // Drill down functionality
+    document.querySelectorAll('.view-referrals-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.dataset.user;
+            const row = this.closest('.summary-row');
+            const username = row.querySelector('.fw-medium').textContent;
+            const total = row.dataset.total;
+            const successful = row.dataset.successful;
+            const conversion = row.dataset.conversion;
+            
+            // Switch to detail view
+            summaryView.classList.add('d-none');
+            detailView.classList.remove('d-none');
+            
+            // Update detail title
+            detailTitle.textContent = `Referrals by ${username}`;
+            
+            // Update detail stats
+            detailTotal.textContent = total;
+            detailSuccessful.textContent = successful;
+            detailConversion.textContent = conversion + '%';
+            
+            // Show only the relevant detail section
+            document.querySelectorAll('.referral-detail').forEach(box => {
+                if (box.dataset.owner === userId) {
+                    box.classList.remove('d-none');
+                    // Reset detail search
+                    detailSearch.value = '';
+                    applyDetailSearch();
+                } else {
+                    box.classList.add('d-none');
+                }
+            });
+            
+            // Reset scroll position
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+    
+    // Back button
+    backBtn.addEventListener('click', function() {
+        detailView.classList.add('d-none');
+        summaryView.classList.remove('d-none');
+        // Reset global search
+        globalSearch.value = '';
+        applyGlobalSearch();
+    });
+    
+    // Global search with debouncing
+    let globalSearchTimeout;
+    globalSearch.addEventListener('input', function() {
+        clearTimeout(globalSearchTimeout);
+        globalSearchTimeout = setTimeout(() => {
+            applyGlobalSearch();
+        }, 300);
+    });
+    
+    function applyGlobalSearch() {
+        const query = globalSearch.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.summary-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const searchData = row.dataset.search;
+            const matches = !query || searchData.includes(query);
+            
+            if (matches) {
+                row.style.display = '';
+                visibleCount++;
+                
+                // Highlight search text
+                if (query) {
+                    highlightText(row, query);
+                } else {
+                    removeHighlights(row);
+                }
+            } else {
+                row.style.display = 'none';
+                removeHighlights(row);
+            }
+        });
+        
+        updateGlobalResultsUI(visibleCount);
+    }
+    
+    // Detail search with debouncing
+    let detailSearchTimeout;
+    detailSearch.addEventListener('input', function() {
+        clearTimeout(detailSearchTimeout);
+        detailSearchTimeout = setTimeout(() => {
+            applyDetailSearch();
+        }, 300);
+    });
+    
+    function applyDetailSearch() {
+        const query = detailSearch.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.detail-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const searchData = row.dataset.search;
+            const matches = !query || searchData.includes(query);
+            
+            if (matches) {
+                row.style.display = '';
+                visibleCount++;
+                
+                // Highlight search text
+                if (query) {
+                    highlightText(row, query);
+                } else {
+                    removeHighlights(row);
+                }
+            } else {
+                row.style.display = 'none';
+                removeHighlights(row);
+            }
+        });
+        
+        updateDetailResultsUI(visibleCount);
+    }
+    
+    // Highlight search text
+    function highlightText(element, searchTerm) {
+        const textElements = element.querySelectorAll('.fw-medium, .text-muted');
+        
+        textElements.forEach(el => {
+            const text = el.textContent;
+            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            const highlighted = text.replace(regex, '<span class="highlight">$1</span>');
+            if (highlighted !== text) {
+                el.innerHTML = highlighted;
+            }
+        });
+    }
+    
+    // Remove highlights
+    function removeHighlights(element) {
+        const highlights = element.querySelectorAll('.highlight');
+        highlights.forEach(highlight => {
+            const parent = highlight.parentNode;
+            parent.textContent = parent.textContent;
+        });
+    }
+    
+    // Update global results UI
+    function updateGlobalResultsUI(visibleCount) {
+        const totalCount = document.querySelectorAll('.summary-row').length;
+        
+        if (visibleCount === 0 && totalCount > 0) {
+            searchResultsInfo.style.display = 'block';
+            matchCount.textContent = '0 matches';
+        } else if (globalSearch.value.trim()) {
+            searchResultsInfo.style.display = 'block';
+            matchCount.textContent = `${visibleCount} match${visibleCount !== 1 ? 'es' : ''}`;
+        } else {
+            searchResultsInfo.style.display = 'none';
+        }
+        
+        if (referralCount) {
+            referralCount.textContent = `${visibleCount} of ${totalCount} referrers`;
+        }
+    }
+    
+    // Update detail results UI
+    function updateDetailResultsUI(visibleCount) {
+        const activeDetail = document.querySelector('.referral-detail:not(.d-none)');
+        const totalCount = activeDetail ? activeDetail.querySelectorAll('.detail-row').length : 0;
+        
+        if (visibleCount === 0 && totalCount > 0) {
+            noDetailResultsMessage.style.display = 'block';
+        } else {
+            noDetailResultsMessage.style.display = 'none';
+        }
+    }
+    
+    // Sort functionality for summary table
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.sort;
+            
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            sortSummaryTable(column);
+            
+            // Update sort indicators
+            document.querySelectorAll('.sortable').forEach(h => {
+                h.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            this.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        });
+    });
+    
+    function sortSummaryTable(column) {
+        const tbody = summaryView.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('.summary-row'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch (column) {
+                case 'referrer':
+                    aValue = a.dataset.search.split(' ')[0];
+                    bValue = b.dataset.search.split(' ')[0];
+                    break;
+                case 'total':
+                    aValue = parseInt(a.dataset.total);
+                    bValue = parseInt(b.dataset.total);
+                    break;
+                case 'successful':
+                    aValue = parseInt(a.dataset.successful);
+                    bValue = parseInt(b.dataset.successful);
+                    break;
+                case 'conversion':
+                    aValue = parseFloat(a.dataset.conversion);
+                    bValue = parseFloat(b.dataset.conversion);
+                    break;
+                default:
+                    return 0;
+            }
+            
+            let comparison = 0;
+            if (aValue < bValue) comparison = -1;
+            if (aValue > bValue) comparison = 1;
+            
+            return currentSort.direction === 'asc' ? comparison : -comparison;
+        });
+        
+        // Reappend rows in sorted order
+        rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    // Email button functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.email-btn') || 
+            (e.target.closest('.action-btn') && e.target.closest('.action-btn').querySelector('.fa-envelope'))) {
+            e.preventDefault();
+            const btn = e.target.closest('button');
+            const email = btn.dataset.email;
+            
+            if (email && email !== '—') {
+                const subject = encodeURIComponent('Referral Program Update - Veltro Gaming');
+                const body = encodeURIComponent('Dear User,\n\nRegarding your referral activity...\n\nBest regards,\nAdmin Team');
+                window.open(`mailto:${email}?subject=${subject}&body=${body}`);
+            } else {
+                showToast('No email address available', 'warning');
+            }
+        }
+    });
+    
+    // Refresh button
+    refreshBtn.addEventListener('click', function() {
+        const btn = this;
+        const icon = btn.querySelector('i');
+        
+        // Add spinning animation
+        icon.classList.add('fa-spin');
+        btn.disabled = true;
+        
+        // Simulate refresh
+        setTimeout(() => {
+            icon.classList.remove('fa-spin');
+            btn.disabled = false;
+            window.location.reload();
+        }, 800);
+    });
+    
+    // Export detail button
+    document.getElementById('exportDetailBtn')?.addEventListener('click', function() {
+        const activeDetail = document.querySelector('.referral-detail:not(.d-none)');
+        if (activeDetail) {
+            const username = detailTitle.textContent.replace('Referrals by ', '');
+            showToast(`Exporting referrals for ${username}...`, 'info');
+            // In real implementation, trigger download here
+        }
+    });
+    
+    // Click on summary row (alternative to button)
+    document.querySelectorAll('.summary-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-btn')) {
+                const btn = this.querySelector('.view-referrals-btn');
+                if (btn) btn.click();
+            }
+        });
+    });
+    
     // Toast notification function
     function showToast(message, type = 'info') {
         const toast = document.createElement('div');
         toast.className = `position-fixed bottom-0 end-0 m-3 p-3 bg-${type} text-white rounded`;
         toast.style.zIndex = '9999';
+        toast.style.minWidth = '250px';
         toast.innerHTML = `
             <div class="d-flex align-items-center gap-2">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
                 <span>${message}</span>
             </div>
         `;
@@ -1130,8 +1265,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
-    // Initialize filters
-    applyFilters();
+    // Initialize
+    applyAvatarColors();
+    calculateTotals();
+    applyGlobalSearch();
 });
 </script>
+
 {% endblock %}

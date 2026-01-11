@@ -923,3 +923,183 @@
     font-size: 0.95rem;
   }
 }
+
+/* =========================
+   REFERRAL STATS GRID - EACH GROUP AS A ROW WITH 3 COLUMNS
+   ========================= */
+
+.referral-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+/* Each stat group (Today, Yesterday, etc.) */
+.stat-group {
+  background: rgba(15, 15, 20, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.stat-group:hover {
+  transform: translateY(-3px);
+  border-color: var(--veltora-gold);
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.15);
+}
+
+/* Special styling for All Time */
+.stat-group.total {
+  background: linear-gradient(135deg, 
+    rgba(255, 215, 0, 0.1), 
+    rgba(255, 215, 0, 0.05)
+  );
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.stat-group-title {
+  color: var(--veltora-gold);
+  margin: 0 0 20px 0;
+  font-size: 1.1rem;
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+/* Each row has 3 columns (Referrals, Successful, Total Amount) */
+.stat-row-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+/* Individual stat item styling */
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background: rgba(255, 215, 0, 0.05);
+  border-color: rgba(255, 215, 0, 0.2);
+}
+
+.stat-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.stat-value {
+  color: white;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Specific styling for different types */
+.stat-item:nth-child(2) .stat-value { /* Successful column */
+  color: #4CAF50;
+}
+
+.stat-item:nth-child(3) .stat-value { /* Total Amount column */
+  color: var(--veltora-gold);
+  font-size: 1.3rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .referral-stats-grid {
+    gap: 12px;
+    margin-top: 20px;
+  }
+  
+  .stat-group {
+    padding: 15px;
+  }
+  
+  .stat-group-title {
+    font-size: 1rem;
+    margin-bottom: 15px;
+  }
+  
+  .stat-row-container {
+    gap: 10px;
+  }
+  
+  .stat-item {
+    padding: 12px 8px;
+  }
+  
+  .stat-label {
+    font-size: 0.85rem;
+  }
+  
+  .stat-value {
+    font-size: 1.1rem;
+  }
+  
+  .stat-item:nth-child(3) .stat-value {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-group {
+    padding: 12px 10px;
+  }
+  
+  .stat-row-container {
+    gap: 8px;
+  }
+  
+  .stat-item {
+    padding: 10px 6px;
+  }
+  
+  .stat-label {
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+  }
+  
+  .stat-value {
+    font-size: 1rem;
+  }
+  
+  .stat-item:nth-child(3) .stat-value {
+    font-size: 1.1rem;
+  }
+}
+
+/* For very small screens, stack vertically */
+@media (max-width: 360px) {
+  .stat-row-container {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .stat-item {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px 15px;
+  }
+  
+  .stat-label {
+    margin-bottom: 0;
+    text-align: left;
+  }
+  
+  .stat-value {
+    text-align: right;
+  }
+}
