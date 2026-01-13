@@ -131,11 +131,11 @@ const Referral = () => {
               <h4 className="stat-group-title">Today</h4>
               <div className="stat-row-container">
                 <div className="stat-item">
-                  <span className="stat-label">Referrals</span>
+                  <span className="stat-label">Number of Invitations</span>
                   <strong className="stat-value">{data.stats.today.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Successful</span>
+                  <span className="stat-label">Number Of Recharges</span>
                   <strong className="stat-value">{data.stats.today.successful}</strong>
                 </div>
                 <div className="stat-item">
@@ -152,11 +152,11 @@ const Referral = () => {
               <h4 className="stat-group-title">Yesterday</h4>
               <div className="stat-row-container">
                 <div className="stat-item">
-                  <span className="stat-label">Referrals</span>
+                  <span className="stat-label">Number of Invitations</span>
                   <strong className="stat-value">{data.stats.yesterday.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Successful</span>
+                  <span className="stat-label">Number Of Recharges</span>
                   <strong className="stat-value">{data.stats.yesterday.successful}</strong>
                 </div>
                 <div className="stat-item">
@@ -173,11 +173,11 @@ const Referral = () => {
               <h4 className="stat-group-title">This Week</h4>
               <div className="stat-row-container">
                 <div className="stat-item">
-                  <span className="stat-label">Referrals</span>
+                  <span className="stat-label">Number of Invitations</span>
                   <strong className="stat-value">{data.stats.this_week.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Successful</span>
+                  <span className="stat-label">Number Of Recharges</span>
                   <strong className="stat-value">{data.stats.this_week.successful}</strong>
                 </div>
                 <div className="stat-item">
@@ -194,11 +194,11 @@ const Referral = () => {
               <h4 className="stat-group-title">All Time</h4>
               <div className="stat-row-container">
                 <div className="stat-item">
-                  <span className="stat-label">Referrals</span>
+                  <span className="stat-label">Number of Invitations</span>
                   <strong className="stat-value">{data.stats.total.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Successful</span>
+                  <span className="stat-label">Number Of Recharges</span>
                   <strong className="stat-value">{data.stats.total.successful}</strong>
                 </div>
                 <div className="stat-item">
@@ -223,7 +223,7 @@ const Referral = () => {
             <div className="column-left">
               {/* Mobile Stats - Appear in a row under ref cards */}
               <div className="mobile-stats-container" style={{ display: 'none' }}>
-                <div className="referral-stats-card mobile-stats">
+                <Number Of Recharges className="referral-stats-card mobile-stats">
                   <div className="stat-item">
                     <div className="stat-icon" style={{ background: "rgba(255, 215, 0, 0.1)" }}>
                       <Icon icon="mdi:account-multiple" color="var(--veltora-gold)" width="20" />
