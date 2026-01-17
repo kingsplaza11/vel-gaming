@@ -916,7 +916,7 @@
   }
   
   .logo-text {
-    font-size: 1.8rem !important;
+    font-size: 1rem !important;
   }
   
   .auth-subtitle {
@@ -925,7 +925,7 @@
 }
 
 /* =========================
-   REFERRAL STATS GRID - EACH GROUP AS A ROW WITH 3 COLUMNS
+   REFERRAL STATS GRID - EACH GROUP AS A ROW WITH 4 COLUMNS
    ========================= */
 
 .referral-stats-grid {
@@ -969,11 +969,11 @@
   border-bottom: 1px solid rgba(255, 215, 0, 0.2);
 }
 
-/* Each row has 3 columns (Referrals, Successful, Total Amount) */
+/* Each row has 4 columns (Referrals, First Time Recharges, First Time Amount, Total Amount) */
 .stat-row-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
 }
 
 /* Individual stat item styling */
@@ -981,11 +981,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 15px;
+  padding: 15px 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s ease;
+  min-height: 90px;
 }
 
 .stat-item:hover {
@@ -995,9 +996,11 @@
 
 .stat-label {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   margin-bottom: 8px;
   text-align: center;
+  line-height: 1.2;
+  width: 100%;
 }
 
 .stat-value {
@@ -1005,16 +1008,50 @@
   font-size: 1.2rem;
   font-weight: 700;
   text-align: center;
+  width: 100%;
 }
 
-/* Specific styling for different types */
-.stat-item:nth-child(2) .stat-value { /* Successful column */
-  color: #4CAF50;
+/* Specific styling for different stat items */
+.stat-item:nth-child(1) .stat-value { /* Invitations column */
+  color: #4dabf7; /* Light blue */
 }
 
-.stat-item:nth-child(3) .stat-value { /* Total Amount column */
-  color: var(--veltora-gold);
+.stat-item:nth-child(2) .stat-value { /* First Time Recharges column */
+  color: #4CAF50; /* Green */
+}
+
+.stat-item:nth-child(3) .stat-value { /* First Time Recharge Amount column */
+  color: #ffc107; /* Amber */
+}
+
+.stat-item:nth-child(4) .stat-value { /* Total Recharge Amount column */
+  color: var(--veltora-gold); /* Gold */
   font-size: 1.3rem;
+}
+
+/* Tablet Responsive */
+@media (max-width: 992px) {
+  .stat-row-container {
+    gap: 10px;
+  }
+  
+  .stat-item {
+    padding: 12px 8px;
+    min-height: 85px;
+  }
+  
+  .stat-label {
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+  }
+  
+  .stat-value {
+    font-size: 1.1rem;
+  }
+  
+  .stat-item:nth-child(4) .stat-value {
+    font-size: 1.2rem;
+  }
 }
 
 /* Mobile Responsive */
@@ -1034,50 +1071,77 @@
   }
   
   .stat-row-container {
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
   
   .stat-item {
     padding: 12px 8px;
-  }
-  
-  .stat-label {
-    font-size: 0.85rem;
-  }
-  
-  .stat-value {
-    font-size: 1.1rem;
-  }
-  
-  .stat-item:nth-child(3) .stat-value {
-    font-size: 1.2rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .stat-group {
-    padding: 12px 10px;
-  }
-  
-  .stat-row-container {
-    gap: 8px;
-  }
-  
-  .stat-item {
-    padding: 10px 6px;
+    min-height: 80px;
   }
   
   .stat-label {
     font-size: 0.8rem;
-    margin-bottom: 6px;
   }
   
   .stat-value {
     font-size: 1rem;
   }
   
+  /* Adjust specific columns for 2-column layout */
   .stat-item:nth-child(3) .stat-value {
+    font-size: 1rem;
+  }
+  
+  .stat-item:nth-child(4) .stat-value {
     font-size: 1.1rem;
+  }
+  
+  /* Update colors for 2-column layout */
+  .stat-item:nth-child(1) .stat-value {
+    color: #4dabf7;
+  }
+  
+  .stat-item:nth-child(2) .stat-value {
+    color: #4CAF50;
+  }
+  
+  .stat-item:nth-child(3) .stat-value {
+    color: #ffc107;
+  }
+  
+  .stat-item:nth-child(4) .stat-value {
+    color: var(--veltora-gold);
+  }
+}
+
+/* Small Mobile Responsive */
+@media (max-width: 480px) {
+  .stat-group {
+    padding: 12px 10px;
+  }
+  
+  .stat-row-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .stat-item {
+    padding: 10px 6px;
+    min-height: 75px;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+    margin-bottom: 5px;
+  }
+  
+  .stat-value {
+    font-size: 0.9rem;
+  }
+  
+  .stat-item:nth-child(4) .stat-value {
+    font-size: 1rem;
   }
 }
 
@@ -1085,21 +1149,54 @@
 @media (max-width: 360px) {
   .stat-row-container {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 10px;
   }
   
   .stat-item {
     flex-direction: row;
     justify-content: space-between;
-    padding: 10px 15px;
+    padding: 12px 15px;
+    min-height: auto;
+    align-items: center;
   }
   
   .stat-label {
     margin-bottom: 0;
     text-align: left;
+    font-size: 0.8rem;
+    width: auto;
+    flex: 1;
   }
   
   .stat-value {
     text-align: right;
+    font-size: 0.9rem;
+    width: auto;
+    margin-left: 10px;
+  }
+  
+  .stat-item:nth-child(4) .stat-value {
+    font-size: 1rem;
   }
 }
+
+/* Optional: Add a subtle animation for stat items */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stat-item {
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+.stat-item:nth-child(1) { animation-delay: 0.1s; }
+.stat-item:nth-child(2) { animation-delay: 0.2s; }
+.stat-item:nth-child(3) { animation-delay: 0.3s; }
+.stat-item:nth-child(4) { animation-delay: 0.4s; }

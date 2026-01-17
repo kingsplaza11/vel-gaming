@@ -114,7 +114,7 @@ const Referral = () => {
               <div className="logo-symbol" style={{ animation: "float 6s ease-in-out infinite" }}>
                 <Icon icon="mdi:account-group" width="30" />
               </div>
-              <h1 className="logo-text" style={{ fontSize: "2.2rem" }}>REFERRAL PROGRAM</h1>
+              <h5 className="logo-text" style={{ fontSize: "1.2rem" }}>REFERRAL PROGRAM</h5>
             </div>
             <p className="auth-subtitle">
               Invite friends and earn rewards for every successful referral
@@ -125,7 +125,6 @@ const Referral = () => {
           REFERRAL STATS (4 GROUPS)
           ========================= */}
           <div className="referral-stats-grid">
-
             {/* TODAY */}
             <div className="stat-group">
               <h4 className="stat-group-title">Today</h4>
@@ -135,13 +134,19 @@ const Referral = () => {
                   <strong className="stat-value">{data.stats.today.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Number Of Recharges</span>
+                  <span className="stat-label">First Time Recharge Count</span>
                   <strong className="stat-value">{data.stats.today.successful}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Total Recharge</span>
+                  <span className="stat-label">First Time Recharge Amount</span>
                   <strong className="stat-value">
-                    ₦{Number(data.stats.today.amount).toLocaleString()}
+                    ₦{Number(data.stats.today.first_deposit_amount).toLocaleString()}
+                  </strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge Amount</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.today.total_deposit_amount).toLocaleString()}
                   </strong>
                 </div>
               </div>
@@ -156,13 +161,19 @@ const Referral = () => {
                   <strong className="stat-value">{data.stats.yesterday.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Number Of Recharges</span>
+                  <span className="stat-label">First Time Recharge Count</span>
                   <strong className="stat-value">{data.stats.yesterday.successful}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Total Recharge</span>
+                  <span className="stat-label">First Time Recharge Amount</span>
                   <strong className="stat-value">
-                    ₦{Number(data.stats.yesterday.amount).toLocaleString()}
+                    ₦{Number(data.stats.yesterday.first_deposit_amount).toLocaleString()}
+                  </strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge Amount</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.yesterday.total_deposit_amount).toLocaleString()}
                   </strong>
                 </div>
               </div>
@@ -177,13 +188,19 @@ const Referral = () => {
                   <strong className="stat-value">{data.stats.this_week.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Number Of Recharges</span>
+                  <span className="stat-label">First Time Recharge Count</span>
                   <strong className="stat-value">{data.stats.this_week.successful}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Total Recharge</span>
+                  <span className="stat-label">First Time Recharge Amount</span>
                   <strong className="stat-value">
-                    ₦{Number(data.stats.this_week.amount).toLocaleString()}
+                    ₦{Number(data.stats.this_week.first_deposit_amount).toLocaleString()}
+                  </strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge Amount</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.this_week.total_deposit_amount).toLocaleString()}
                   </strong>
                 </div>
               </div>
@@ -198,18 +215,23 @@ const Referral = () => {
                   <strong className="stat-value">{data.stats.total.referrals}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Number Of Recharges</span>
+                  <span className="stat-label">First Time Recharge Count</span>
                   <strong className="stat-value">{data.stats.total.successful}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Total Recharge</span>
+                  <span className="stat-label">First Time Recharge Amount</span>
                   <strong className="stat-value">
-                    ₦{Number(data.stats.total.amount).toLocaleString()}
+                    ₦{Number(data.stats.total.first_deposit_amount).toLocaleString()}
+                  </strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Total Recharge Amount</span>
+                  <strong className="stat-value">
+                    ₦{Number(data.stats.total.total_deposit_amount).toLocaleString()}
                   </strong>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -223,7 +245,7 @@ const Referral = () => {
             <div className="column-left">
               {/* Mobile Stats - Appear in a row under ref cards */}
               <div className="mobile-stats-container" style={{ display: 'none' }}>
-                <Number Of Recharges className="referral-stats-card mobile-stats">
+                <div className="referral-stats-card mobile-stats">
                   <div className="stat-item">
                     <div className="stat-icon" style={{ background: "rgba(255, 215, 0, 0.1)" }}>
                       <Icon icon="mdi:account-multiple" color="var(--veltora-gold)" width="20" />

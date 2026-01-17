@@ -182,7 +182,7 @@ def referral_dashboard(request):
     def stats_for_range(start_date=None, end_date=None):
         referred_users = referrals
 
-        # users referred in period
+        # Filter referred users by date_joined if date range is provided
         if start_date:
             referred_users = referred_users.filter(date_joined__date__gte=start_date)
         if end_date:
@@ -190,28 +190,50 @@ def referral_dashboard(request):
 
         referred_count = referred_users.count()
 
-        # successful = first deposit exists
-        first_deposits = WalletTransaction.objects.filter(
-            user__in=referred_users,
+        # Get the referred user IDs
+        referred_user_ids = list(referred_users.values_list('id', flat=True))
+
+        if not referred_user_ids:
+            return {
+                "referrals": 0,
+                "successful": 0,
+                "first_deposit_amount": 0.0,
+                "total_deposit_amount": 0.0
+            }
+
+        # FIRST DEPOSITS (only first-time deposits) - these should be CREDIT transactions
+        first_deposits_qs = WalletTransaction.objects.filter(
+            user_id__in=referred_user_ids,
             first_deposit=True,
+            tx_type='CREDIT'  # Deposits are CREDIT type
         )
 
+        # TOTAL DEPOSITS (all successful CREDIT transactions from referred users)
+        total_deposits_qs = WalletTransaction.objects.filter(
+            user_id__in=referred_user_ids,
+            tx_type='CREDIT'  # Only credit transactions (deposits)
+        )
+
+        # Apply date filters if provided
         if start_date:
-            first_deposits = first_deposits.filter(created_at__date__gte=start_date)
+            first_deposits_qs = first_deposits_qs.filter(created_at__date__gte=start_date)
+            total_deposits_qs = total_deposits_qs.filter(created_at__date__gte=start_date)
         if end_date:
-            first_deposits = first_deposits.filter(created_at__date__lte=end_date)
+            first_deposits_qs = first_deposits_qs.filter(created_at__date__lte=end_date)
+            total_deposits_qs = total_deposits_qs.filter(created_at__date__lte=end_date)
 
-        successful_count = first_deposits.values("user").distinct().count()
+        # Count users who made first deposits
+        successful_count = first_deposits_qs.values("user").distinct().count()
 
-        total_amount = (
-            first_deposits.aggregate(total=Sum("amount"))["total"]
-            or Decimal("0.00")
-        )
+        # Calculate total amounts
+        first_deposit_amount = first_deposits_qs.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+        total_deposit_amount = total_deposits_qs.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
 
         return {
             "referrals": referred_count,
             "successful": successful_count,
-            "amount": float(total_amount),
+            "first_deposit_amount": float(first_deposit_amount),
+            "total_deposit_amount": float(total_deposit_amount),
         }
 
     stats = {
