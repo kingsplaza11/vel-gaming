@@ -23,11 +23,16 @@ const PasswordReset = () => {
     }
 
     try {
-      const response = await authService.requestPasswordReset(email);
-      if (response.detail || response.success) {
-        setSuccess('Password reset link has been sent to your email');
-      } else if (response.email) {
-        setError(response.email[0]);
+      const res = await authService.requestPasswordReset(email);
+
+      // axios-style response
+      const data = res.data ?? res;
+
+      if (data.success) {
+        setSuccess(data.message);
+        setEmail('');
+      } else {
+        setError(data.error || 'Unable to send reset link.');
       }
     } catch (error) {
       setError('Failed to send reset link. Please try again.');

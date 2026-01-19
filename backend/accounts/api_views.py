@@ -20,6 +20,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 import json
 
+
 User = get_user_model()
 
 def send_password_reset_success_email(user_email, username):
@@ -46,69 +47,68 @@ def send_password_reset_success_email(user_email, username):
 
 class PasswordResetAPIView(APIView):
     permission_classes = [AllowAny]
-    
+
     def post(self, request):
         email = request.data.get('email', '')
         form = PasswordResetForm({'email': email})
-        
-        if form.is_valid():
-            # Get cleaned data
-            email = form.cleaned_data['email']
-            
-            # Get the first user (if exists)
-            users = list(form.get_users(email))
-            
-            if users:
-                user = users[0]  # Get first user
-                
-                # Generate token and uid
-                token = default_token_generator.make_token(user)
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
-                
-                # Prepare context for email
-                context = {
-                    'email': user.email,
-                    'domain': get_current_site(request).domain,
-                    'site_name': get_current_site(request).name,
-                    'uid': uid,
-                    'user': user,
-                    'token': token,
-                    'protocol': 'https' if request.is_secure() else 'http',
-                    # Backend API endpoint - React will need to redirect or handle differently
-                    'password_reset_confirm_url': f"{protocol}://{domain}/api/accounts/password/reset/confirm/?uid={uid}&token={token}",
-                }
-                
-                # Render HTML email
-                html_content = render_to_string(
-                    'registration/password_reset_email.html', 
-                    context
-                )
-                
-                # Strip HTML tags to create plain text version
-                text_content = strip_tags(html_content)
-                
-                # Send email with both HTML and plain text
-                subject = "🔐 Reset Your Veltora Games Password"
-                email_msg = EmailMultiAlternatives(
-                    subject=subject,
-                    body=text_content,  # Plain text version (HTML stripped)
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[user.email],
-                )
-                
-                # Attach HTML version
-                email_msg.attach_alternative(html_content, "text/html")
-                email_msg.send()
-            
-            # Always return success even if no users found (security best practice)
-            return Response({
-                'detail': 'Password reset email has been sent.',
-                'message': 'If an account exists with this email, you will receive a reset link.'
-            })
-        
-        # Return form errors
-        return Response({'error': 'Please enter a valid email address'}, 
-                       status=status.HTTP_400_BAD_REQUEST)
+
+        if not form.is_valid():
+            return Response(
+                {'error': 'Please enter a valid email address'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email = form.cleaned_data['email']
+        users = list(form.get_users(email))
+
+        if users:
+            user = users[0]
+
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+            protocol = 'https' if request.is_secure() else 'http'
+            domain = request.get_host()
+
+            context = {
+                'email': user.email,
+                'domain': domain,
+                'site_name': get_current_site(request).name,
+                'uid': uid,
+                'user': user,
+                'token': token,
+                'protocol': protocol,
+                'password_reset_confirm_url': (
+                    f"{protocol}://{domain}/api/accounts/password/reset/confirm/"
+                    f"?uid={uid}&token={token}"
+                ),
+            }
+
+            html_content = render_to_string(
+                'registration/password_reset_email.html',
+                context
+            )
+            text_content = strip_tags(html_content)
+
+            subject = "🔐 Reset Your Veltora Games Password"
+            email_msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
+            )
+            email_msg.attach_alternative(html_content, "text/html")
+            email_msg.send()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Password reset email has been sent to your email address. Please check your inbox (and spam folder)."
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 
 class PasswordResetConfirmAPIView(APIView):
     permission_classes = [AllowAny]
