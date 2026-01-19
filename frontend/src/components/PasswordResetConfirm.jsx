@@ -104,11 +104,13 @@ const PasswordResetConfirm = () => {
         formData.new_password2
       );
       
-      if (response.detail) {
-        setSuccess('Password reset successfully! Redirecting to login...');
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+      const data = response.data ?? response;
+
+      if (data.detail || data.message) {
+        setSuccess(data.message || 'Password reset successfully! Redirecting to login...');
+        setTimeout(() => navigate('/login'), 3000);
+      } else if (data.error) {
+        setError(data.error);
       } else if (response.error) {
         setError(response.error);
         if (response.errors) {

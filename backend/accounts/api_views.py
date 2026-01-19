@@ -78,10 +78,8 @@ class PasswordResetAPIView(APIView):
                 'user': user,
                 'token': token,
                 'protocol': protocol,
-                'password_reset_confirm_url': (
-                    f"{protocol}://{domain}/api/accounts/password/reset/confirm/"
-                    f"?uid={uid}&token={token}"
-                ),
+                'password_reset_confirm_url': (f"{protocol}://{domain}/password-reset-confirm/{uid}/{token}"),
+
             }
 
             html_content = render_to_string(
