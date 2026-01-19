@@ -591,17 +591,6 @@ const TreasureHuntGame = ({ user }) => {
               </p>
             </div>
             
-            <div className="loss-stats">
-              <div className="stat-item">
-                <span>Stake:</span>
-                <span>{formatNaira(betAmount)}</span>
-              </div>
-              <div className="stat-item">
-                <span>Map Level:</span>
-                <span>Lv {mapLevel}</span>
-              </div>
-            </div>
-            
             <button
               className="try-again-button animated-pulse"
               onClick={handleTryAgain}

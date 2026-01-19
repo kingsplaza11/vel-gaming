@@ -30,6 +30,7 @@ class PyramidStats(models.Model):
     total_bet = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     traps_survived = models.IntegerField(default=0)
     total_artifacts = models.IntegerField(default=0)
+    divine_artifacts_found = models.PositiveIntegerField(default=0)  # Add this line
     highest_multiplier = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     highest_win_ratio = models.FloatField(default=0.0)  # Add this field
     highest_survival_rate = models.FloatField(default=0.0)  # Add this field

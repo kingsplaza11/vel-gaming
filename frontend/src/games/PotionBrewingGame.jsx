@@ -526,28 +526,10 @@ const PotionBrewingGame = ({ user }) => {
               </div>
               <p className="loss-encouragement">
                 {result?.was_cursed 
-                  ? "Bad ingredients can ruin any brew! (30% chance)"
+                  ? "Bad ingredients can ruin any brew!"
                   : "Even the best alchemists have failed brews!"
                 }
-                <br />
-                <span className="loss-tip">
-                  {result?.was_cursed 
-                    ? "Tip: You have a 70% chance of successful brews!"
-                    : "Tip: Try different ingredients for better results!"
-                  }
-                </span>
               </p>
-            </div>
-            
-            <div className="loss-stats">
-              <div className="stat-item">
-                <span>Stake:</span>
-                <span>{formatNaira(betAmount)}</span>
-              </div>
-              <div className="stat-item">
-                <span>Potion Type:</span>
-                <span>{POTIONS.find(p => p.value === potionType)?.label}</span>
-              </div>
             </div>
             
             <button
