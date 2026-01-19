@@ -345,7 +345,6 @@
 }
 
 .success-message::before {
-  content: '✅';
   margin-right: 10px;
 }
 
