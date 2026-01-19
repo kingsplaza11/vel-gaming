@@ -8,52 +8,34 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import CardGame, CardStats
 from wallets.models import Wallet
-from wallets.models import WalletTransaction
-from django.db.models import F
 
 MIN_BET = Decimal("100.00")
+WIN_PROBABILITY = 0.35  # 35% chance of winning
 
 # ================= WIN RATIO LOGIC =================
-def get_card_win_ratio(multiplier, grid_size, matches_found, attempts):
+def get_card_win_ratio():
     """
-    Calculate dynamic win ratio for card matching game:
-    - multiplier: current game multiplier
-    - grid_size: size of the grid (more cards = higher potential)
-    - matches_found: number of matches already found
-    - attempts: number of attempts made
+    Simple win ratio calculation for card matching game:
+    - 35% chance of getting any win
+    - Win ratios distributed across tiers
+    """
+    # First check if this is a win (35% chance)
+    if random.random() > WIN_PROBABILITY:
+        return Decimal("0.00")  # 65% chance of loss
     
-    Higher multipliers, larger grids, and more matches found 
-    increase chances of better win ratios.
-    """
-    # Base probabilities
+    # If it's a win, determine the win tier
     rand = random.random() * 100
     
-    # Difficulty factor: larger grid = harder = better rewards
-    difficulty_factor = grid_size / 40  # 16->0.4, 20->0.5, 24->0.6, 30->0.75
-    
-    # Performance factor: more matches with fewer attempts = better
-    if attempts > 0:
-        performance_factor = matches_found / attempts
-    else:
-        performance_factor = 1.0
-    
-    # Base win tier probabilities
-    if rand <= 25:  # 25% chance: Lower tier (10-30%)
-        base_ratio = random.uniform(0.10, 0.30)
-    elif rand <= 70:  # 45% chance: Normal tier (31-50%)
-        base_ratio = random.uniform(0.31, 0.50)
-    elif rand <= 90:  # 20% chance: High tier (51-100%)
-        base_ratio = random.uniform(0.51, 1.00)
-    elif rand <= 97:  # 7% chance: Jackpot tier (101-200%)
-        base_ratio = random.uniform(1.01, 2.00)
-    else:  # 3% chance: Mega jackpot (201-300%)
-        base_ratio = random.uniform(2.01, 3.00)
-    
-    # Apply bonuses
-    final_ratio = base_ratio * (1 + difficulty_factor * 0.5 + performance_factor * 0.3)
-    
-    # Cap at 350% maximum
-    return min(final_ratio, 3.5)
+    if rand <= 40:  # 40% of wins: Small wins (10-30%)
+        return Decimal(str(random.uniform(0.10, 0.30)))
+    elif rand <= 75:  # 35% of wins: Normal wins (31-50%)
+        return Decimal(str(random.uniform(0.31, 0.50)))
+    elif rand <= 90:  # 15% of wins: Good wins (51-80%)
+        return Decimal(str(random.uniform(0.51, 0.80)))
+    elif rand <= 98:  # 8% of wins: Big wins (81-120%)
+        return Decimal(str(random.uniform(0.81, 1.20)))
+    else:  # 2% of wins: Jackpot wins (121-200%)
+        return Decimal(str(random.uniform(1.21, 2.00)))
 
 
 def create_card_deck(grid_size):
@@ -109,20 +91,6 @@ def start_card_game(request):
             return Response({'error': 'Insufficient funds'}, status=400)
 
         wallet.save(update_fields=["balance", "spot_balance"])
-
-        # Create wallet transaction for the bet
-        # WalletTransaction.objects.create(
-        #     user=request.user,
-        #     amount=bet_amount,
-        #     tx_type=WalletTransaction.DEBIT,
-        #     reference=f"card_game_bet_{uuid.uuid4().hex[:8]}",
-        #     meta={
-        #         "reason": "card_game_bet",
-        #         "taken_from_wallet": str(taken_from_wallet),
-        #         "taken_from_spot": str(taken_from_spot),
-        #         "game_type": "card_matching"
-        #     }
-        # )
 
         cards = create_card_deck(grid_size)
 
@@ -202,28 +170,18 @@ def reveal_card(request):
 
             total_pairs = len(cards) // 2
             
-            # Enhanced multiplier calculation
+            # Simple multiplier calculation
             base_multiplier = Decimal('1.00')
-            match_bonus = (Decimal(game.matches_found) / Decimal(total_pairs)) * Decimal('6.00')
-            difficulty_bonus = Decimal(str(game.grid_size / 40))  # Larger grid = bigger bonus
+            match_bonus = (Decimal(game.matches_found) / Decimal(total_pairs)) * Decimal('2.00')
             
-            game.multiplier = base_multiplier + match_bonus + difficulty_bonus
+            game.multiplier = base_multiplier + match_bonus
 
             # GAME COMPLETED
             if game.matches_found >= total_pairs:
-                # Calculate dynamic win ratio
-                win_ratio = get_card_win_ratio(
-                    float(game.multiplier),
-                    game.grid_size,
-                    game.matches_found,
-                    game.attempts
-                )
+                # Calculate win ratio with 35% chance of winning
+                win_ratio = get_card_win_ratio()
                 
-                win_amount = (game.bet_amount * Decimal(str(win_ratio))).quantize(Decimal("0.01"))
-                
-                # Add time bonus (if you track time)
-                # time_bonus = min(game.completion_time / 60, 0.5)  # Up to 50% bonus for speed
-                # win_amount = win_amount * Decimal(str(1 + time_bonus))
+                win_amount = (game.bet_amount * win_ratio).quantize(Decimal("0.01"))
                 
                 # Credit winnings to spot_balance
                 wallet.spot_balance += win_amount
@@ -235,15 +193,15 @@ def reveal_card(request):
                 game.save()
 
                 # Determine win tier
-                win_tier = "normal"
+                win_tier = "loss"
                 if win_ratio > 0:
-                    if win_ratio <= 0.30:
+                    if win_ratio <= Decimal('0.30'):
                         win_tier = "low"
-                    elif win_ratio <= 0.50:
+                    elif win_ratio <= Decimal('0.50'):
                         win_tier = "normal"
-                    elif win_ratio <= 1.00:
+                    elif win_ratio <= Decimal('0.80'):
                         win_tier = "high"
-                    elif win_ratio <= 2.00:
+                    elif win_ratio <= Decimal('1.20'):
                         win_tier = "jackpot"
                     else:
                         win_tier = "mega_jackpot"
@@ -282,7 +240,7 @@ def reveal_card(request):
             })
 
         # NO MATCH
-        if game.attempts >= 3:  # Increased attempts for better gameplay
+        if game.attempts >= 3:
             game.status = 'failed'
             game.save()
             return Response({
@@ -312,27 +270,25 @@ def get_card_stats(request):
     total_games = stats.total_games
     total_won = float(stats.total_won or 0)
     
+    # Calculate win rate based on 35% probability
+    total_completed = CardGame.objects.filter(user=request.user, status='completed').count()
+    win_rate = (total_completed / total_games * 100) if total_games > 0 else 0
+    
     # Get win distribution
     games = CardGame.objects.filter(user=request.user, win_amount__gt=0)
     
     low_wins = games.filter(win_ratio__lte=0.30).count()
     normal_wins = games.filter(win_ratio__gt=0.30, win_ratio__lte=0.50).count()
-    high_wins = games.filter(win_ratio__gt=0.50, win_ratio__lte=1.00).count()
-    jackpot_wins = games.filter(win_ratio__gt=1.00, win_ratio__lte=2.00).count()
-    mega_jackpot_wins = games.filter(win_ratio__gt=2.00).count()
+    high_wins = games.filter(win_ratio__gt=0.50, win_ratio__lte=0.80).count()
+    jackpot_wins = games.filter(win_ratio__gt=0.80, win_ratio__lte=1.20).count()
+    mega_jackpot_wins = games.filter(win_ratio__gt=1.20).count()
     
-    # Calculate success rate
-    total = CardGame.objects.filter(user=request.user).count()
-    wins = CardGame.objects.filter(user=request.user, status='completed').count()
-    success_rate = (wins / total * 100) if total else 0
-
     return Response({
         'total_games': total_games,
         'total_won': round(total_won, 2),
+        'win_rate': round(win_rate, 2),
         'highest_multiplier': float(stats.highest_multiplier),
         'highest_win_ratio': float(stats.highest_win_ratio or 0),
-        'success_rate': round(success_rate, 2),
-        'avg_win_per_game': round(total_won / total_games, 2) if total_games else 0,
         'win_distribution': {
             'low': low_wins,
             'normal': normal_wins,
@@ -356,13 +312,13 @@ def get_card_history(request):
         # Determine win tier
         win_tier = "loss"
         if game.win_ratio > 0:
-            if game.win_ratio <= 0.30:
+            if game.win_ratio <= Decimal('0.30'):
                 win_tier = "low"
-            elif game.win_ratio <= 0.50:
+            elif game.win_ratio <= Decimal('0.50'):
                 win_tier = "normal"
-            elif game.win_ratio <= 1.00:
+            elif game.win_ratio <= Decimal('0.80'):
                 win_tier = "high"
-            elif game.win_ratio <= 2.00:
+            elif game.win_ratio <= Decimal('1.20'):
                 win_tier = "jackpot"
             else:
                 win_tier = "mega_jackpot"
@@ -406,23 +362,16 @@ def cash_out_early(request):
             status='playing'
         )
 
-        # Calculate partial win based on current progress
-        total_pairs = game.grid_size // 2
-        progress = game.matches_found / total_pairs if total_pairs > 0 else 0
+        # Calculate win ratio with 35% chance, but reduced for early cashout
+        win_ratio = get_card_win_ratio()
         
-        # Base win ratio for partial completion
-        base_ratio = get_card_win_ratio(
-            float(game.multiplier),
-            game.grid_size,
-            game.matches_found,
-            game.attempts
-        )
+        # Apply penalty for early cashout
+        if win_ratio > 0:
+            total_pairs = game.grid_size // 2
+            progress = game.matches_found / total_pairs if total_pairs > 0 else 0
+            win_ratio = win_ratio * Decimal(str(progress)) * Decimal('0.5')  # 50% penalty
         
-        # Apply progress penalty (you get less for cashing out early)
-        progress_penalty = 0.5  # 50% penalty for early cashout
-        win_ratio = base_ratio * progress * (1 - progress_penalty)
-        
-        win_amount = (game.bet_amount * Decimal(str(win_ratio))).quantize(Decimal("0.01"))
+        win_amount = (game.bet_amount * win_ratio).quantize(Decimal("0.01"))
         
         # Credit to spot_balance
         wallet.spot_balance += win_amount

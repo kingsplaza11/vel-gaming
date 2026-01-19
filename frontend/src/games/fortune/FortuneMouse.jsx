@@ -20,7 +20,7 @@ export default function FortuneMouse() {
     wallet, 
     loading: walletLoading, 
     refreshWallet,
-    availableBalance // This now contains total balance (balance + spot_balance)
+    availableBalance
   } = useWallet();
 
   /* =========================
@@ -57,6 +57,80 @@ export default function FortuneMouse() {
   const lastTileRef = useRef(null);
   const unlockTimeoutRef = useRef(null);
   const gameStateIntervalRef = useRef(null);
+
+  /* =========================
+     GAME RESULTS CONFIGURATION
+     Updated to match backend probabilities
+  ========================= */
+  const resultConfig = useMemo(() => ({
+    // Good wins (above 1.5x)
+    "safe": {
+      icon: "💰",
+      label: "Bonus",
+      color: "var(--success)",
+      effect: "effect-boost",
+      sound: "win"
+    },
+    "carrot_bonus": {
+      icon: "🥕",
+      label: "Carrot Bonus",
+      color: "var(--success)",
+      effect: "effect-boost",
+      sound: "win"
+    },
+    
+    // Small wins (below 1.5x)
+    "small_win": {
+      icon: "💸",
+      label: "Small Win",
+      color: "var(--warning)",
+      effect: "effect-small-win",
+      sound: "small-win"
+    },
+    
+    // Penalties
+    "penalty": {
+      icon: "⚠️",
+      label: "Penalty",
+      color: "var(--warning)",
+      effect: "effect-penalty",
+      sound: "penalty"
+    },
+    "major_penalty": {
+      icon: "💥",
+      label: "Major Penalty",
+      color: "var(--danger)",
+      effect: "effect-penalty",
+      sound: "penalty"
+    },
+    
+    // Reset
+    "reset": {
+      icon: "🔄",
+      label: "Reset",
+      color: "var(--info)",
+      effect: "effect-reset",
+      sound: "reset"
+    },
+    
+    // Game over
+    "trap": {
+      icon: "💣",
+      label: "Trap",
+      color: "var(--danger)",
+      effect: "effect-game_over",
+      sound: "trap"
+    },
+    
+    // Auto cashout
+    "auto_cashout": {
+      icon: "⏰",
+      label: "Auto Cashout",
+      color: "var(--success)",
+      effect: "effect-cashout",
+      sound: "cashout"
+    }
+  }), []);
 
   /* =========================
      RESET GAME
@@ -103,7 +177,6 @@ export default function FortuneMouse() {
   ========================= */
   
   const startGame = async () => {
-    // Use availableBalance instead of wallet.balance
     const totalBalance = Number(availableBalance || 0);
     const betAmount = Number(bet);
 
@@ -218,17 +291,24 @@ export default function FortuneMouse() {
         return;
       }
       
+      const resultType = res.data.result;
+      const resultInfo = resultConfig[resultType] || { icon: "?", label: "Unknown" };
+      
       // Update tile
       setTiles(prev =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, revealed: true, kind: res.data.result }
+            ? { ...t, revealed: true, kind: resultType }
             : t
         )
       );
 
+      // Apply visual effect based on result
+      setStageEffect(resultInfo.effect || "");
+      setTimeout(() => setStageEffect(""), 500);
+
       // Handle game over (trap)
-      if (res.data.result === "trap") {
+      if (resultType === "trap") {
         console.log("[FortuneMouse] Game over - hit a trap");
         setGame((g) => ({
           ...g,
@@ -238,21 +318,25 @@ export default function FortuneMouse() {
           current_multiplier: res.data.current_multiplier,
         }));
 
-        setStageEffect("effect-game_over");
         setShake(true);
+
+        // Show result toast
+        toast.error(`Trap! ${resultInfo.label} - Game Over`, {
+          icon: resultInfo.icon,
+          duration: 3000,
+        });
 
         // Reset after delay
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
-          toast.error("Game Over! Hit a bomb tile.");
         }, 1400);
         
         return;
       }
       
       // Handle auto-cashout at max steps
-      if (res.data.result === "auto_cashout") {
+      if (resultType === "auto_cashout") {
         console.log("[FortuneMouse] Auto-cashout at max steps:", res.data.payout_amount);
         setGame((g) => ({
           ...g,
@@ -262,22 +346,46 @@ export default function FortuneMouse() {
           step_index: res.data.step_index,
         }));
 
-        setStageEffect("effect-cashout");
         refreshWallet();
+
+        // Show success toast
+        toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
+          duration: 3000,
+        });
 
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
-          toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
         }, 1500);
         
         return;
       }
 
-      // Handle safe tile
-      console.log("[FortuneMouse] Tile result:", res.data.result, "multiplier:", res.data.current_multiplier);
-      setStageEffect("effect-boost");
-      setTimeout(() => setStageEffect(""), 500);
+      // Handle other results
+      console.log("[FortuneMouse] Tile result:", resultType, "multiplier:", res.data.current_multiplier);
+      
+      // Show result toast based on type
+      if (resultType === "safe" || resultType === "carrot_bonus") {
+        toast.success(`${resultInfo.label}! +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
+      } else if (resultType === "small_win") {
+        toast(`${resultInfo.label} +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
+      } else if (resultType === "penalty" || resultType === "major_penalty") {
+        toast.error(`${resultInfo.label} ${(parseFloat(game.current_multiplier) - parseFloat(res.data.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
+      } else if (resultType === "reset") {
+        toast(`${resultInfo.label} to 1.00x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
+      }
       
       setGame((g) => ({
         ...g,
@@ -302,7 +410,7 @@ export default function FortuneMouse() {
     } finally {
       tapLock.current = false;
     }
-  }, [activeSessionId, game.status, tiles, refreshWallet, resetGame]);
+  }, [activeSessionId, game, tiles, refreshWallet, resetGame, resultConfig]);
 
   const cashout = useCallback(async () => {
     if (!activeSessionId) {
@@ -428,15 +536,10 @@ export default function FortuneMouse() {
     }
   }, [activeSessionId, game.status]);
 
-  // Log game state changes
-  useEffect(() => {
-    console.log("[FortuneMouse] Game state updated:", game);
-  }, [game]);
-
   /* =========================
      RENDER
   ========================= */
-  const totalBalance = Number(availableBalance || 0); // Use availableBalance instead of wallet.balance
+  const totalBalance = Number(availableBalance || 0);
   const betAmount = Number(bet);
 
   const isStakeValid = useMemo(() => {
@@ -446,6 +549,9 @@ export default function FortuneMouse() {
       betAmount <= totalBalance
     );
   }, [betAmount, totalBalance]);
+
+  const currentResult = tiles.find(t => t.revealed && t.id === lastTileRef.current);
+  const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
 
   return (
     <div
@@ -459,7 +565,7 @@ export default function FortuneMouse() {
           <div className="vault-orb pulse" />
           <div className="fortune-brand-text">
             <div className="fortune-name">Fortune Mouse</div>
-            <div className="fortune-sub">Risk & Reward</div>
+            <div className="fortune-sub">Reveal tiles to boost your multiplier</div>
           </div>
         </div>
 
@@ -475,6 +581,16 @@ export default function FortuneMouse() {
             <div className="hud-label">STEPS</div>
             <div className="hud-value">{game.step_index}</div>
           </div>
+          
+          {/* Last Result Display */}
+          {resultInfo && game.status === "active" && (
+            <div className="hud-card last-result" style={{ color: resultInfo.color }}>
+              <div className="hud-label">LAST</div>
+              <div className="hud-value">
+                {resultInfo.icon} {resultInfo.label}
+              </div>
+            </div>
+          )}
 
           <button
             className={`hud-cashout ${!activeSessionId || game.status !== "active" ? "disabled" : ""}`}
@@ -492,32 +608,39 @@ export default function FortuneMouse() {
       {/* BOARD */}
       <div className="fortune-board">
         <div className="fortune-grid enhanced">
-          {tiles.map((tile) => (
-            <button
-              key={tile.id}
-              className={`fortune-tile ${
-                tile.revealed ? tile.kind : ""
-              } ${game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""}`}
-              disabled={tile.revealed || game.status !== "active" || tapLock.current}
-              onClick={() => pickTile(tile.id)}
-              aria-label={`Tile ${tile.id + 1} ${tile.revealed ? `revealed as ${tile.kind}` : 'hidden'}`}
-            >
-              <div className="tile-face">
-                {!tile.revealed ? (
-                  <span className="tile-glyph">✦</span>
-                ) : (
-                  <div className="tile-revealed">
-                    <span className="tile-icon">
-                      {tile.kind === "trap" ? "💣" : 
-                       tile.kind === "safe" ? "💰" :
-                       tile.kind === "penalty" ? "⚠️" :
-                       tile.kind === "reset" ? "🔄" : "?"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </button>
-          ))}
+          {tiles.map((tile) => {
+            const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
+            return (
+              <button
+                key={tile.id}
+                className={`fortune-tile ${
+                  tile.revealed ? tile.kind : ""
+                } ${game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""}`}
+                disabled={tile.revealed || game.status !== "active" || tapLock.current}
+                onClick={() => pickTile(tile.id)}
+                aria-label={`Tile ${tile.id + 1} ${tile.revealed ? `revealed as ${tile.kind}` : 'hidden'}`}
+                style={tileResultInfo && tile.revealed ? {
+                  borderColor: tileResultInfo.color,
+                  boxShadow: `0 0 10px ${tileResultInfo.color}40`
+                } : {}}
+              >
+                <div className="tile-face">
+                  {!tile.revealed ? (
+                    <span className="tile-glyph">✦</span>
+                  ) : (
+                    <div className="tile-revealed">
+                      <span className="tile-icon">
+                        {tileResultInfo?.icon || "?"}
+                      </span>
+                      {tile.kind === "safe" || tile.kind === "carrot_bonus" ? (
+                        <div className="tile-sparkle"></div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
         
         {/* Game status overlay */}
@@ -526,7 +649,7 @@ export default function FortuneMouse() {
             <div className="overlay-content">
               <div className="overlay-icon">💥</div>
               <div className="overlay-title">Game Over!</div>
-              <div className="overlay-subtitle">Hit a bomb tile</div>
+              <div className="overlay-subtitle">Hit a trap tile</div>
               <div className="overlay-multiplier">
                 Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
               </div>
@@ -566,7 +689,7 @@ export default function FortuneMouse() {
               <div className="stake-badge">🐭</div>
               <div className="stake-title">
                 <div className="t1">Fortune Mouse</div>
-                <div className="t2">Place your stake</div>
+                <div className="t2">Click tiles to reveal bonuses or traps</div>
               </div>
             </div>
 

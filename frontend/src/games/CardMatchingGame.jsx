@@ -32,6 +32,16 @@ const CardMatchingGame = ({ user }) => {
     `₦${Number(v || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
 
   /* =========================
+     SYMBOLS - LARGER EMOJIS FOR BETTER VISIBILITY
+  ========================== */
+  const symbols = [
+    '💎','🔥','⚡','🎯','🌟','👑','🧿','🚀',
+    '🎭','🔮','🌈','⭐','🎨','💫','✨','🌠',
+    '🎖️','🏅','🥇','💍','🎪','🎸','🎲','🏆',
+    '💵','💶','💷','💴','🪙','💰','💸','💳'
+  ];
+
+  /* =========================
      UI STATE
   ========================== */
   const [showModal, setShowModal] = useState(true);
@@ -50,17 +60,14 @@ const CardMatchingGame = ({ user }) => {
   const [cards, setCards] = useState([]);
   const [selectedCards, setSelectedCards] = useState([]);
   const [matchedPairs, setMatchedPairs] = useState(0);
-  const [multiplier, setMultiplier] = useState(1);
   const [attempts, setAttempts] = useState(0);
   const [gameStatus, setGameStatus] = useState('idle');
   const [locked, setLocked] = useState(false);
 
-  const symbols = ['💎','🔥','⚡','🎯','🌟','👑','🧿','🚀','🎭','🔮','🌈','⭐','🎨','💫','✨','🌠','🎖️','🏅','🥇','💍'];
-
   const difficulties = [
-    { size: 16, label: 'Normal', mines: 8 },
-    { size: 20, label: 'Hard', mines: 10 },
-    { size: 24, label: 'Expert', mines: 12 },
+    { size: 16, label: 'Normal' },
+    { size: 20, label: 'Hard' },
+    { size: 24, label: 'Expert' },
   ];
 
   const numericBet = Number(betAmount);
@@ -87,6 +94,9 @@ const CardMatchingGame = ({ user }) => {
     setLastWin(null);
     setShowWinModal(false);
     setShowLossModal(false);
+    setMatchedPairs(0);
+    setAttempts(0);
+    setSelectedCards([]);
     
     if (refreshWallet) {
       await refreshWallet();
@@ -127,20 +137,18 @@ const CardMatchingGame = ({ user }) => {
         grid_size: gridSize,
       });
 
-      console.log("Game started:", res.data);
+      // Initialize cards array based on grid size
+      const initialCards = Array(res.data.cards_count).fill(null).map((_, i) => ({
+        id: i,
+        isRevealed: false,
+        isMatched: false,
+        value: null, // Will store the card value from backend
+        symbol: null, // Will store the emoji symbol
+      }));
 
       setGameId(res.data.game_id);
-      setCards(
-        Array(res.data.cards_count).fill(null).map((_, i) => ({
-          id: i,
-          value: null,
-          isRevealed: false,
-          isMatched: false,
-        }))
-      );
-
+      setCards(initialCards);
       setMatchedPairs(0);
-      setMultiplier(1);
       setAttempts(0);
       setSelectedCards([]);
       setGameStatus('playing');
@@ -158,7 +166,7 @@ const CardMatchingGame = ({ user }) => {
   };
 
   /* =========================
-     CARD CLICK
+     CARD CLICK - FIXED VERSION
   ========================== */
   const handleCardClick = async (index) => {
     if (locked || refreshing) return;
@@ -175,61 +183,81 @@ const CardMatchingGame = ({ user }) => {
         card_index: index,
       });
 
-      const updated = [...cards];
-      updated[index].value = res.data.card_value;
-      updated[index].isRevealed = true;
-      setCards(updated);
+      // Get the card value from backend response
+      const cardValue = res.data.card_value;
+      console.log('Card revealed:', { index, value: cardValue, response: res.data });
+      
+      // Convert numeric value to symbol (backend returns 1, 2, 3, etc.)
+      const symbolIndex = (cardValue - 1) % symbols.length;
+      const symbol = symbols[symbolIndex] || '❓';
+
+      // Update the clicked card
+      const updatedCards = [...cards];
+      updatedCards[index] = {
+        ...updatedCards[index],
+        isRevealed: true,
+        value: cardValue,
+        symbol: symbol
+      };
+      setCards(updatedCards);
 
       const picks = [...selectedCards, index];
       setSelectedCards(picks);
 
-      /* FIRST PICK */
+      /* FIRST PICK - Wait for second pick */
       if (res.data.match_found === null) {
+        console.log('First pick, waiting for second');
         setLocked(false);
         return;
       }
 
-      /* SECOND PICK - MATCH FOUND */
+      /* SECOND PICK - Handle match result */
       if (res.data.match_found === true) {
+        console.log('Match found!');
+        // Match found
         setTimeout(() => {
-          picks.forEach(i => updated[i].isMatched = true);
-          setCards([...updated]);
+          const newCards = [...updatedCards];
+          picks.forEach(i => {
+            newCards[i].isMatched = true;
+          });
+          setCards(newCards);
           setSelectedCards([]);
           setMatchedPairs(res.data.matches_found);
-          setMultiplier(res.data.multiplier);
           setLocked(false);
-        }, 500);
+        }, 800);
       } else {
-        /* SECOND PICK - NO MATCH */
+        // No match
+        console.log('No match');
         setAttempts(prev => prev + 1);
-
+        
         setTimeout(() => {
+          const newCards = [...updatedCards];
           picks.forEach(i => {
-            updated[i].isRevealed = false;
-            updated[i].value = null;
+            newCards[i].isRevealed = false;
+            newCards[i].value = null;
+            newCards[i].symbol = null;
           });
-          setCards([...updated]);
+          setCards(newCards);
           setSelectedCards([]);
           setLocked(false);
-        }, 900);
+        }, 1200);
       }
 
       /* GAME FAILED */
       if (res.data.status === 'failed') {
+        console.log('Game failed');
         setGameStatus('failed');
         setTimeout(() => {
           setShowLossModal(true);
-        }, 1200);
+        }, 1500);
       }
 
       /* GAME COMPLETED */
       if (res.data.status === 'completed') {
+        console.log('Game completed!', res.data);
         setGameStatus('completed');
         setLastWin({
           win_amount: res.data.win_amount,
-          win_ratio: res.data.win_ratio,
-          win_tier: res.data.win_tier,
-          multiplier: res.data.multiplier,
           matches_found: res.data.matches_found,
         });
 
@@ -237,12 +265,9 @@ const CardMatchingGame = ({ user }) => {
           await refreshWallet();
         }
 
-        // Show win modal for significant wins
         setTimeout(() => {
-          if (res.data.win_ratio > 0.5) {
-            setShowWinModal(true);
-          }
-        }, 800);
+          setShowWinModal(true);
+        }, 1000);
       }
 
     } catch (err) {
@@ -265,8 +290,6 @@ const CardMatchingGame = ({ user }) => {
       setGameStatus('cashed_out');
       setLastWin({
         win_amount: res.data.win_amount,
-        win_ratio: res.data.win_ratio,
-        win_tier: 'partial',
       });
 
       if (refreshWallet) {
@@ -281,17 +304,21 @@ const CardMatchingGame = ({ user }) => {
   };
 
   /* =========================
-     GET WIN TIER COLOR
+     RENDER CARD CONTENT - FIXED
   ========================== */
-  const getWinTierColor = (tier) => {
-    switch(tier) {
-      case "low": return "#FFA726";
-      case "normal": return "#4CAF50";
-      case "high": return "#2196F3";
-      case "jackpot": return "#9C27B0";
-      case "mega_jackpot": return "#F44336";
-      case "partial": return "#FF9800";
-      default: return "#666";
+  const renderCardContent = (card, index) => {
+    if (card.isRevealed && card.symbol) {
+      return (
+        <div className="card-back">
+          <span>{card.symbol}</span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="card-front">
+          <span className="card-back-text">?</span>
+        </div>
+      );
     }
   };
 
@@ -301,30 +328,11 @@ const CardMatchingGame = ({ user }) => {
   return (
     <div className="card-matching-game">
 
-      {/* AMBIENT ANIMATION */}
-      <div className="ambient-animation"></div>
-
       {/* HEADER */}
       <div className="game-header">
         <button onClick={() => navigate('/')} className="back-button">
           ← Back
         </button>
-        <div className="balance-details">
-          <div className="balance-total">
-            {walletLoading || refreshing ? (
-              <div className="balance-loading">
-                <span className="loading-spinner-small" />
-                {refreshing ? "Refreshing..." : "Loading..."}
-              </div>
-            ) : (
-              formatNGN(combinedBalance)
-            )}
-          </div>
-          <div className="balance-breakdown">
-            <span className="balance-main">Main: {formatNGN(wallet?.balance || 0)}</span>
-            <span className="balance-spot">Spot: {formatNGN(spotBalance)}</span>
-          </div>
-        </div>
       </div>
 
       {/* STAKE MODAL */}
@@ -335,22 +343,8 @@ const CardMatchingGame = ({ user }) => {
               <h3>🎴 Card Matching</h3>
             </div>
 
-            <div className="balance-summary">
-              <span className="balance-label">Available Balance:</span>
-              <span className="balance-amount">
-                {walletLoading || refreshing ? (
-                  <div className="balance-loading-inline">
-                    <span className="loading-spinner-small" />
-                    {refreshing ? "Refreshing..." : "Loading..."}
-                  </div>
-                ) : (
-                  formatNGN(combinedBalance)
-                )}
-              </span>
-            </div>
-
             <div className="game-description">
-              <p>Match all card pairs before running out of attempts!</p>
+              <p>Match all card pairs to win!</p>
             </div>
 
             <div className="game-settings">
@@ -368,9 +362,6 @@ const CardMatchingGame = ({ user }) => {
                     </button>
                   ))}
                 </div>
-                <small className="risk-indicator">
-                  Attempts: {gridSize === 16 ? "3" : gridSize === 20 ? "4" : "5"} fails allowed
-                </small>
               </div>
             </div>
 
@@ -417,19 +408,19 @@ const CardMatchingGame = ({ user }) => {
               <strong>{matchedPairs}/{gridSize / 2}</strong>
             </div>
             <div className="info-item">
-              <span>Multiplier</span>
-              <strong className="multiplier-display">{multiplier.toFixed(2)}x</strong>
+              <span>Attempts Used</span>
+              <strong>{attempts} / 3</strong>
             </div>
             <div className="info-item">
-              <span>Attempts Left</span>
-              <strong>{3 - attempts}</strong>
+              <span>Stake</span>
+              <strong>{formatNGN(numericBet)}</strong>
             </div>
           </div>
 
           {gameStatus === 'playing' && (
             <div className="action-buttons">
               <button className="cashout-btn" onClick={cashOutEarly}>
-                💰 Cash Out Early
+                💰 Cash Out
               </button>
             </div>
           )}
@@ -439,7 +430,7 @@ const CardMatchingGame = ({ user }) => {
               className="cards-grid"
               style={{ 
                 gridTemplateColumns: `repeat(${Math.sqrt(gridSize)}, 1fr)`,
-                maxWidth: gridSize === 24 ? '600px' : gridSize === 20 ? '500px' : '400px'
+                maxWidth: gridSize === 24 ? '700px' : gridSize === 20 ? '600px' : '500px'
               }}
             >
               {cards.map((card, index) => (
@@ -447,13 +438,11 @@ const CardMatchingGame = ({ user }) => {
                   key={index}
                   className={`card ${card.isRevealed ? 'flipped' : ''} ${card.isMatched ? 'matched' : ''}`}
                   onClick={() => handleCardClick(index)}
+                  style={{
+                    cursor: (locked || card.isMatched || card.isRevealed) ? 'not-allowed' : 'pointer'
+                  }}
                 >
-                  <div className="card-front">
-                    <span className="card-back-text">?</span>
-                  </div>
-                  <div className="card-back">
-                    {card.isRevealed && symbols[card.value - 1]}
-                  </div>
+                  {renderCardContent(card, index)}
                 </div>
               ))}
             </div>
@@ -482,9 +471,6 @@ const CardMatchingGame = ({ user }) => {
                   <div className="win-amount-display">
                     <span className="win-label">You Won</span>
                     <span className="win-amount">{formatNGN(lastWin.win_amount)}</span>
-                    <span className="win-ratio">
-                      ({lastWin.win_ratio > 0 ? (lastWin.win_ratio * 100).toFixed(1) : '0'}% of stake)
-                    </span>
                   </div>
                 </div>
               )}
@@ -494,14 +480,7 @@ const CardMatchingGame = ({ user }) => {
                 onClick={deepRefresh}
                 disabled={refreshing}
               >
-                {refreshing ? (
-                  <>
-                    <span className="loading-spinner-small" />
-                    Refreshing...
-                  </>
-                ) : (
-                  "🔁 Play Again"
-                )}
+                {refreshing ? "Refreshing..." : "🔁 Play Again"}
               </button>
             </div>
           )}
@@ -520,17 +499,9 @@ const CardMatchingGame = ({ user }) => {
             
             <div className="win-amount-display">
               <span className="win-amount-label">You won</span>
-              <span 
-                className="win-amount" 
-                style={{color: getWinTierColor(lastWin.win_tier)}}
-              >
+              <span className="win-amount">
                 {formatNGN(lastWin.win_amount)}
               </span>
-              <p className="win-note">
-                {lastWin.win_tier === "mega_jackpot" ? "MEGA JACKPOT!" : 
-                 lastWin.win_tier === "jackpot" ? "JACKPOT WIN!" : 
-                 "Excellent performance!"}
-              </p>
             </div>
             
             <div className="win-stats">
@@ -539,18 +510,8 @@ const CardMatchingGame = ({ user }) => {
                 <span>{lastWin.matches_found}/{gridSize / 2}</span>
               </div>
               <div className="stat-item">
-                <span>Win Ratio:</span>
-                <span>{(lastWin.win_ratio * 100).toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span>Multiplier:</span>
-                <span>{lastWin.multiplier.toFixed(2)}x</span>
-              </div>
-              <div className="stat-item">
-                <span>Win Tier:</span>
-                <span style={{color: getWinTierColor(lastWin.win_tier), textTransform: 'capitalize'}}>
-                  {lastWin.win_tier.replace('_', ' ')}
-                </span>
+                <span>Attempts Used:</span>
+                <span>{attempts}</span>
               </div>
             </div>
             
@@ -562,14 +523,7 @@ const CardMatchingGame = ({ user }) => {
               }}
               disabled={refreshing}
             >
-              {refreshing ? (
-                <>
-                  <span className="loading-spinner-small" />
-                  Refreshing...
-                </>
-              ) : (
-                "🎮 Continue Playing"
-              )}
+              {refreshing ? "Refreshing..." : "🎮 Continue Playing"}
             </button>
           </div>
         </div>
@@ -585,26 +539,14 @@ const CardMatchingGame = ({ user }) => {
               <p className="loss-subtitle">Better luck next time!</p>
             </div>
             
-            <div className="loss-message">
-              <div className="loss-encouragement">
-                You matched <strong>{matchedPairs} pairs</strong>!
-                <br />
-                <span className="loss-tip">Try Normal difficulty first for easier wins!</span>
-              </div>
-            </div>
-            
             <div className="loss-stats">
               <div className="stat-item">
                 <span>Stake:</span>
                 <span>{formatNGN(numericBet)}</span>
               </div>
               <div className="stat-item">
-                <span>Grid Size:</span>
-                <span>{gridSize} cards</span>
-              </div>
-              <div className="stat-item">
-                <span>Attempts Made:</span>
-                <span>{attempts}</span>
+                <span>Matches Found:</span>
+                <span>{matchedPairs}</span>
               </div>
             </div>
             
@@ -616,14 +558,7 @@ const CardMatchingGame = ({ user }) => {
               }}
               disabled={refreshing}
             >
-              {refreshing ? (
-                <>
-                  <span className="loading-spinner-small" />
-                  Refreshing...
-                </>
-              ) : (
-                "🔁 Try Again"
-              )}
+              {refreshing ? "Refreshing..." : "🔁 Try Again"}
             </button>
           </div>
         </div>

@@ -40,11 +40,9 @@ const TreasureHuntGame = ({ user }) => {
   const [errorMessage, setErrorMessage] = useState(null);
   const [showStartModal, setShowStartModal] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showWinModal, setShowWinModal] = useState(false);
-  const [showLossModal, setShowLossModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
   const [revealedTreasures, setRevealedTreasures] = useState([]);
   const [pulseAnimation, setPulseAnimation] = useState(false);
-  const [gameInfo, setGameInfo] = useState(null);
 
   const animationTimers = useRef([]);
   const isMounted = useRef(true);
@@ -59,16 +57,6 @@ const TreasureHuntGame = ({ user }) => {
   const levelMultiplier = mapLevel * 1.5;
   const totalCost = betAmount * levelMultiplier;
 
-  /* ---------------- FETCH GAME INFO ---------------- */
-  const fetchGameInfo = useCallback(async () => {
-    try {
-      const res = await treasureService.getGameInfo();
-      setGameInfo(res.data);
-    } catch (err) {
-      console.error("Failed to fetch game info:", err);
-    }
-  }, []);
-
   /* ---------------- DEEP REFRESH FUNCTION ---------------- */
   const deepRefresh = useCallback(async () => {
     if (!isMounted.current) return;
@@ -79,8 +67,7 @@ const TreasureHuntGame = ({ user }) => {
       // Reset all states
       setLastHunt(null);
       setRevealedTreasures([]);
-      setShowWinModal(false);
-      setShowLossModal(false);
+      setShowResultModal(false);
       setErrorMessage(null);
       
       // Refresh wallet data
@@ -108,9 +95,9 @@ const TreasureHuntGame = ({ user }) => {
     setRevealedTreasures([]);
     
     if (!treasures || treasures.length === 0) {
-      // No treasures found - show loss after delay
+      // No treasures found - show result after delay
       setTimeout(() => {
-        setShowLossModal(true);
+        setShowResultModal(true);
       }, 1500);
       return;
     }
@@ -125,16 +112,16 @@ const TreasureHuntGame = ({ user }) => {
           setPulseAnimation(true);
           setTimeout(() => setPulseAnimation(false), 300);
           
-          // After all treasures are revealed, check for win
+          // After all treasures are revealed, show result
           if (index === treasures.length - 1) {
             setTimeout(() => {
               if (isMounted.current) {
-                setShowWinModal(true);
+                setShowResultModal(true);
               }
             }, 1000);
           }
         }
-      }, (index + 1) * 800); // 800ms between each reveal
+      }, (index + 1) * 800);
     });
   };
 
@@ -175,7 +162,6 @@ const TreasureHuntGame = ({ user }) => {
   /* ---------------- COMPONENT LIFECYCLE ---------------- */
   useEffect(() => {
     isMounted.current = true;
-    fetchGameInfo();
     
     return () => {
       isMounted.current = false;
@@ -187,7 +173,7 @@ const TreasureHuntGame = ({ user }) => {
         "phase-revealing"
       );
     };
-  }, [fetchGameInfo]);
+  }, []);
 
   /* ---------------- START HUNT ---------------- */
   const startHunt = async () => {
@@ -211,8 +197,7 @@ const TreasureHuntGame = ({ user }) => {
     // Reset states
     setErrorMessage(null);
     setShowStartModal(false);
-    setShowWinModal(false);
-    setShowLossModal(false);
+    setShowResultModal(false);
     setRevealedTreasures([]);
     setHunting(true);
     setLastHunt(null);
@@ -227,22 +212,17 @@ const TreasureHuntGame = ({ user }) => {
       });
 
       const data = res.data;
-      
-      // REMOVED THE WIN AMOUNT CAPPING - backend now handles 0.5x-3.5x multipliers
-      const winAmount = data.win_amount; // Use the full win amount from backend
-      const hasWon = winAmount > 0;
+      const hasWon = data.win_amount > 0;
 
       setLastHunt({
         ...data,
-        win_amount: winAmount,
         hasWon: hasWon,
-        win_multiplier: data.win_multiplier || data.total_multiplier || 0
       });
 
       // Start progressive treasure reveal
       setTimeout(() => {
         revealTreasuresProgressively(data.treasures_found || []);
-      }, 7000); // Start after animations complete
+      }, 7000);
 
       // Refresh wallet silently
       setTimeout(() => {
@@ -273,26 +253,29 @@ const TreasureHuntGame = ({ user }) => {
 
   /* ---------------- MODAL HANDLERS ---------------- */
   const handleContinue = async () => {
-    setShowWinModal(false);
+    setShowResultModal(false);
     await deepRefresh();
   };
 
-  const handleTryAgain = async () => {
-    setShowLossModal(false);
-    await deepRefresh();
+  const handleReturnToGames = () => {
+    navigate("/games");
   };
 
-  /* ---------------- CALCULATE WIN TIER ---------------- */
-  const getWinTier = (multiplier) => {
-    if (multiplier <= 0) return "loss";
-    if (multiplier <= 1.5) return "low";
-    if (multiplier <= 2.5) return "normal";
-    if (multiplier <= 3.0) return "high";
-    return "great";
+  /* ---------------- WIN TIER HELPERS (FOR BACKWARD COMPATIBILITY) ---------------- */
+  const getWinTierName = (tier) => {
+    switch(tier) {
+      case "small": return "Small Catch";
+      case "low": return "Good Catch";
+      case "normal": return "Great Catch";
+      case "high": return "Excellent Catch";
+      case "great": return "Amazing Catch";
+      default: return "No Catch";
+    }
   };
 
   const getWinTierColor = (tier) => {
     switch(tier) {
+      case "small": return "#FFC107";
       case "low": return "#4CAF50";
       case "normal": return "#2196F3";
       case "high": return "#FF9800";
@@ -301,13 +284,25 @@ const TreasureHuntGame = ({ user }) => {
     }
   };
 
-  const getWinTierName = (tier) => {
+  const getResultEmoji = (tier) => {
     switch(tier) {
-      case "low": return "Small Win";
-      case "normal": return "Good Win";
-      case "high": return "Great Win";
-      case "great": return "Amazing Win";
-      default: return "Loss";
+      case "small": return "🎣";
+      case "low": return "💰";
+      case "normal": return "🏆";
+      case "high": return "👑";
+      case "great": return "🐉";
+      default: return "💔";
+    }
+  };
+
+  const getResultTitle = (tier) => {
+    switch(tier) {
+      case "small": return "Small Treasure Found!";
+      case "low": return "Treasure Found!";
+      case "normal": return "Great Treasure Found!";
+      case "high": return "Excellent Treasure Found!";
+      case "great": return "Legendary Treasure Found!";
+      default: return "No Treasure Found";
     }
   };
 
@@ -321,10 +316,10 @@ const TreasureHuntGame = ({ user }) => {
       <header className="treasure-game-header">
         <button 
           className="back-button" 
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/games")}
           disabled={refreshing}
         >
-          ← Back
+          ← Back to Games
         </button>
 
         <div className="game-title">
@@ -341,7 +336,6 @@ const TreasureHuntGame = ({ user }) => {
           <div className="panel-card animated-slideUp">
             <div className="panel-header-glow" style={{background: selectedMap.color}}>
               <h2 className="panel-title">Select Map & Stake</h2>
-              
             </div>
 
             <div className="map-level-grid">
@@ -374,7 +368,7 @@ const TreasureHuntGame = ({ user }) => {
             </div>
 
             <div className="stake-input-container mt-2">
-              <label className="stake-label">Stake Amount (₦)</label>
+              <label className="stake-label">Stake Amount</label>
               <div className="stake-input-wrapper animated-pulse">
                 <span className="stake-currency">₦</span>
                 <input
@@ -396,6 +390,12 @@ const TreasureHuntGame = ({ user }) => {
                 <span>Total Cost</span>
                 <span className="cost-value total">
                   {formatNaira(totalCost)}
+                </span>
+              </div>
+              <div className="cost-item">
+                <span>Your Balance</span>
+                <span className="cost-value">
+                  {formatNaira(combinedBalance)}
                 </span>
               </div>
             </div>
@@ -460,7 +460,7 @@ const TreasureHuntGame = ({ user }) => {
               {phase === "revealing" && (
                 <div className="treasure-reveal-container">
                   <div className="overlay-title animated-fadeIn">
-                    🎉 Expedition Complete!
+                    {lastHunt?.hasWon ? "🎉 Treasure Found!" : "💔 No Treasure"}
                   </div>
                   
                   {/* Progressive Treasure Reveal */}
@@ -479,9 +479,6 @@ const TreasureHuntGame = ({ user }) => {
                           </div>
                           <div className="treasure-name-reveal">
                             {treasure.name}
-                          </div>
-                          <div className="treasure-multiplier">
-                            ×{treasure.multiplier}
                           </div>
                         </div>
                       ))
@@ -508,103 +505,101 @@ const TreasureHuntGame = ({ user }) => {
         </section>
       )}
 
-      {/* ================= WIN MODAL ================= */}
-      {showWinModal && lastHunt && (
-        <div className="modal-overlay win-modal-overlay animated-fadeIn">
-          <div className="win-modal-content animated-slideUp">
-            <div className="win-modal-header">
-              <div className="confetti"></div>
-              <div className="confetti"></div>
-              <div className="confetti"></div>
+      {/* ================= RESULT MODAL ================= */}
+      {showResultModal && lastHunt && (
+        <div className="modal-overlay result-modal-overlay animated-fadeIn">
+          <div className="result-modal-content animated-slideUp">
+            <div className="result-modal-header">
+              {/* Confetti for wins */}
+              {lastHunt.hasWon && (
+                <>
+                  <div className="confetti"></div>
+                  <div className="confetti"></div>
+                  <div className="confetti"></div>
+                </>
+              )}
               
-              {/* Win Tier Badge */}
-              {lastHunt.win_tier && lastHunt.win_tier !== "loss" && (
+              {/* Result Badge */}
+              {lastHunt.win_tier && (
                 <div 
-                  className="win-tier-badge"
+                  className="result-tier-badge"
                   style={{backgroundColor: getWinTierColor(lastHunt.win_tier)}}
                 >
-                  {getWinTierName(lastHunt.win_tier)}
+                  {getResultEmoji(lastHunt.win_tier)} {getWinTierName(lastHunt.win_tier)}
                 </div>
               )}
               
-              <div className="win-icon">🏆</div>
-              <h2>Congratulations!</h2>
-              <p className="win-subtitle">You found treasure!</p>
-            </div>
-            
-            
-            <div className="win-amount-display animated-pulse-glow">
-              <span className="win-amount-label">You won</span>
-              <span className="win-amount">
-                {formatNaira(lastHunt.win_amount)}
-              </span>
-            </div>
-            
-            <div className="win-treasures-summary">
-              <h4>Treasures Found ({lastHunt.treasures_found?.length || 0}):</h4>
-              <div className="mini-treasures">
-                {lastHunt.treasures_found?.map((t, i) => (
-                  <div key={i} className="mini-treasure">
-                    <span>{t.image}</span>
-                    <small>{t.name}</small>
-                    <small className="treasure-mult-value">×{t.multiplier}</small>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <button
-              className="continue-button animated-pulse"
-              onClick={handleContinue}
-              disabled={refreshing}
-            >
-              {refreshing ? (
-                <>
-                  <span className="loading-spinner-small" />
-                  Refreshing...
-                </>
-              ) : (
-                "🎮 Continue Adventure"
-              )}
-            </button>
-            
-          </div>
-        </div>
-      )}
-
-      {/* ================= LOSS MODAL ================= */}
-      {showLossModal && (
-        <div className="modal-overlay loss-modal-overlay animated-fadeIn">
-          <div className="loss-modal-content animated-slideUp">
-            <div className="loss-modal-header">
-              <div className="loss-icon">💔</div>
-              <h2>Oops! Hard Luck</h2>
-              <p className="loss-subtitle">No treasures found this time</p>
-            </div>
-            
-            <div className="loss-message animated-fadeIn">
-              <div className="empty-chest-large">📭</div>
-              <p className="loss-encouragement">
-                Don't worry! You still have a chance next time!
-                <br />
-                <span className="loss-tip">Tip: Your luck resets on each expedition!</span>
+              <h2>{getResultTitle(lastHunt.win_tier || "loss")}</h2>
+              <p className="result-subtitle">
+                {lastHunt.hasWon ? "You found treasure!" : "Better luck next time!"}
               </p>
             </div>
             
-            <button
-              className="try-again-button animated-pulse"
-              onClick={handleTryAgain}
-              disabled={refreshing}
-            >
-              {refreshing ? (
-                <>
-                  <span className="loading-spinner-small" />
-                  Refreshing...
-                </>
-              ) : (
-                "🔁 Try Again"
+            {/* Result Details */}
+            <div className="result-details">
+              <div className="financial-summary">
+                <div className="financial-row">
+                  <span>Stake:</span>
+                  <span>{formatNaira(lastHunt.bet_amount)}</span>
+                </div>
+                
+                <div className="financial-row">
+                  <span>Payout:</span>
+                  <span>{formatNaira(lastHunt.win_amount)}</span>
+                </div>
+                
+                <div className="financial-row total" style={{ 
+                  color: lastHunt.win_amount > 0 ? '#4CAF50' : '#F44336'
+                }}>
+                  <span>Result:</span>
+                  <span>
+                    {lastHunt.win_amount > lastHunt.bet_amount 
+                      ? `+${formatNaira(lastHunt.win_amount - lastHunt.bet_amount)}`
+                      : `-${formatNaira(lastHunt.bet_amount - lastHunt.win_amount)}`}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Treasures Found Summary */}
+              {lastHunt.hasWon && lastHunt.treasures_found && lastHunt.treasures_found.length > 0 && (
+                <div className="treasures-summary">
+                  <h4>Treasures Found ({lastHunt.treasures_found.length}):</h4>
+                  <div className="treasures-grid-mini">
+                    {lastHunt.treasures_found.map((t, i) => (
+                      <div key={i} className="treasure-item-mini">
+                        <span className="treasure-icon-mini">{t.image}</span>
+                        <span className="treasure-name-mini">{t.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
+            
+            <div className="result-actions">
+              <button
+                className="continue-button primary"
+                onClick={handleContinue}
+                disabled={refreshing}
+              >
+                {refreshing ? (
+                  <>
+                    <span className="loading-spinner-small" />
+                    Refreshing...
+                  </>
+                ) : (
+                  "🎮 Play Again"
+                )}
+              </button>
+              
+              <button
+                className="continue-button secondary"
+                onClick={handleReturnToGames}
+                disabled={refreshing}
+              >
+                Back to Games
+              </button>
+            </div>
             
           </div>
         </div>

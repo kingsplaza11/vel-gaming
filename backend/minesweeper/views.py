@@ -13,15 +13,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Updated probability constants - 35% safe, 65% bomb
+SAFE_CELL_CHANCE = 0.35  # 35% chance each click is safe
+MINE_CELL_CHANCE = 0.65  # 65% chance each click is a mine
+
+# Win multiplier constants remain the same
+ABOVE_1_5X_CHANCE = 0.45  # 45% chance to win above 1.5x
+BELOW_1_5X_CHANCE = 0.10  # 10% chance to win below 1.5x
+
 # ================= WIN MULTIPLIER LOGIC =================
-def get_minesweeper_multiplier(mines_count, grid_size, revealed_cells):
+def get_minesweeper_multiplier(mines_count, grid_size, revealed_cells, win_type):
     """
-    Calculate win multiplier between 0.5x and 3.5x based on:
-    - mines_count: number of mines in game
-    - grid_size: size of the grid
-    - revealed_cells: number of safe cells revealed
-    
-    More mines and more revealed cells increase potential multiplier.
+    Calculate win multiplier based on win type:
+    - 'above_1_5x': 45% chance, multipliers from 1.6x to 4.0x
+    - 'below_1_5x': 10% chance, multipliers from 0.5x to 1.49x
     """
     # Calculate risk factor (more mines = higher risk = higher potential reward)
     total_cells = grid_size * grid_size
@@ -34,27 +39,30 @@ def get_minesweeper_multiplier(mines_count, grid_size, revealed_cells):
     else:
         progress_factor = 0
     
-    # Base multiplier based on weighted distribution
-    rand = random.random() * 100
+    if win_type == 'above_1_5x':
+        # 45% chance - good wins above 1.5x
+        rand = random.random()
+        if rand < 0.50:  # 50% of above-1.5x wins: 1.6x - 2.5x
+            base_multiplier = random.uniform(1.6, 2.5)
+        elif rand < 0.80:  # 30% of above-1.5x wins: 2.6x - 3.0x
+            base_multiplier = random.uniform(2.6, 3.0)
+        elif rand < 0.95:  # 15% of above-1.5x wins: 3.1x - 3.5x
+            base_multiplier = random.uniform(3.1, 3.5)
+        else:  # 5% of above-1.5x wins: 3.6x - 4.0x
+            base_multiplier = random.uniform(3.6, 4.0)
+    else:
+        # 10% chance - small wins below 1.5x
+        base_multiplier = random.uniform(0.5, 1.49)
     
-    if rand <= 40:  # 40% chance: Small multiplier (0.5x - 1.5x)
-        base_multiplier = random.uniform(0.5, 1.5)
-    elif rand <= 80:  # 40% chance: Good multiplier (1.6x - 2.5x)
-        base_multiplier = random.uniform(1.6, 2.5)
-    elif rand <= 95:  # 15% chance: Great multiplier (2.6x - 3.0x)
-        base_multiplier = random.uniform(2.6, 3.0)
-    else:  # 5% chance: Perfect multiplier (3.1x - 3.5x)
-        base_multiplier = random.uniform(3.1, 3.5)
-    
-    # Apply risk and progress bonuses
-    # Higher risk games get better multipliers
-    risk_bonus = risk_factor * 0.5  # Up to 50% bonus for high risk
-    progress_bonus = progress_factor * 0.3  # Up to 30% bonus for progress
-    
-    final_multiplier = base_multiplier * (1 + risk_bonus + progress_bonus)
-    
-    # Cap at 3.5x maximum
-    return min(final_multiplier, 3.5)
+    # Apply risk and progress bonuses (only for above 1.5x wins)
+    if win_type == 'above_1_5x':
+        risk_bonus = risk_factor * 0.5  # Up to 50% bonus for high risk
+        progress_bonus = progress_factor * 0.3  # Up to 30% bonus for progress
+        final_multiplier = base_multiplier * (1 + risk_bonus + progress_bonus)
+        # Cap at 4.5x maximum
+        return min(final_multiplier, 4.5)
+    else:
+        return base_multiplier
 
 
 @api_view(["POST"])
@@ -114,11 +122,6 @@ def start_minesweeper(request):
             "spot_balance": float(wallet.spot_balance),
             "combined_balance": float(wallet.balance + wallet.spot_balance),
             "currency": "NGN",
-            "game_info": {
-                "win_chance": "70%",
-                "multiplier_range": "0.5x - 3.5x",
-                "mine_chance": f"{mines_count}/{grid_size * grid_size}"
-            }
         })
 
 
@@ -141,19 +144,18 @@ def reveal_cell(request):
 
         # Generate mines if not already generated
         if not game.mines_positions:
-            # Generate mines with 30% chance on first click (70% safe first click)
+            # Generate mines with 35% chance on first click (65% bomb chance)
             all_cells = [(r, c) for r in range(game.grid_size) for c in range(game.grid_size)]
             
-            # 70% chance: First click is safe
-            # 30% chance: First click could be a mine
-            first_click_safe = random.random() < 0.70
+            # 35% chance: First click is safe
+            first_click_safe = random.random() < SAFE_CELL_CHANCE
             
             if first_click_safe:
                 # First click is safe - ensure it's not a mine
                 available_cells = [cell for cell in all_cells if cell != (row, col)]
                 mines = random.sample(available_cells, game.mines_count)
             else:
-                # First click could be a mine (30% chance of immediate loss)
+                # First click could be a mine (65% chance of immediate loss)
                 mines = random.sample(all_cells, game.mines_count)
             
             game.mines_positions = mines
@@ -188,11 +190,7 @@ def reveal_cell(request):
                 "win_multiplier": 0.0,
                 "wallet_balance": float(wallet.balance),
                 "spot_balance": float(wallet.spot_balance),
-                "message": "Mine hit! Game over. (30% mine chance per click)",
-                "game_info": {
-                    "win_chance": "70% safe cells",
-                    "multiplier_range": "0.5x - 3.5x"
-                }
+                "message": "Mine hit! Game over.",
             })
 
         # Cell is safe - add to revealed cells
@@ -214,46 +212,33 @@ def reveal_cell(request):
         
         raw_multiplier = base_multiplier + (revealed_count * multiplier_increment)
         
-        # Cap multiplier at 10x for display (actual cashout uses different calculation)
+        # Cap multiplier at 10x for display
         game.multiplier = Decimal(str(min(round(raw_multiplier, 2), 10.0)))
 
         game.save()
 
-        # Calculate potential win multiplier for display
-        potential_multiplier = get_minesweeper_multiplier(
-            game.mines_count, 
-            game.grid_size,
-            revealed_count
-        )
+        # Determine potential win type for this game
+        # This is for display only, actual cashout uses random determination
+        total_cells = game.grid_size * game.grid_size
+        safe_percentage = (total_safe - revealed_count) / total_cells if total_cells > 0 else 0
         
-        # Determine win tier
-        win_tier = "playing"
-        if potential_multiplier > 0:
-            if potential_multiplier <= 1.5:
-                win_tier = "small"
-            elif potential_multiplier <= 2.5:
-                win_tier = "good"
-            elif potential_multiplier <= 3.0:
-                win_tier = "great"
-            else:
-                win_tier = "perfect"
+        # Simple heuristic: more safe cells left = better chance
+        if safe_percentage > 0.7:
+            win_type = 'above_1_5x'
+        elif safe_percentage > 0.4:
+            win_type = 'below_1_5x'
+        else:
+            win_type = 'loss'
 
         return Response({
             "hit_mine": False,
             "revealed_cells": revealed,
             "current_multiplier": float(game.multiplier),
-            "potential_multiplier": potential_multiplier,
             "status": "playing",
-            "potential_win_tier": win_tier,
             "wallet_balance": float(wallet.balance),
             "spot_balance": float(wallet.spot_balance),
             "message": f"Safe! Multiplier: {float(game.multiplier):.2f}x",
             "safe_cells_left": total_safe - revealed_count,
-            "game_info": {
-                "win_chance": "70% safe cells",
-                "multiplier_range": "0.5x - 3.5x",
-                "current_risk": f"{game.mines_count} mines"
-            }
         })
 
 
@@ -268,25 +253,54 @@ def cash_out(request):
             id=game_id, user=request.user, status="playing"
         )
 
-        # Calculate win multiplier based on game state
+        # Determine win type based on probabilities
         revealed_count = len(game.revealed_cells or [])
-        win_multiplier = get_minesweeper_multiplier(
-            game.mines_count, 
-            game.grid_size,
-            revealed_count
-        )
+        total_safe = game.grid_size**2 - game.mines_count
         
-        # Calculate win amount
-        win_amount = (game.bet_amount * Decimal(str(win_multiplier))).quantize(Decimal("0.01"))
+        # Calculate progress factor
+        progress_factor = revealed_count / total_safe if total_safe > 0 else 0
         
-        # Determine win tier for tracking
-        win_tier = "normal"
-        if win_multiplier > 0:
-            if win_multiplier <= 1.5:
+        # Determine win type: more progress = better chance of above 1.5x
+        roll = random.random()
+        
+        if roll < ABOVE_1_5X_CHANCE * (0.5 + progress_factor * 0.5):  # 22.5% to 45% chance
+            win_type = 'above_1_5x'
+            is_loss = False
+        elif roll < ABOVE_1_5X_CHANCE * (0.5 + progress_factor * 0.5) + BELOW_1_5X_CHANCE:  # 10% chance
+            win_type = 'below_1_5x'
+            is_loss = False
+        else:  # 45% to 67.5% chance of loss
+            win_type = None
+            is_loss = True
+
+        if is_loss:
+            win_multiplier = Decimal("0.00")
+            win_amount = Decimal("0.00")
+            win_tier = "loss"
+        else:
+            # Calculate win multiplier based on win type
+            win_multiplier = get_minesweeper_multiplier(
+                game.mines_count, 
+                game.grid_size,
+                revealed_count,
+                win_type
+            )
+            
+            # Ensure multiplier stays in correct range
+            if win_type == 'above_1_5x':
+                win_multiplier = max(1.51, win_multiplier)
+            else:  # below_1_5x
+                win_multiplier = min(1.49, win_multiplier)
+            
+            # Calculate win amount
+            win_amount = (game.bet_amount * Decimal(str(win_multiplier))).quantize(Decimal("0.01"))
+            
+            # Determine win tier for tracking
+            if win_type == 'below_1_5x':
                 win_tier = "small"
             elif win_multiplier <= 2.5:
                 win_tier = "good"
-            elif win_multiplier <= 3.0:
+            elif win_multiplier <= 3.5:
                 win_tier = "great"
             else:
                 win_tier = "perfect"
@@ -302,8 +316,9 @@ def cash_out(request):
 
         stats, _ = MinesweeperStats.objects.get_or_create(user=request.user)
         stats.total_games += 1
-        stats.total_won += win_amount
-        stats.highest_multiplier = max(stats.highest_multiplier, game.win_multiplier)
+        if win_amount > 0:
+            stats.total_won += win_amount
+            stats.highest_multiplier = max(stats.highest_multiplier, game.win_multiplier)
         stats.save()
 
         return Response({
@@ -315,12 +330,7 @@ def cash_out(request):
             "spot_balance": float(wallet.spot_balance),
             "combined_balance": float(wallet.balance + wallet.spot_balance),
             "currency": "NGN",
-            "message": f"Cashed out! Won ₦{float(win_amount):,.2f} ({win_multiplier:.2f}x)",
-            "game_info": {
-                "win_chance": "70% safe cells",
-                "multiplier_range": "0.5x - 3.5x",
-                "revealed_cells": revealed_count
-            }
+            "message": f"Cashed out! Won ₦{float(win_amount):,.2f}" if win_amount > 0 else "Cashed out with no win",
         })
 
 
@@ -394,12 +404,6 @@ def get_stats(request):
             'avg_win': round(avg_win, 2),
             'highest_multiplier': float(stats.highest_multiplier),
             'recent_games': recent_history,
-            'game_info': {
-                'win_chance': '70%',
-                'multiplier_range': '0.5x - 3.5x',
-                'expected_rtp': '97%',
-                'house_edge': '3%'
-            }
         })
         
     except Exception as e:
@@ -410,14 +414,11 @@ def get_stats(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_game_info(request):
-    """Get minesweeper game information and probabilities"""
+    """Get minesweeper game information"""
     return Response({
         'game_info': {
             'name': 'Minesweeper',
-            'description': 'Reveal safe cells and avoid mines to win multipliers!',
-            'win_chance': '70% safe cells per click',
-            'mine_chance': '30% per click',
-            'multiplier_range': '0.5x - 3.5x',
+            'description': 'Reveal safe cells and avoid mines to win!',
             'minimum_bet': '100.00',
         },
         'grid_sizes': [
@@ -427,23 +428,14 @@ def get_game_info(request):
             {'size': 8, 'cells': 64, 'description': 'Extra Large (8x8)'},
         ],
         'mine_settings': [
-            {'mines': 3, 'risk': 'Low', 'safe_chance': '88%'},
-            {'mines': 5, 'risk': 'Medium', 'safe_chance': '80%'},
-            {'mines': 7, 'risk': 'High', 'safe_chance': '72%'},
-            {'mines': 10, 'risk': 'Very High', 'safe_chance': '60%'},
+            {'mines': 3, 'risk': 'Low'},
+            {'mines': 5, 'risk': 'Medium'},
+            {'mines': 7, 'risk': 'High'},
+            {'mines': 10, 'risk': 'Very High'},
         ],
-        'multiplier_distribution': {
-            'small': '0.5x - 1.5x (40% of cashouts)',
-            'good': '1.6x - 2.5x (40% of cashouts)',
-            'great': '2.6x - 3.0x (15% of cashouts)',
-            'perfect': '3.1x - 3.5x (5% of cashouts)'
-        },
         'strategy_tips': [
-            'More mines = Higher potential multipliers',
-            'Cash out early to secure smaller wins',
+            'More mines = Higher potential wins',
+            'Cash out early to secure wins',
             'Each safe cell increases your multiplier',
-            '70% chance each click is safe'
         ],
-        'expected_rtp': '97%',
-        'house_edge': '3%',
     })

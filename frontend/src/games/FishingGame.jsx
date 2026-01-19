@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWallet } from "../contexts/WalletContext"; // Import wallet context
+import { useWallet } from "../contexts/WalletContext";
 import { fishingService } from "../services/api";
 import "./FishingGame.css";
 
@@ -8,10 +8,10 @@ const MINIMUM_STAKE = 100; // Minimum stake of 100 naira
 
 const FishingGame = ({ user, onBalanceUpdate }) => {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet(); // Get wallet data from context
+  const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet();
 
   /* ---------------- STATE ---------------- */
-  const [betAmount, setBetAmount] = useState(1000); // Start with minimum stake
+  const [betAmount, setBetAmount] = useState(1000); // Start with default stake
   const [isCasting, setIsCasting] = useState(false);
 
   const [lastCatch, setLastCatch] = useState(null);
@@ -23,17 +23,14 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   /* ---------------- HELPER FUNCTIONS ---------------- */
-  // Get wallet balance with fallback to user.balance
   const getWalletBalance = () => {
-    return availableBalance !== undefined ? availableBalance : (availableBalance);
+    return availableBalance !== undefined ? availableBalance : availableBalance;
   };
 
-  // Get current balance
   const safeBalance = Number(getWalletBalance() || 0);
 
   const formatMoney = (v) => Number(v || 0).toFixed(2);
 
-  // Validate stake amount
   const isStakeValid = () => {
     const amt = Number(betAmount);
     return Number.isFinite(amt) && amt >= MINIMUM_STAKE;
@@ -49,7 +46,6 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
       return;
     }
 
-    // Check minimum stake
     if (amt < MINIMUM_STAKE) {
       setErrorMessage(`Minimum stake is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`);
       return;
@@ -60,7 +56,6 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
       return;
     }
 
-    // Check if wallet is still loading
     if (walletLoading) {
       setErrorMessage("Please wait while your balance loads...");
       return;
@@ -98,7 +93,6 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
 
       // Also update parent component if needed
       if (onBalanceUpdate) {
-        // Use the new balance from response or fallback
         const newBalance = data.new_balance || (safeBalance - Number(betAmount) + Number(data.profit || 0));
         onBalanceUpdate({
           ...user,
@@ -123,12 +117,17 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
     setShowStakeModal(true);
   };
 
+  /* ---------------- RETURN TO GAMES ---------------- */
+  const returnToGames = () => {
+    navigate("/games");
+  };
+
   /* ================= RENDER ================= */
   return (
     <div className="fishing-game mobile">
       {/* ================= HEADER ================= */}
       <div className="top-bar">
-        <button onClick={() => navigate("/")}>←</button>
+        <button onClick={returnToGames}>←</button>
         <span>🎣 Deep Sea Fishing</span>
       </div>
 
@@ -136,7 +135,10 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
       {showStakeModal && (
         <div className="modal-overlay">
           <div className="modal stake-modal">
-            <h3>PLACE YOUR STAKE</h3>
+            <h3>DEEP SEA FISHING</h3>
+            <p className="game-description">
+              Cast your line and see what you catch!
+            </p>
 
             <div className="balance-summary">
               <span className="balance-label">Available Balance:</span>
@@ -162,7 +164,7 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
             />
 
             <div className="quick-row">
-              {[1000, 2000, 5000, 10000].map((v) => (
+              {[100, 500, 1000, 2000].map((v) => (
                 <button 
                   key={v} 
                   onClick={() => setBetAmount(v)}
@@ -197,6 +199,11 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
       {/* ================= GAME SCREEN ================= */}
       {!showStakeModal && !showResultModal && (
         <div className="game-screen">
+          <div className="game-header">
+            <h2>Deep Sea Fishing</h2>
+            <p className="game-tip">Tap CAST to throw your line!</p>
+          </div>
+
           <div className={`ocean ${isCasting ? "casting" : ""}`}>
             {/* Fishing line */}
             <div className={`fishing-line ${isCasting ? "throw" : ""}`} />
@@ -225,25 +232,39 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
         <div className="modal-overlay">
           <div className="modal result-modal">
             <h3>
-              {roundResult.profit > 0 ? "YOU WON" : "YOU LOST"}
+              {roundResult.profit > 0 ? "YOU CAUGHT A FISH! 🎣" : "YOU GOT A TRAP! 💀"}
             </h3>
 
-            <div className="result-emoji">
+            <div className="result-emoji" style={{ fontSize: '4rem' }}>
               {roundResult.catch?.emoji || "💀"}
             </div>
 
-            <p>Stake: ₦{formatMoney(roundResult.bet_amount)}</p>
-            <p>Payout: ₦{formatMoney(roundResult.win_amount)}</p>
-
-            <p
-              className={
-                roundResult.profit > 0 ? "win" : "lose"
-              }
-            >
-              {roundResult.profit > 0
-                ? `Profit +₦${formatMoney(roundResult.profit)}`
-                : "Stake Lost"}
+            <p className="result-title">
+              {roundResult.catch?.name || "Unknown"}
             </p>
+
+            <div className="financial-summary">
+              <div className="financial-row">
+                <span>Stake:</span>
+                <span>₦{formatMoney(roundResult.bet_amount)}</span>
+              </div>
+              
+              <div className="financial-row">
+                <span>Payout:</span>
+                <span>₦{formatMoney(roundResult.win_amount)}</span>
+              </div>
+              
+              <div className="financial-row total" style={{ 
+                color: roundResult.profit > 0 ? '#4CAF50' : '#F44336'
+              }}>
+                <span>Result:</span>
+                <span>
+                  {roundResult.profit > 0 
+                    ? `+₦${formatMoney(roundResult.profit)}`
+                    : `-₦${formatMoney(roundResult.bet_amount - roundResult.win_amount)}`}
+                </span>
+              </div>
+            </div>
 
             <div className="new-balance">
               <span>New Balance:</span>
@@ -259,9 +280,14 @@ const FishingGame = ({ user, onBalanceUpdate }) => {
               </span>
             </div>
 
-            <button className="primary" onClick={resetGame}>
-              PLAY AGAIN
-            </button>
+            <div className="result-actions">
+              <button className="primary" onClick={resetGame}>
+                PLAY AGAIN
+              </button>
+              <button className="secondary" onClick={returnToGames}>
+                BACK TO GAMES
+              </button>
+            </div>
           </div>
         </div>
       )}

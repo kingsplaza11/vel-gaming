@@ -16,84 +16,96 @@ from accounts.serializers import UserSerializer
 
 # ================= CONSTANTS =================
 MIN_STAKE = Decimal("100")
-LOSS_PROBABILITY = 0.50  # 50% full loss (50% win chance)
+
+# Updated for 45% above 1.5x and 55% lose/below 1.5x
+ABOVE_1_5X_CHANCE = 0.45  # 45% chance to win above 1.5x
+BELOW_1_5X_CHANCE = 0.10  # 10% chance to win below 1.5x
+LOSS_CHANCE = 0.45  # 45% chance to lose (total 55% lose/below 1.5x)
 
 
-# Updated treasures with higher multipliers to compensate for lower win rate
+# Updated treasures with multipliers focused on the new distribution
 TREASURES = {
     1: [
-        {'name': 'Bronze Coin', 'multiplier': 0.75, 'image': '🪙'},  # Increased from 0.5
-        {'name': 'Silver Ring', 'multiplier': 1.0, 'image': '💍'},   # Increased from 0.75
-        {'name': 'Ancient Pottery', 'multiplier': 1.25, 'image': '🏺'},  # Increased from 1.0
-        {'name': 'Rusty Key', 'multiplier': 1.5, 'image': '🗝️'},    # Increased from 1.25
-        {'name': 'Glass Bead', 'multiplier': 1.75, 'image': '🔮'},   # Increased from 1.5
+        {'name': 'Bronze Coin', 'multiplier': 0.5, 'image': '🪙'},
+        {'name': 'Silver Ring', 'multiplier': 0.75, 'image': '💍'},
+        {'name': 'Ancient Pottery', 'multiplier': 1.0, 'image': '🏺'},
+        {'name': 'Rusty Key', 'multiplier': 1.25, 'image': '🗝️'},
+        # Above 1.5x for 45% wins
+        {'name': 'Glass Bead', 'multiplier': 1.6, 'image': '🔮'},
+        {'name': 'Copper Bracelet', 'multiplier': 1.8, 'image': '📿'},
+        {'name': 'Ivory Dice', 'multiplier': 2.0, 'image': '🎲'},
     ],
     2: [
-        {'name': 'Gold Necklace', 'multiplier': 2.0, 'image': '📿'},   # Increased from 1.75
-        {'name': 'Gemstone', 'multiplier': 2.25, 'image': '💎'},      # Increased from 2.0
-        {'name': 'Crystal Orb', 'multiplier': 2.5, 'image': '🔮'},    # Increased from 2.25
-        {'name': 'Silver Amulet', 'multiplier': 2.75, 'image': '🧿'}, # Increased from 2.5
+        # All above 1.5x
+        {'name': 'Gold Necklace', 'multiplier': 2.25, 'image': '📿'},
+        {'name': 'Gemstone', 'multiplier': 2.5, 'image': '💎'},
+        {'name': 'Crystal Orb', 'multiplier': 2.75, 'image': '🔮'},
+        {'name': 'Silver Amulet', 'multiplier': 3.0, 'image': '🧿'},
     ],
     3: [
-        {'name': 'Royal Crown', 'multiplier': 3.0, 'image': '👑'},    # Increased from 2.75
-        {'name': 'Dragon Egg', 'multiplier': 3.5, 'image': '🥚'},     # Increased from 3.0
-        {'name': 'Magic Staff', 'multiplier': 4.0, 'image': '🪄'},    # Increased from 3.25, new high
-        {'name': 'Gold Chalice', 'multiplier': 4.5, 'image': '🏆'},   # Increased from 3.5, new high
+        # All above 1.5x
+        {'name': 'Royal Crown', 'multiplier': 3.25, 'image': '👑'},
+        {'name': 'Dragon Egg', 'multiplier': 3.5, 'image': '🥚'},
+        {'name': 'Magic Staff', 'multiplier': 4.0, 'image': '🪄'},
+        {'name': 'Gold Chalice', 'multiplier': 4.5, 'image': '🏆'},
     ],
     4: [
-        {'name': 'Phoenix Feather', 'multiplier': 2.0, 'image': '🪶'},   # Increased from 1.5
-        {'name': 'Unicorn Horn', 'multiplier': 2.5, 'image': '🦄'},     # Increased from 2.0
-        {'name': 'Mermaid Scale', 'multiplier': 3.0, 'image': '🧜'},    # Increased from 2.5
-        {'name': 'Star Shard', 'multiplier': 3.5, 'image': '⭐'},       # Increased from 3.0
+        # All above 1.5x
+        {'name': 'Phoenix Feather', 'multiplier': 2.5, 'image': '🪶'},
+        {'name': 'Unicorn Horn', 'multiplier': 3.0, 'image': '🦄'},
+        {'name': 'Mermaid Scale', 'multiplier': 3.5, 'image': '🧜'},
+        {'name': 'Star Shard', 'multiplier': 4.0, 'image': '⭐'},
     ],
     5: [
-        {'name': 'Infinity Stone', 'multiplier': 3.0, 'image': '💠'},    # Increased from 2.0
-        {'name': 'Cosmic Key', 'multiplier': 3.5, 'image': '🔑'},       # Increased from 2.5
-        {'name': 'Holy Grail', 'multiplier': 4.0, 'image': '🏆'},       # Increased from 3.0
-        {'name': 'Dragon Scale', 'multiplier': 5.0, 'image': '🐉'},     # Increased from 3.5, new high
+        # All above 1.5x
+        {'name': 'Infinity Stone', 'multiplier': 4.0, 'image': '💠'},
+        {'name': 'Cosmic Key', 'multiplier': 4.5, 'image': '🔑'},
+        {'name': 'Holy Grail', 'multiplier': 5.0, 'image': '🏆'},
+        {'name': 'Dragon Scale', 'multiplier': 6.0, 'image': '🐉'},
     ]
 }
 
 
 # ================= WIN MULTIPLIER LOGIC =================
-def get_win_multiplier():
+def get_win_multiplier(win_type):
     """
-    Returns a win multiplier between 0.75x and 5.0x based on weighted distribution:
-    - 30% chance: 0.75x - 2.0x (small wins)
-    - 40% chance: 2.1x - 3.5x (medium wins)
-    - 20% chance: 3.6x - 4.5x (good wins)
-    - 10% chance: 4.6x - 5.0x (great wins)
-    
-    Higher multipliers to compensate for 50% win rate
+    Returns a win multiplier based on win type:
+    - 'above_1_5x': 45% chance, multipliers from 1.6x to 8.0x
+    - 'below_1_5x': 10% chance, multipliers from 0.5x to 1.49x
     """
-    rand = random.random() * 100  # 0-100
+    if win_type == 'above_1_5x':
+        # 45% chance - good wins above 1.5x
+        rand = random.random()
+        if rand < 0.40:  # 40% of above-1.5x wins: 1.6x - 3.0x
+            return random.uniform(1.6, 3.0)
+        elif rand < 0.70:  # 30% of above-1.5x wins: 3.1x - 4.5x
+            return random.uniform(3.1, 4.5)
+        elif rand < 0.90:  # 20% of above-1.5x wins: 4.6x - 6.0x
+            return random.uniform(4.6, 6.0)
+        else:  # 10% of above-1.5x wins: 6.1x - 8.0x
+            return random.uniform(6.1, 8.0)
     
-    if rand <= 30:  # 30% chance: Small wins (0.75x - 2.0x)
-        return random.uniform(0.75, 2.0)
-    elif rand <= 70:  # 40% chance: Medium wins (2.1x - 3.5x)
-        return random.uniform(2.1, 3.5)
-    elif rand <= 90:  # 20% chance: Good wins (3.6x - 4.5x)
-        return random.uniform(3.6, 4.5)
-    else:  # 10% chance: Great wins (4.6x - 5.0x)
-        return random.uniform(4.6, 5.0)
+    else:  # 'below_1_5x'
+        # 10% chance - small wins below 1.5x
+        return random.uniform(0.5, 1.49)
 
 
-def get_win_multiplier_with_map_bonus(map_level):
+def get_win_multiplier_with_map_bonus(map_level, win_type):
     """
     Get win multiplier with map level bonus.
     Higher map levels have better multiplier chances.
     """
-    base_multiplier = get_win_multiplier()
+    base_multiplier = get_win_multiplier(win_type)
     
-    # Map level gives a boost to multiplier range
-    # Level 1: no boost, Level 5: +1.0x potential boost
-    map_boost = (map_level - 1) * 0.2  # 0 to 0.8x boost
-    
-    # Apply boost with probability (higher levels get more frequent boosts)
-    if random.random() < (0.25 + map_level * 0.15):  # 40% to 100% chance of boost
-        boosted_multiplier = base_multiplier + map_boost
-        # Cap at reasonable maximum
-        return min(boosted_multiplier, 6.0)  # Increased max to 6.0x
+    # Map level gives a boost to multiplier range (only for above 1.5x wins)
+    if win_type == 'above_1_5x':
+        map_boost = (map_level - 1) * 0.25  # 0 to 1.0x boost
+        
+        # Apply boost with probability (higher levels get more frequent boosts)
+        if random.random() < (0.3 + map_level * 0.1):  # 40% to 80% chance of boost
+            boosted_multiplier = base_multiplier + map_boost
+            # Cap at reasonable maximum
+            return min(boosted_multiplier, 9.0)
     
     return base_multiplier
 
@@ -151,9 +163,19 @@ def start_hunt(request):
             wallet.spot_balance -= remaining_cost
 
         # =====================
-        # CORE GAME LOGIC - 50% WIN CHANCE
+        # CORE GAME LOGIC - 45% above 1.5x, 10% below 1.5x, 45% lose
         # =====================
-        is_loss = random.random() < LOSS_PROBABILITY
+        roll = random.random()
+        
+        if roll < ABOVE_1_5X_CHANCE:  # 45% chance: win above 1.5x
+            win_type = 'above_1_5x'
+            is_loss = False
+        elif roll < ABOVE_1_5X_CHANCE + BELOW_1_5X_CHANCE:  # 10% chance: win below 1.5x
+            win_type = 'below_1_5x'
+            is_loss = False
+        else:  # 45% chance: lose
+            win_type = None
+            is_loss = True
 
         if is_loss:
             win_amount = Decimal("0.00")
@@ -161,11 +183,11 @@ def start_hunt(request):
             total_multiplier = Decimal("0.00")
             win_multiplier = Decimal("0.00")
         else:
-            # Find 1-3 treasures (weighted: 50% 1, 35% 2, 15% 3)
+            # Find 1-3 treasures (weighted: 60% 1, 30% 2, 10% 3)
             num_treasures_roll = random.random()
-            if num_treasures_roll < 0.50:
+            if num_treasures_roll < 0.60:
                 num_treasures = 1
-            elif num_treasures_roll < 0.85:
+            elif num_treasures_roll < 0.90:
                 num_treasures = 2
             else:
                 num_treasures = 3
@@ -178,18 +200,24 @@ def start_hunt(request):
             treasure_multipliers = [t["multiplier"] for t in treasures_found]
             average_treasure_multiplier = sum(treasure_multipliers) / len(treasure_multipliers)
             
-            # Get win multiplier (0.75x to 5.0x)
-            win_multiplier = Decimal(str(get_win_multiplier_with_map_bonus(map_level)))
+            # Get win multiplier based on win type
+            win_multiplier = Decimal(str(get_win_multiplier_with_map_bonus(map_level, win_type)))
             
-            # Blend treasure multiplier with win multiplier (weighted 60% win_mult, 40% treasure_mult)
-            blended_multiplier = (win_multiplier * Decimal("0.6")) + (Decimal(str(average_treasure_multiplier)) * Decimal("0.4"))
+            # For above 1.5x wins, ensure multiplier stays above 1.5x
+            if win_type == 'above_1_5x':
+                win_multiplier = max(Decimal("1.51"), win_multiplier)
             
-            # Cap at reasonable maximum with potential for higher wins
-            final_multiplier = max(Decimal("0.75"), min(Decimal("6.0"), blended_multiplier))
+            # Blend treasure multiplier with win multiplier (weighted 70% win_mult, 30% treasure_mult)
+            blended_multiplier = (win_multiplier * Decimal("0.7")) + (Decimal(str(average_treasure_multiplier)) * Decimal("0.3"))
+            
+            # Cap multipliers
+            if win_type == 'above_1_5x':
+                final_multiplier = max(Decimal("1.51"), min(Decimal("9.0"), blended_multiplier))
+            else:  # below_1_5x
+                final_multiplier = min(Decimal("1.49"), blended_multiplier)
             
             # Calculate win amount
             win_amount = (bet_amount * final_multiplier).quantize(Decimal("0.01"))
-            
             total_multiplier = final_multiplier
 
         # =====================
@@ -224,12 +252,14 @@ def start_hunt(request):
 
         # Determine win tier for frontend display
         win_tier = "loss"
-        if total_multiplier > 0:
-            if total_multiplier <= 2.0:
+        if not is_loss:
+            if win_type == 'below_1_5x':
+                win_tier = "small"
+            elif total_multiplier <= 3.0:
                 win_tier = "low"
-            elif total_multiplier <= 3.5:
+            elif total_multiplier <= 5.0:
                 win_tier = "normal"
-            elif total_multiplier <= 4.5:
+            elif total_multiplier <= 7.0:
                 win_tier = "high"
             else:
                 win_tier = "great"
@@ -246,12 +276,6 @@ def start_hunt(request):
             "map_level": map_level,
             "total_cost": float(total_cost),
             "hunt_id": hunt.id,
-            "game_info": {
-                "win_chance": "50%",
-                "multiplier_range": "0.75x - 6.0x",
-                "trap_chance": "50%",
-                "num_treasures_found": len(treasures_found)
-            }
         })
 
 
@@ -277,10 +301,11 @@ def get_treasure_stats(request):
     # Get win tier distribution
     hunts = TreasureHunt.objects.filter(user=request.user, win_amount__gt=0)
     
-    low_wins = hunts.filter(total_multiplier__lte=2.0).count()
-    normal_wins = hunts.filter(total_multiplier__gt=2.0, total_multiplier__lte=3.5).count()
-    high_wins = hunts.filter(total_multiplier__gt=3.5, total_multiplier__lte=4.5).count()
-    great_wins = hunts.filter(total_multiplier__gt=4.5).count()
+    small_wins = hunts.filter(total_multiplier__lt=1.5).count()
+    low_wins = hunts.filter(total_multiplier__gte=1.5, total_multiplier__lte=3.0).count()
+    normal_wins = hunts.filter(total_multiplier__gt=3.0, total_multiplier__lte=5.0).count()
+    high_wins = hunts.filter(total_multiplier__gt=5.0, total_multiplier__lte=7.0).count()
+    great_wins = hunts.filter(total_multiplier__gt=7.0).count()
 
     # Calculate average multiplier for wins
     avg_multiplier = hunts.aggregate(Avg('total_multiplier'))['total_multiplier__avg'] or 0
@@ -296,16 +321,11 @@ def get_treasure_stats(request):
         "success_rate": round(success_rate, 2),
         "avg_multiplier": round(avg_multiplier, 2),
         "win_distribution": {
+            "small": small_wins,
             "low": low_wins,
             "normal": normal_wins,
             "high": high_wins,
             "great": great_wins
-        },
-        "game_info": {
-            "win_chance": "50%",
-            "multiplier_range": "0.75x - 6.0x",
-            "expected_rtp": "95%",
-            "house_edge": "5%"
         }
     })
 
@@ -327,11 +347,13 @@ def get_treasure_history(request):
         # Determine win tier
         win_tier = "loss"
         if hunt.total_multiplier > 0:
-            if hunt.total_multiplier <= 2.0:
+            if hunt.total_multiplier < 1.5:
+                win_tier = "small"
+            elif hunt.total_multiplier <= 3.0:
                 win_tier = "low"
-            elif hunt.total_multiplier <= 3.5:
+            elif hunt.total_multiplier <= 5.0:
                 win_tier = "normal"
-            elif hunt.total_multiplier <= 4.5:
+            elif hunt.total_multiplier <= 7.0:
                 win_tier = "high"
             else:
                 win_tier = "great"
@@ -425,81 +447,50 @@ def get_level_name(level):
 @permission_classes([IsAuthenticated])
 def get_game_info(request):
     """
-    Get detailed treasure hunt game information and probabilities
+    Get detailed treasure hunt game information
     """
     return Response({
         "game_info": {
             "name": "Treasure Hunt",
-            "description": "Explore different maps to find treasures and win multipliers! Higher risk, bigger rewards!",
-            "win_chance": "50%",
-            "loss_chance": "50%",
-            "multiplier_range": "0.75x - 6.0x",
+            "description": "Explore different maps to find treasures and win!",
             "minimum_bet": "100.00",
-            "risk_level": "Medium-High",
-            "expected_rtp": "95%",
-            "house_edge": "5%",
+            "risk_level": "Medium",
         },
         "map_levels": [
             {
                 "level": 1,
                 "name": "Beginner Island",
                 "cost_multiplier": "1.5x",
-                "treasure_range": "0.75x - 1.75x",
                 "description": "Easy level with basic treasures"
             },
             {
                 "level": 2,
                 "name": "Ancient Forest",
                 "cost_multiplier": "3.0x",
-                "treasure_range": "2.0x - 2.75x",
                 "description": "Medium difficulty with better treasures"
             },
             {
                 "level": 3,
                 "name": "Dragon Mountain",
                 "cost_multiplier": "4.5x",
-                "treasure_range": "3.0x - 4.5x",
                 "description": "Hard level with valuable treasures"
             },
             {
                 "level": 4,
                 "name": "Phantom Desert",
                 "cost_multiplier": "6.0x",
-                "treasure_range": "2.0x - 3.5x",
                 "description": "Challenging level with mystical treasures"
             },
             {
                 "level": 5,
                 "name": "Celestial Realm",
                 "cost_multiplier": "7.5x",
-                "treasure_range": "3.0x - 5.0x",
                 "description": "Legendary level with cosmic treasures"
             }
         ],
-        "multiplier_distribution": {
-            "low": "0.75x - 2.0x (30% of wins)",
-            "normal": "2.1x - 3.5x (40% of wins)",
-            "high": "3.6x - 4.5x (20% of wins)",
-            "great": "4.6x - 6.0x (10% of wins)"
-        },
-        "treasure_find_chance": {
-            "1_treasure": "50% chance",
-            "2_treasures": "35% chance",
-            "3_treasures": "15% chance"
-        },
-        "probability_breakdown": {
-            "overall_win_chance": "50%",
-            "overall_loss_chance": "50%",
-            "level_1_win_rate": "50%",
-            "level_5_win_rate": "50% (with higher multipliers)",
-            "max_multiplier": "6.0x",
-            "average_multiplier": "2.5x - 3.0x",
-        },
         "strategy_tips": [
-            "Higher map levels offer better potential multipliers",
+            "Higher map levels offer better treasures",
             "You can find 1-3 treasures per successful hunt",
-            "Treasure multipliers combine with base win multiplier",
-            "50% win rate means strategic betting is important",
-            "Higher levels have better bonus multiplier chances"
+            "Higher levels have better bonus chances"
         ]
     })

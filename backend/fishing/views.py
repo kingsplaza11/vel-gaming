@@ -10,41 +10,54 @@ from wallets.models import Wallet
 from .models import FishingSession, FishingStats
 from accounts.models import User
 
-# Base fish data - Updated with higher multipliers to compensate for lower win rate
+# Base fish data - Updated for 45% above 1.5x and 55% below/lose
 FISH_TYPES = {
     'common': [
-        {'name': 'Sardine', 'multiplier': 0.75, 'emoji': '🐟', 'rarity': 'Common'},  # Increased from 0.5
-        {'name': 'Mackerel', 'multiplier': 1.0, 'emoji': '🐠', 'rarity': 'Common'},  # Increased from 0.75
-        {'name': 'Bass', 'multiplier': 1.25, 'emoji': '🎣', 'rarity': 'Common'},     # Increased from 1.0
-        {'name': 'Herring', 'multiplier': 1.5, 'emoji': '🐡', 'rarity': 'Common'},   # Increased from 1.25
-        {'name': 'Anchovy', 'multiplier': 1.75, 'emoji': '🐟', 'rarity': 'Common'},  # Increased from 1.5
+        # Small wins below 1.5x (part of the 10% small wins)
+        {'name': 'Sardine', 'multiplier': 0.5, 'emoji': '🐟', 'rarity': 'Common'},
+        {'name': 'Mackerel', 'multiplier': 0.75, 'emoji': '🐠', 'rarity': 'Common'},
+        {'name': 'Bass', 'multiplier': 1.0, 'emoji': '🎣', 'rarity': 'Common'},
+        {'name': 'Herring', 'multiplier': 1.25, 'emoji': '🐡', 'rarity': 'Common'},
+        
+        # Wins above 1.5x (45% category)
+        {'name': 'Anchovy', 'multiplier': 1.6, 'emoji': '🐟', 'rarity': 'Common'},
+        {'name': 'Carp', 'multiplier': 1.8, 'emoji': '🐠', 'rarity': 'Common'},
+        {'name': 'Tilapia', 'multiplier': 2.0, 'emoji': '🎣', 'rarity': 'Common'},
     ],
     'uncommon': [
-        {'name': 'Tilapia', 'multiplier': 2.0, 'emoji': '🐠', 'rarity': 'Uncommon'},   # Increased from 1.75
-        {'name': 'Snapper', 'multiplier': 2.25, 'emoji': '🎣', 'rarity': 'Uncommon'},  # Increased from 2.0
-        {'name': 'Catfish', 'multiplier': 2.5, 'emoji': '🐡', 'rarity': 'Uncommon'},   # Increased from 2.25
-        {'name': 'Perch', 'multiplier': 2.75, 'emoji': '🐟', 'rarity': 'Uncommon'},    # Increased from 2.5
+        # Wins above 1.5x (45% category)
+        {'name': 'Snapper', 'multiplier': 2.25, 'emoji': '🐟', 'rarity': 'Uncommon'},
+        {'name': 'Catfish', 'multiplier': 2.5, 'emoji': '🐠', 'rarity': 'Uncommon'},
+        {'name': 'Perch', 'multiplier': 2.75, 'emoji': '🎣', 'rarity': 'Uncommon'},
+        {'name': 'Pike', 'multiplier': 3.0, 'emoji': '🐡', 'rarity': 'Uncommon'},
     ],
     'rare': [
-        {'name': 'Tuna', 'multiplier': 3.0, 'emoji': '🐟', 'rarity': 'Rare'},          # Increased from 2.75
-        {'name': 'Salmon', 'multiplier': 3.5, 'emoji': '🐠', 'rarity': 'Rare'},        # Increased from 3.0
-        {'name': 'Mahi Mahi', 'multiplier': 4.0, 'emoji': '🎣', 'rarity': 'Rare'},     # Increased from 3.25, new higher
-        {'name': 'Grouper', 'multiplier': 4.5, 'emoji': '🐡', 'rarity': 'Rare'},       # Increased from 3.5, new higher
+        # Wins above 1.5x (45% category)
+        {'name': 'Tuna', 'multiplier': 3.5, 'emoji': '🐟', 'rarity': 'Rare'},
+        {'name': 'Salmon', 'multiplier': 4.0, 'emoji': '🐠', 'rarity': 'Rare'},
+        {'name': 'Mahi Mahi', 'multiplier': 4.5, 'emoji': '🎣', 'rarity': 'Rare'},
+        {'name': 'Grouper', 'multiplier': 5.0, 'emoji': '🐡', 'rarity': 'Rare'},
     ],
+    'legendary': [
+        # Rare high wins above 1.5x (45% category)
+        {'name': 'Blue Marlin', 'multiplier': 6.0, 'emoji': '🐟', 'rarity': 'Legendary'},
+        {'name': 'Swordfish', 'multiplier': 7.0, 'emoji': '🐠', 'rarity': 'Legendary'},
+        {'name': 'Sturgeon', 'multiplier': 8.0, 'emoji': '🎣', 'rarity': 'Legendary'},
+        {'name': 'Great White Shark', 'multiplier': 9.0, 'emoji': '🦈', 'rarity': 'Legendary'},
+    ]
 }
 
 SIZES = [
-    {"label": "Tiny", "size_multiplier": 0.6},
-    {"label": "Small", "size_multiplier": 0.8},
+    {"label": "Tiny", "size_multiplier": 0.8},
+    {"label": "Small", "size_multiplier": 0.9},
     {"label": "Medium", "size_multiplier": 1.0},
-    {"label": "Large", "size_multiplier": 1.2},
-    {"label": "Giant", "size_multiplier": 1.5},
+    {"label": "Large", "size_multiplier": 1.1},
+    {"label": "Giant", "size_multiplier": 1.2},
 ]
 
-# Added very large size for occasional big wins
 EXTREME_SIZES = [
-    {"label": "Colossal", "size_multiplier": 1.8},
-    {"label": "Legendary", "size_multiplier": 2.0},
+    {"label": "Colossal", "size_multiplier": 1.3},
+    {"label": "Legendary", "size_multiplier": 1.5},
 ]
 
 def calculate_fishing_level(total_sessions: int) -> str:
@@ -67,50 +80,92 @@ WRONG_TREASURES = ["Rusty Boot", "Sea Bomb", "Cursed Skull", "Old Tire", "Seawee
 def _choose_fish():
     roll = random.random()
     
-    # 48% chance of catching a fish (winning) - Reduced from 70%
-    if roll < 0.48:
-        # Weight distribution for different rarities - adjusted for lower win rate
+    # 45% chance of winning above 1.5x
+    if roll < 0.45:
+        # Weight distribution for different rarities - focused on good multipliers
         rarity_roll = random.random()
         
-        if rarity_roll < 0.40:  # 40% of wins = Common fish (19.2% overall)
+        if rarity_roll < 0.60:  # 60% of above-1.5x wins = Common fish (27% overall)
             fish_list = FISH_TYPES["common"]
-            # Adjusted weights to favor higher multipliers in common category
-            weights = [0.10, 0.15, 0.20, 0.25, 0.30]  # Favor higher multipliers
-        elif rarity_roll < 0.75:  # 35% of wins = Uncommon fish (16.8% overall)
+            # Weights favor fish with multipliers above 1.5x
+            # First 3 fish (0.5x, 0.75x, 1.0x, 1.25x) are below 1.5x - give them low weight
+            # Last 3 fish (1.6x, 1.8x, 2.0x) are above 1.5x - give them high weight
+            weights = [0.05, 0.05, 0.10, 0.15, 0.25, 0.25, 0.15]
+            selected_fish = random.choices(fish_list, weights=weights, k=1)[0]
+            
+        elif rarity_roll < 0.85:  # 25% of above-1.5x wins = Uncommon fish (11.25% overall)
             fish_list = FISH_TYPES["uncommon"]
-            weights = [0.20, 0.25, 0.25, 0.30]  # Favor higher multipliers
-        else:  # 25% of wins = Rare fish (12% overall)
+            # All uncommon fish are above 1.5x
+            weights = [0.20, 0.25, 0.25, 0.30]
+            selected_fish = random.choices(fish_list, weights=weights, k=1)[0]
+            
+        elif rarity_roll < 0.95:  # 10% of above-1.5x wins = Rare fish (4.5% overall)
             fish_list = FISH_TYPES["rare"]
-            weights = [0.25, 0.25, 0.25, 0.25]  # Equal weights for rare fish
+            weights = [0.25, 0.25, 0.25, 0.25]
+            selected_fish = random.choices(fish_list, weights=weights, k=1)[0]
+            
+        else:  # 5% of above-1.5x wins = Legendary fish (2.25% overall)
+            fish_list = FISH_TYPES["legendary"]
+            weights = [0.25, 0.25, 0.25, 0.25]
+            selected_fish = random.choices(fish_list, weights=weights, k=1)[0]
         
-        base = random.choices(fish_list, weights=weights, k=1)[0]
-        
-        # Determine size - with chance for extreme sizes
+        # Determine size
         size_roll = random.random()
-        if size_roll < 0.05:  # 5% chance for extreme size
+        if size_roll < 0.03:  # 3% chance for extreme size
             size = random.choice(EXTREME_SIZES)
         else:
             size = random.choice(SIZES)
         
-        final_multiplier = base["multiplier"] * size["size_multiplier"]
+        # Apply size multiplier
+        final_multiplier = selected_fish["multiplier"] * size["size_multiplier"]
+        
+        # Ensure multiplier is above 1.5x (with size adjustment)
+        final_multiplier = max(1.51, final_multiplier)
         
         # Cap at reasonable maximum
-        final_multiplier = max(0.75, min(9.0, final_multiplier))  # Increased max from 3.5 to 9.0
+        final_multiplier = min(15.0, final_multiplier)
         
         return {
-            "name": base["name"],
-            "rarity": base["rarity"],
-            "emoji": base["emoji"],
+            "name": selected_fish["name"],
+            "rarity": selected_fish["rarity"],
+            "emoji": selected_fish["emoji"],
             "multiplier": float(final_multiplier),
             "is_trap": False,
             "size": size["label"],
             "size_multiplier": size["size_multiplier"],
-            "quality": "Excellent" if size["size_multiplier"] >= 1.8 else 
-                       "Good" if size["size_multiplier"] >= 1.2 else 
+            "quality": "Excellent" if size["size_multiplier"] >= 1.3 else 
+                       "Good" if size["size_multiplier"] >= 1.1 else 
                        "Average",
         }
-    else:
-        # 52% chance of trap (loss) - Increased from 30%
+    
+    # 10% chance of small wins (below 1.5x)
+    elif roll < 0.55:
+        # Small wins category - below 1.5x multipliers
+        small_fish_list = [fish for fish in FISH_TYPES["common"] if fish["multiplier"] <= 1.25]
+        
+        # Select a small fish
+        selected_fish = random.choice(small_fish_list)
+        
+        # Apply small size multiplier (never extreme for small wins)
+        size = random.choice(SIZES[:3])  # Only tiny, small, or medium
+        final_multiplier = selected_fish["multiplier"] * size["size_multiplier"]
+        
+        # Ensure multiplier stays below 1.5x
+        final_multiplier = min(1.49, final_multiplier)
+        
+        return {
+            "name": selected_fish["name"],
+            "rarity": "Small Catch",
+            "emoji": selected_fish["emoji"],
+            "multiplier": float(final_multiplier),
+            "is_trap": False,
+            "size": size["label"],
+            "size_multiplier": size["size_multiplier"],
+            "quality": "Small",
+        }
+    
+    # 20% chance of traps (part of the 55% lose/below 1.5x category)
+    elif roll < 0.75:
         trap_type = random.choice(WRONG_TREASURES)
         
         # Assign different trap emojis
@@ -122,15 +177,15 @@ def _choose_fish():
             "Seaweed Bundle": "🌿"
         }
         
-        # Different trap severities
+        # Trap severities
         trap_severity = random.random()
-        if trap_severity < 0.10:  # 10% of traps = double loss (bet lost plus extra)
+        if trap_severity < 0.10:  # 10% of traps = double loss (2% overall)
             trap_effect = "DOUBLE_LOSS"
-            trap_multiplier = -1.0  # Indicates special trap effect
-        elif trap_severity < 0.30:  # 20% of traps = cursed (no fishing for a while)
+            trap_multiplier = -1.0
+        elif trap_severity < 0.30:  # 20% of traps = cursed (4% overall)
             trap_effect = "CURSED"
             trap_multiplier = -0.5
-        else:  # 70% of traps = regular loss
+        else:  # 70% of traps = regular loss (14% overall)
             trap_effect = "REGULAR"
             trap_multiplier = 0.0
         
@@ -143,6 +198,45 @@ def _choose_fish():
             "size": "N/A",
             "size_multiplier": 1.0,
             "trap_effect": trap_effect,
+        }
+    
+    # 15% chance of penalty (reduced multiplier)
+    elif roll < 0.90:
+        # Penalty - reduce bet by 50%
+        penalty_types = ["Tangled Line", "Broken Rod", "Stolen Bait", "Escaped Fish"]
+        penalty_type = random.choice(penalty_types)
+        
+        return {
+            "name": penalty_type,
+            "rarity": "Penalty",
+            "emoji": "⚡",
+            "multiplier": 0.5,  # Lose 50% of bet
+            "is_trap": True,
+            "size": "N/A",
+            "size_multiplier": 1.0,
+            "trap_effect": "PENALTY",
+        }
+    
+    # 10% chance of complete loss
+    else:
+        trap_type = random.choice(WRONG_TREASURES)
+        trap_emojis = {
+            "Rusty Boot": "👢",
+            "Sea Bomb": "💣", 
+            "Cursed Skull": "💀",
+            "Old Tire": "🛞",
+            "Seaweed Bundle": "🌿"
+        }
+        
+        return {
+            "name": trap_type,
+            "rarity": "Trap",
+            "emoji": trap_emojis.get(trap_type, "💀"),
+            "multiplier": 0.0,
+            "is_trap": True,
+            "size": "N/A",
+            "size_multiplier": 1.0,
+            "trap_effect": "COMPLETE_LOSS",
         }
 
 
@@ -185,7 +279,7 @@ def cast_line(request):
         # Get the fish catch
         catch = _choose_fish()
 
-        # Calculate win amount
+        # Calculate win amount based on catch type
         if catch["is_trap"]:
             if catch.get("trap_effect") == "DOUBLE_LOSS":
                 # Double loss: lose bet amount plus extra penalty
@@ -197,6 +291,13 @@ def cast_line(request):
                 # Cursed trap: lose bet with minor extra effect
                 win_amount = Decimal("0.00")
                 # Could implement cooldown or other effects here
+            elif catch.get("trap_effect") == "PENALTY":
+                # Penalty: lose 50% of bet
+                win_amount = bet_amount * Decimal(str(catch["multiplier"]))
+                win_amount = win_amount.quantize(Decimal("0.01"))
+            elif catch.get("trap_effect") == "COMPLETE_LOSS":
+                # Complete loss: lose entire bet
+                win_amount = Decimal("0.00")
             else:
                 # Regular trap: just lose the bet
                 win_amount = Decimal("0.00")
@@ -243,12 +344,13 @@ def cast_line(request):
             "new_balance": float(wallet.balance),
             "new_spot_balance": float(wallet.spot_balance),
             "chance_info": {
-                "win_chance": "48%",
-                "multiplier_range": "0.75x - 9.0x",  # Updated range
-                "trap_chance": "52%",
-                "extreme_size_chance": "5%",
-                "double_loss_trap_chance": "5.2%",  # 10% of 52%
-                "max_multiplier": "9.0x"
+                "win_chance": "55% (45% above 1.5x + 10% below 1.5x)",
+                "lose_chance": "45%",
+                "multiplier_range": "1.51x - 15.0x for good catches",
+                "trap_chance": "20%",
+                "penalty_chance": "15%",
+                "extreme_size_chance": "3%",
+                "max_multiplier": "15.0x"
             }
         })
 
@@ -297,12 +399,6 @@ def get_fishing_stats(request):
             'win_rate': round(win_rate, 1),
             'avg_multiplier': round(avg_multiplier, 2),
             'fishing_level': calculate_fishing_level(total_sessions),
-            'game_info': {
-                'win_chance': '48%',
-                'multiplier_range': '0.75x - 9.0x',
-                'trap_chance': '52%',
-                'current_win_streak': 'Calculate from sessions',  # Could implement
-            }
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
@@ -361,58 +457,45 @@ def get_fishing_info(request):
         return Response({
             'game_info': {
                 'name': 'Fishing Game',
-                'description': 'Cast your line and catch fish for multipliers! Higher risk, bigger rewards!',
-                'win_chance': '48%',  # Updated from 70%
-                'trap_chance': '52%',  # Updated from 30%
-                'multiplier_range': '0.75x - 9.0x',  # Updated range
+                'description': 'Cast your line and catch fish for multipliers! Aim for catches above 1.5x!',
+                'win_chance_above_1.5x': '45%',
+                'small_win_chance': '10%',
+                'lose_chance': '45%',
+                'multiplier_range': '1.51x - 15.0x for good catches',
                 'minimum_bet': '10.00',
-                'risk_level': 'High',
-                'house_edge': '5%',  # Adjusted house edge
+                'risk_level': 'Medium',
+                'house_edge': '5%',
             },
             'fish_types': [
                 {
                     'rarity': 'Common',
-                    'multipliers': ['0.75x', '1.0x', '1.25x', '1.5x', '1.75x'],
-                    'chance_of_win': '19.2%',
-                    'description': 'Basic fish with small multipliers'
+                    'description': 'Basic fish with multipliers from 0.5x to 2.0x'
                 },
                 {
                     'rarity': 'Uncommon',
-                    'multipliers': ['2.0x', '2.25x', '2.5x', '2.75x'],
-                    'chance_of_win': '16.8%',
-                    'description': 'Better fish with moderate multipliers'
+                    'description': 'Better fish with multipliers from 2.25x to 3.0x'
                 },
                 {
                     'rarity': 'Rare',
-                    'multipliers': ['3.0x', '3.5x', '4.0x', '4.5x'],
-                    'chance_of_win': '12%',
-                    'description': 'Rare fish with high multipliers'
+                    'description': 'Rare fish with multipliers from 3.5x to 5.0x'
                 },
                 {
-                    'rarity': 'Trap',
-                    'multipliers': ['0x'],
-                    'chance': '52%',
-                    'description': 'Bad catches that result in loss'
+                    'rarity': 'Legendary',
+                    'description': 'Legendary fish with multipliers from 6.0x to 9.0x'
                 }
             ],
             'sizes': SIZES + EXTREME_SIZES,
-            'size_effect': 'Fish size multiplies the base multiplier (0.6x to 2.0x)',
+            'size_effect': 'Fish size multiplies the base multiplier (0.8x to 1.5x)',
             'special_features': [
-                '5% chance for Colossal or Legendary size fish',
-                'Trap effects: Regular (70%), Cursed (20%), Double Loss (10%)',
-                'Higher base multipliers to compensate for lower win rate',
+                '45% chance to catch fish above 1.5x multiplier',
+                '10% chance for small catches below 1.5x',
+                '20% chance of traps',
+                '15% chance of penalties (50% loss)',
+                '10% chance of complete loss',
+                '3% chance for extreme size fish',
             ],
-            'expected_rtp': '95%',  # Expected Return to Player (adjusted)
+            'expected_rtp': '95%',
             'house_edge': '5%',
-            'probability_breakdown': {
-                'overall_win_chance': '48%',
-                'common_fish': '19.2%',
-                'uncommon_fish': '16.8%',
-                'rare_fish': '12%',
-                'trap_chance': '52%',
-                'extreme_size_chance': '5% of wins',
-                'double_loss_trap': '5.2% of all casts',
-            }
         }, status=status.HTTP_200_OK)
 
     except Exception as e:

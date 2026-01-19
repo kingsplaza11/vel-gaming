@@ -37,9 +37,6 @@ const MinesweeperGame = ({ user }) => {
   const [gameId, setGameId] = useState(null);
   const [grid, setGrid] = useState([]);
   const [gameState, setGameState] = useState("idle");
-  const [multiplier, setMultiplier] = useState(1.0);
-  const [potentialMultiplier, setPotentialMultiplier] = useState(0);
-  const [potentialWinTier, setPotentialWinTier] = useState("playing");
   const [lastWin, setLastWin] = useState(null);
   const [showWinModal, setShowWinModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
@@ -47,12 +44,12 @@ const MinesweeperGame = ({ user }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [gameInfo, setGameInfo] = useState(null);
   const [safeCellsLeft, setSafeCellsLeft] = useState(0);
+  const [revealedCells, setRevealedCells] = useState([]);
 
   const initializeGrid = (size) =>
     Array.from({ length: size }, () =>
       Array.from({ length: size }, () => ({
         revealed: false,
-        mine: false,
         isMine: false,
       }))
     );
@@ -81,11 +78,9 @@ const MinesweeperGame = ({ user }) => {
     setGameId(null);
     setLastWin(null);
     setMinesPositions([]);
+    setRevealedCells([]);
     setShowWinModal(false);
     setShowLossModal(false);
-    setMultiplier(1.0);
-    setPotentialMultiplier(0);
-    setPotentialWinTier("playing");
     setIsProcessing(false);
     
     if (refreshWallet) {
@@ -122,13 +117,12 @@ const MinesweeperGame = ({ user }) => {
 
       setGameId(res.data.game_id);
       setGrid(initializeGrid(gridSize));
-      setMultiplier(1.0);
       setGameState("playing");
       setShowStakeModal(false);
-      setPotentialMultiplier(0);
-      setPotentialWinTier("playing");
       setMinesPositions([]);
-      setSafeCellsLeft(gridSize * gridSize - minesCount);
+      setRevealedCells([]);
+      const safeCells = gridSize * gridSize - minesCount;
+      setSafeCellsLeft(safeCells);
 
       if (refreshWallet) {
         await refreshWallet();
@@ -150,6 +144,9 @@ const MinesweeperGame = ({ user }) => {
   const revealCell = async (row, col) => {
     if (gameState !== "playing" || isProcessing) return;
     
+    // Don't reveal already revealed cells
+    if (grid[row][col].revealed) return;
+    
     setIsProcessing(true);
     try {
       const res = await minesweeperService.reveal({
@@ -160,28 +157,29 @@ const MinesweeperGame = ({ user }) => {
 
       if (res.data.hit_mine) {
         setGameState("lost");
-        setMinesPositions(res.data.mines_positions || []);
         
-        // Update grid to show all mines
+        // Get all mines positions
+        const mines = res.data.mines_positions || [];
+        setMinesPositions(mines);
+        
+        // Update grid to show mines and revealed cells
         const newGrid = [...grid];
-        if (res.data.mines_positions) {
-          res.data.mines_positions.forEach(([r, c]) => {
-            if (newGrid[r] && newGrid[r][c]) {
-              newGrid[r][c].mine = true;
-              newGrid[r][c].revealed = true;
-              newGrid[r][c].isMine = true;
-            }
-          });
-        }
         
-        // Also show revealed safe cells
-        if (res.data.revealed_cells) {
-          res.data.revealed_cells.forEach(([r, c]) => {
-            if (newGrid[r] && newGrid[r][c] && !newGrid[r][c].isMine) {
-              newGrid[r][c].revealed = true;
-            }
-          });
-        }
+        // First mark all mines
+        mines.forEach(([r, c]) => {
+          if (newGrid[r] && newGrid[r][c]) {
+            newGrid[r][c].isMine = true;
+            newGrid[r][c].revealed = true;
+          }
+        });
+        
+        // Then mark revealed safe cells from backend
+        const backendRevealed = res.data.revealed_cells || [];
+        backendRevealed.forEach(([r, c]) => {
+          if (newGrid[r] && newGrid[r][c] && !newGrid[r][c].isMine) {
+            newGrid[r][c].revealed = true;
+          }
+        });
         
         setGrid(newGrid);
         
@@ -193,21 +191,26 @@ const MinesweeperGame = ({ user }) => {
         return;
       }
 
-      setMultiplier(res.data.current_multiplier || 1.0);
-      setPotentialMultiplier(res.data.potential_multiplier || 0);
-      setPotentialWinTier(res.data.potential_win_tier || "playing");
+      // Cell is safe
       setSafeCellsLeft(res.data.safe_cells_left || 0);
 
+      // Update revealed cells from backend
+      const backendRevealed = res.data.revealed_cells || [];
+      const newRevealedCells = [...revealedCells];
+      
       const newGrid = [...grid];
-      if (res.data.revealed_cells) {
-        res.data.revealed_cells.forEach(([r, c]) => {
-          if (newGrid[r] && newGrid[r][c]) {
-            newGrid[r][c].revealed = true;
-            newGrid[r][c].mine = false;
+      backendRevealed.forEach(([r, c]) => {
+        if (newGrid[r] && newGrid[r][c] && !newGrid[r][c].revealed) {
+          newGrid[r][c].revealed = true;
+          newGrid[r][c].isMine = false;
+          if (!newRevealedCells.some(cell => cell[0] === r && cell[1] === c)) {
+            newRevealedCells.push([r, c]);
           }
-        });
-      }
+        }
+      });
+      
       setGrid(newGrid);
+      setRevealedCells(newRevealedCells);
       
     } catch (err) {
       console.error("Reveal error:", err);
@@ -235,15 +238,24 @@ const MinesweeperGame = ({ user }) => {
       setLastWin({
         win_amount: res.data.win_amount,
         win_multiplier: res.data.win_multiplier,
-        win_tier: res.data.win_tier,
-        multiplier: res.data.current_multiplier || 1.0,
       });
+
+      // Reveal all cells on cash out
+      const newGrid = [...grid];
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          if (!newGrid[r][c].revealed) {
+            newGrid[r][c].revealed = true;
+          }
+        }
+      }
+      setGrid(newGrid);
 
       if (refreshWallet) {
         await refreshWallet();
       }
 
-      // Show win modal
+      // Show win modal after a short delay
       setTimeout(() => {
         setShowWinModal(true);
       }, 500);
@@ -260,44 +272,12 @@ const MinesweeperGame = ({ user }) => {
     }
   };
 
-  /* -------------------- GET WIN TIER COLOR -------------------- */
-  const getWinTierColor = (tier) => {
-    switch(tier) {
-      case "small": return "#10B981";
-      case "good": return "#3B82F6";
-      case "great": return "#8B5CF6";
-      case "perfect": return "#F59E0B";
-      default: return "#666";
-    }
-  };
-
-  const getWinTierName = (tier) => {
-    switch(tier) {
-      case "small": return "Small Win";
-      case "good": return "Good Win";
-      case "great": return "Great Win";
-      case "perfect": return "Perfect Win";
-      default: return "Playing";
-    }
-  };
-
   /* -------------------- RENDER CELL CONTENT -------------------- */
   const renderCellContent = (cell) => {
     if (!cell.revealed) return null;
     if (cell.isMine) return "💣";
-    if (cell.revealed && !cell.isMine) return "✅";
-    return null;
+    return "✅";
   };
-
-  /* -------------------- CALCULATE POTENTIAL WIN -------------------- */
-  const calculatePotentialWin = () => {
-    if (potentialMultiplier > 0) {
-      return betAmount * potentialMultiplier;
-    }
-    return betAmount * multiplier;
-  };
-
-  const potentialWin = calculatePotentialWin();
 
   /* -------------------- RENDER -------------------- */
   return (
@@ -307,8 +287,6 @@ const MinesweeperGame = ({ user }) => {
         <button onClick={() => navigate("/")} disabled={isProcessing}>
           ← Back
         </button>
-        
-        
       </header>
 
       {/* STAKE MODAL */}
@@ -318,9 +296,8 @@ const MinesweeperGame = ({ user }) => {
             <h3>💣 Minesweeper</h3>
             <p className="game-description">
               {gameInfo ? gameInfo.game_info.description : 
-               "Reveal safe cells and avoid mines to win multipliers!"}
+               "Reveal safe cells and avoid mines to win!"}
             </p>
-            
 
             <div className="game-settings">
               <div className="setting-group">
@@ -358,11 +335,6 @@ const MinesweeperGame = ({ user }) => {
                     </button>
                   ))}
                 </div>
-                <small className="risk-indicator">
-                  Risk: {minesCount >= 7 ? "🔥 High" : minesCount >= 5 ? "⚠️ Medium" : "🟢 Low"}
-                  <br />
-                  Safe Chance: {((gridSize * gridSize - minesCount) / (gridSize * gridSize) * 100).toFixed(0)}%
-                </small>
               </div>
             </div>
 
@@ -377,7 +349,6 @@ const MinesweeperGame = ({ user }) => {
                 disabled={walletLoading || isProcessing}
               />
             </div>
-            
             
             <button
               className="start-btn"
@@ -395,20 +366,16 @@ const MinesweeperGame = ({ user }) => {
         <div className="board-section">
           <div className="game-info-bar">
             <div className="info-item">
-              <span>Current Multiplier</span>
-              <strong style={{color: "#F59E0B"}}>
-                {multiplier.toFixed(2)}x
-              </strong>
-            </div>
-            <div className="info-item">
-              <span>Potential Win</span>
-              <strong style={{color: getWinTierColor(potentialWinTier)}}>
-                {potentialMultiplier > 0 ? `${potentialMultiplier.toFixed(2)}x` : `${multiplier.toFixed(2)}x`}
-              </strong>
-            </div>
-            <div className="info-item">
               <span>Safe Cells Left</span>
               <strong>{safeCellsLeft}</strong>
+            </div>
+            <div className="info-item">
+              <span>Mines</span>
+              <strong>{minesCount}</strong>
+            </div>
+            <div className="info-item">
+              <span>Grid</span>
+              <strong>{gridSize}x{gridSize}</strong>
             </div>
           </div>
 
@@ -423,7 +390,9 @@ const MinesweeperGame = ({ user }) => {
                         cell.revealed ? (cell.isMine ? "mine" : "safe") : "hidden"
                       }`}
                       onClick={() => !isProcessing && revealCell(r, c)}
-                      style={{cursor: isProcessing ? 'wait' : 'pointer'}}
+                      style={{
+                        cursor: isProcessing || cell.revealed ? 'not-allowed' : 'pointer'
+                      }}
                     >
                       {renderCellContent(cell)}
                     </div>
@@ -435,7 +404,6 @@ const MinesweeperGame = ({ user }) => {
 
           {gameState === "playing" && (
             <div className="action-buttons">
-              
               <button 
                 className="cashout-btn" 
                 onClick={cashOut}
@@ -467,9 +435,6 @@ const MinesweeperGame = ({ user }) => {
                   <div className="win-amount-display">
                     <span className="win-label">You Won</span>
                     <span className="win-amount">{formatNGN(lastWin.win_amount)}</span>
-                    <span className="win-multiplier">
-                      ({lastWin.win_multiplier?.toFixed(2) || '1.00'}x multiplier)
-                    </span>
                   </div>
                 </div>
               )}
@@ -491,7 +456,6 @@ const MinesweeperGame = ({ user }) => {
         <div className="modal-overlay win-modal-overlay">
           <div className="win-modal-content">
             <div className="win-modal-header">
-              
               <div className="win-icon">🏆</div>
               <h2>Cashed Out!</h2>
               <p className="win-subtitle">Safe cells revealed successfully!</p>
@@ -499,7 +463,7 @@ const MinesweeperGame = ({ user }) => {
             
             <div className="win-amount-display">
               <span className="win-amount-label">You won</span>
-              <span className="win-amount" style={{color: getWinTierColor(lastWin.win_tier)}}>
+              <span className="win-amount">
                 {formatNGN(lastWin.win_amount)}
               </span>
             </div>
@@ -513,7 +477,6 @@ const MinesweeperGame = ({ user }) => {
             >
               🎮 Continue Playing
             </button>
-            
           </div>
         </div>
       )}
@@ -531,7 +494,6 @@ const MinesweeperGame = ({ user }) => {
             <div className="loss-message">
               <p className="loss-encouragement">
                 Oops! That was a mine.
-                <br />
               </p>
             </div>
             
@@ -539,14 +501,6 @@ const MinesweeperGame = ({ user }) => {
               <div className="stat-item">
                 <span>Stake Lost:</span>
                 <span className="loss-amount">{formatNGN(betAmount)}</span>
-              </div>
-              <div className="stat-item">
-                <span>Mines:</span>
-                <span>{minesCount}</span>
-              </div>
-              <div className="stat-item">
-                <span>Grid:</span>
-                <span>{gridSize}x{gridSize}</span>
               </div>
             </div>
             
@@ -559,7 +513,6 @@ const MinesweeperGame = ({ user }) => {
             >
               🔁 Try Again
             </button>
-            
           </div>
         </div>
       )}

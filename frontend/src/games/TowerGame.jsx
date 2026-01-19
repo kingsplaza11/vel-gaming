@@ -35,9 +35,6 @@ const TowerGame = ({ user }) => {
   const [targetHeight, setTargetHeight] = useState(10);
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [crashChance, setCrashChance] = useState(15);
-  const [potentialWinRatio, setPotentialWinRatio] = useState(0);
-  const [potentialWinTier, setPotentialWinTier] = useState("building");
   const [showWinModal, setShowWinModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
   const [lastWin, setLastWin] = useState(null);
@@ -73,32 +70,17 @@ const TowerGame = ({ user }) => {
     }
 
     try {
-      console.log("Starting tower game:", {
-        bet_amount: stake,
-        target_height: targetHeight,
-        combinedBalance,
-        spotBalance,
-        walletBalance: wallet?.balance
-      });
-
       const res = await towerService.startTower({
         bet_amount: stake,
         target_height: targetHeight,
       });
 
-      console.log("Game started:", res.data);
-
       setGame({
         id: res.data.game_id,
         height: 0,
-        multiplier: 1,
         status: "building",
         targetHeight: targetHeight,
       });
-
-      setCrashChance(15);
-      setPotentialWinRatio(0);
-      setPotentialWinTier("building");
 
       if (refreshWallet) {
         await refreshWallet();
@@ -107,14 +89,13 @@ const TowerGame = ({ user }) => {
       setShowStakeModal(false);
     } catch (err) {
       console.error("Game start error:", err);
-      console.error("Error response:", err.response?.data);
       
       const errorMessage = err.response?.data?.error || 
                           err.response?.data?.message || 
                           err.message || 
                           "Failed to start game";
       
-      alert(`Error: ${errorMessage}\n\nCheck console for details (F12 → Console)`);
+      alert(`Error: ${errorMessage}`);
     }
   };
 
@@ -124,11 +105,7 @@ const TowerGame = ({ user }) => {
     setLoading(true);
 
     try {
-      console.log("Building level for game:", game.id);
-      
       const res = await towerService.buildLevel({ game_id: game.id });
-
-      console.log("Build response:", res.data);
 
       if (res.data.status === "crashed") {
         setGame({ ...game, status: "crashed" });
@@ -138,34 +115,25 @@ const TowerGame = ({ user }) => {
       } else if (res.data.status === "completed") {
         const winData = {
           win_amount: res.data.win_amount,
-          win_ratio: res.data.win_ratio,
           win_tier: res.data.win_tier,
-          multiplier: res.data.multiplier,
           height: res.data.current_height,
         };
         
         setLastWin(winData);
-        setGame({ ...game, status: "completed", height: res.data.current_height, multiplier: res.data.multiplier });
+        setGame({ ...game, status: "completed", height: res.data.current_height });
         
         if (refreshWallet) {
           await refreshWallet();
         }
         
-        // Show win modal for big wins
-        if (res.data.win_ratio > 0.5) {
-          setTimeout(() => {
-            setShowWinModal(true);
-          }, 800);
-        }
+        setTimeout(() => {
+          setShowWinModal(true);
+        }, 800);
       } else {
         setGame({
           ...game,
           height: res.data.current_height,
-          multiplier: res.data.multiplier,
         });
-        setCrashChance(res.data.crash_chance || 15);
-        setPotentialWinRatio(res.data.potential_win_ratio || 0);
-        setPotentialWinTier(res.data.potential_win_tier || "building");
       }
     } catch (err) {
       console.error("Build error:", err);
@@ -184,9 +152,7 @@ const TowerGame = ({ user }) => {
       
       const winData = {
         win_amount: res.data.win_amount,
-        win_ratio: res.data.win_ratio,
         win_tier: res.data.win_tier,
-        multiplier: res.data.multiplier,
         height: res.data.height_reached,
       };
       
@@ -197,29 +163,12 @@ const TowerGame = ({ user }) => {
         await refreshWallet();
       }
       
-      // Show win modal for big wins
-      if (res.data.win_ratio > 0.5) {
-        setTimeout(() => {
-          setShowWinModal(true);
-        }, 500);
-      } else {
-        alert(`Cashed out ${formatNGN(res.data.win_amount)}`);
-      }
+      setTimeout(() => {
+        setShowWinModal(true);
+      }, 500);
       
     } catch (err) {
       alert(err.response?.data?.error || "Cash out failed");
-    }
-  };
-
-  /* -------------------- GET WIN TIER COLOR -------------------- */
-  const getWinTierColor = (tier) => {
-    switch(tier) {
-      case "low": return "#FFA726";
-      case "normal": return "#4CAF50";
-      case "high": return "#2196F3";
-      case "jackpot": return "#9C27B0";
-      case "mega_jackpot": return "#F44336";
-      default: return "#666";
     }
   };
 
@@ -229,22 +178,6 @@ const TowerGame = ({ user }) => {
       {/* HEADER */}
       <header className="game-header">
         <button onClick={() => navigate("/")}>← Back</button>
-        <div className="balance-details">
-          <div className="balance-total">
-            {walletLoading ? (
-              <div className="balance-loading">
-                <span className="loading-spinner-small" />
-                Loading...
-              </div>
-            ) : (
-              formatNGN(combinedBalance)
-            )}
-          </div>
-          <div className="balance-breakdown">
-            <span className="balance-main">Main: {formatNGN(wallet?.balance || 0)}</span>
-            <span className="balance-spot">Spot: {formatNGN(spotBalance)}</span>
-          </div>
-        </div>
       </header>
 
       {/* STAKE MODAL */}
@@ -253,7 +186,6 @@ const TowerGame = ({ user }) => {
           <div className="stake-modal">
             <h3>🏗️ Tower Builder</h3>
             <p className="game-description">Build your tower, avoid crashes, reach new heights!</p>
-
 
             <div className="game-settings">
               <div className="setting-group">
@@ -270,9 +202,6 @@ const TowerGame = ({ user }) => {
                     </button>
                   ))}
                 </div>
-                <small className="risk-indicator">
-                  Risk: {targetHeight >= 15 ? "High" : targetHeight >= 10 ? "Medium" : "Low"}
-                </small>
               </div>
             </div>
 
@@ -309,17 +238,8 @@ const TowerGame = ({ user }) => {
               </strong>
             </div>
             <div className="info-item">
-              <span>Crash Chance</span>
-              <strong style={{color: crashChance > 60 ? "#f44336" : crashChance > 40 ? "#ff9800" : "#4CAF50"}}>
-                {crashChance}%
-              </strong>
-            </div>
-            <div className="info-item">
-              <span>Potential Win</span>
-              <strong style={{color: getWinTierColor(potentialWinTier)}}>
-                {potentialWinTier === "building" ? "Calculating..." : 
-                 `${(potentialWinRatio * 100).toFixed(1)}%`}
-              </strong>
+              <span>Stake</span>
+              <strong>{formatNGN(stake)}</strong>
             </div>
           </div>
 
@@ -329,15 +249,11 @@ const TowerGame = ({ user }) => {
             {Array.from({ length: targetHeight }).map((_, index) => {
               const floorIndex = targetHeight - index - 1;
               const isBuilt = floorIndex < game.height;
-              const isCurrent = floorIndex === game.height - 1;
               
               return (
                 <div 
                   key={index}
-                  className={`tower-floor ${isBuilt ? 'built' : ''} ${isCurrent ? 'current' : ''}`}
-                  style={{
-                    animationDelay: isBuilt ? `${index * 0.1}s` : '0s'
-                  }}
+                  className={`tower-floor ${isBuilt ? 'built' : ''}`}
                 >
                   {isBuilt && (
                     <span className="floor-number">
@@ -366,14 +282,7 @@ const TowerGame = ({ user }) => {
                 onClick={buildNext}
                 disabled={loading}
               >
-                {loading ? (
-                  <>
-                    <span className="loading-spinner-small" />
-                    BUILDING...
-                  </>
-                ) : (
-                  `⬆️ BUILD NEXT FLOOR`
-                )}
+                {loading ? "BUILDING..." : `⬆️ BUILD NEXT FLOOR`}
               </button>
               
               <button 
@@ -418,9 +327,6 @@ const TowerGame = ({ user }) => {
                     <span className="win-amount">
                       {formatNGN(lastWin.win_amount)}
                     </span>
-                    <span className="win-ratio">
-                      ({lastWin.win_ratio > 0 ? (lastWin.win_ratio * 100).toFixed(1) : '0'}% of stake)
-                    </span>
                   </div>
                 </div>
               )}
@@ -442,41 +348,15 @@ const TowerGame = ({ user }) => {
           <div className="win-modal-content">
             <div className="win-modal-header">
               <div className="win-icon">🏆</div>
-              <h2>Amazing Build!</h2>
-              <p className="win-subtitle">Your tower reached great heights!</p>
+              <h2>Great Job!</h2>
+              <p className="win-subtitle">Your tower was successful!</p>
             </div>
             
             <div className="win-amount-display">
               <span className="win-amount-label">You won</span>
-              <span className="win-amount" style={{color: getWinTierColor(lastWin.win_tier)}}>
+              <span className="win-amount">
                 {formatNGN(lastWin.win_amount)}
               </span>
-              <p className="win-note">
-                {lastWin.win_tier === "mega_jackpot" ? "MEGA JACKPOT!" : 
-                 lastWin.win_tier === "jackpot" ? "JACKPOT WIN!" : 
-                 "Great build!"}
-              </p>
-            </div>
-            
-            <div className="win-stats">
-              <div className="stat-item">
-                <span>Height Reached:</span>
-                <span>{lastWin.height} floors</span>
-              </div>
-              <div className="stat-item">
-                <span>Win Ratio:</span>
-                <span>{(lastWin.win_ratio * 100).toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span>Multiplier:</span>
-                <span>{lastWin.multiplier.toFixed(2)}x</span>
-              </div>
-              <div className="stat-item">
-                <span>Win Tier:</span>
-                <span style={{color: getWinTierColor(lastWin.win_tier), textTransform: 'capitalize'}}>
-                  {lastWin.win_tier.replace('_', ' ')}
-                </span>
-              </div>
             </div>
             
             <button
@@ -500,29 +380,6 @@ const TowerGame = ({ user }) => {
               <div className="loss-icon">💥</div>
               <h2>Tower Crashed!</h2>
               <p className="loss-subtitle">Better luck next time!</p>
-            </div>
-            
-            <div className="loss-message">
-              <p className="loss-encouragement">
-                You reached {game?.height || 0} floors!
-                <br />
-                <span className="loss-tip">Try a shorter tower for better odds!</span>
-              </p>
-            </div>
-            
-            <div className="loss-stats">
-              <div className="stat-item">
-                <span>Stake:</span>
-                <span>{formatNGN(stake)}</span>
-              </div>
-              <div className="stat-item">
-                <span>Target:</span>
-                <span>{targetHeight} floors</span>
-              </div>
-              <div className="stat-item">
-                <span>Crash Chance:</span>
-                <span>{crashChance}%</span>
-              </div>
             </div>
             
             <button

@@ -228,16 +228,12 @@ def explore_pyramid(request):
                     # Weighted selection: higher chance for common artifacts
                     rarity_roll = random.random()
                     if rarity_roll < 0.40:
-                        # 40% chance: common/uncommon
                         artifact_pool = [a for a in ALL_ARTIFACTS if a['rarity'] in ['common', 'uncommon']]
                     elif rarity_roll < 0.70:
-                        # 30% chance: rare/epic
                         artifact_pool = [a for a in ALL_ARTIFACTS if a['rarity'] in ['rare', 'epic']]
                     elif rarity_roll < 0.90:
-                        # 20% chance: legendary/mythic
                         artifact_pool = [a for a in ALL_ARTIFACTS if a['rarity'] in ['legendary', 'mythic']]
                     else:
-                        # 10% chance: divine
                         artifact_pool = [a for a in ALL_ARTIFACTS if a['rarity'] == 'divine']
                     
                     if artifact_pool:

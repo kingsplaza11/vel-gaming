@@ -13,6 +13,11 @@ from accounts.models import User
 
 MIN_STAKE = Decimal("100")
 
+# Updated probability constants
+ABOVE_1_5X_CHANCE = 0.45  # 45% chance to win above 1.5x
+BELOW_1_5X_CHANCE = 0.10  # 10% chance to win below 1.5x
+LOSS_CHANCE = 0.45  # 45% chance to lose (total 55% lose/below 1.5x)
+
 BANKS = [
     {'name': 'Quantum Bank', 'security': 3, 'base_multiplier': 1.0, 'image': '🔒', 'difficulty': 'easy'},
     {'name': 'Neo Financial', 'security': 5, 'base_multiplier': 1.2, 'image': '💳', 'difficulty': 'medium'},
@@ -41,24 +46,27 @@ FAILED_HACKS = [
 
 
 # ================= WIN MULTIPLIER LOGIC =================
-def get_heist_multiplier():
+def get_heist_multiplier(win_type):
     """
-    Returns a win multiplier between 0.5x and 3.5x based on weighted distribution:
-    - 40% chance: 0.5x - 1.5x (small heist)
-    - 40% chance: 1.6x - 2.5x (medium heist)
-    - 15% chance: 2.6x - 3.0x (large heist)
-    - 5% chance: 3.1x - 3.5x (epic heist)
+    Returns a win multiplier based on win type:
+    - 'above_1_5x': 45% chance, multipliers from 1.6x to 4.0x
+    - 'below_1_5x': 10% chance, multipliers from 0.5x to 1.49x
     """
-    rand = random.random() * 100  # 0-100
+    if win_type == 'above_1_5x':
+        # 45% chance - good wins above 1.5x
+        rand = random.random()
+        if rand < 0.50:  # 50% of above-1.5x wins: 1.6x - 2.5x
+            return random.uniform(1.6, 2.5)
+        elif rand < 0.80:  # 30% of above-1.5x wins: 2.6x - 3.0x
+            return random.uniform(2.6, 3.0)
+        elif rand < 0.95:  # 15% of above-1.5x wins: 3.1x - 3.5x
+            return random.uniform(3.1, 3.5)
+        else:  # 5% of above-1.5x wins: 3.6x - 4.0x
+            return random.uniform(3.6, 4.0)
     
-    if rand <= 40:  # 40% chance: Small heist (0.5x - 1.5x)
-        return random.uniform(0.5, 1.5)
-    elif rand <= 80:  # 40% chance: Medium heist (1.6x - 2.5x)
-        return random.uniform(1.6, 2.5)
-    elif rand <= 95:  # 15% chance: Large heist (2.6x - 3.0x)
-        return random.uniform(2.6, 3.0)
-    else:  # 5% chance: Epic heist (3.1x - 3.5x)
-        return random.uniform(3.1, 3.5)
+    else:  # 'below_1_5x'
+        # 10% chance - small wins below 1.5x
+        return random.uniform(0.5, 1.49)
 
 
 def calculate_hack_success(hacks_used, target_security, bank_difficulty):
@@ -84,7 +92,7 @@ def calculate_hack_success(hacks_used, target_security, bank_difficulty):
         if random.random() < adjusted_success:
             successful_hacks.append(hack)
             # Successful hack adds to multiplier
-            hack_multiplier += Decimal("0.1")  # 10% per successful hack
+            hack_multiplier += Decimal("0.15")  # 15% per successful hack
         else:
             failed_hack = random.choice(FAILED_HACKS)
             failed_hacks.append(failed_hack)
@@ -105,11 +113,11 @@ def get_heist_tier(multiplier):
     """Determine heist tier based on multiplier"""
     if multiplier <= 0:
         return "failed"
-    elif multiplier <= 1.5:
+    elif multiplier < 1.5:
         return "small"
     elif multiplier <= 2.5:
         return "medium"
-    elif multiplier <= 3.0:
+    elif multiplier <= 3.5:
         return "large"
     else:
         return "epic"
@@ -117,45 +125,23 @@ def get_heist_tier(multiplier):
 
 def select_hacks():
     """
-    Select 3 random hacks with a chance for failure
-    70% chance: Normal hack selection
-    30% chance: Mixed with failed hacks
+    Select 3 random hacks
+    - More challenging to win with new probabilities
     """
-    roll = random.random()
+    # Weighted selection: higher success hacks more likely
+    hacks = []
+    weighted_hacks = []
+    weights = []
     
-    if roll < 0.70:  # 70% chance: Normal hacks
-        # Weighted selection: higher success hacks more likely
-        hacks = []
-        for _ in range(3):
-            weighted_hacks = []
-            weights = []
-            for hack in HACKS:
-                weighted_hacks.append(hack)
-                weights.append(hack['success_rate'] * 10)  # Scale success rates for weights
-            
-            hack = random.choices(weighted_hacks, weights=weights, k=1)[0]
-            hacks.append(hack)
-        return hacks, False  # Not failed
-        
-    else:  # 30% chance: Mixed with failed hacks scenario
-        # Start with 1-2 normal hacks
-        num_normal = random.randint(1, 2)
-        hacks = random.sample(HACKS, num_normal)
-        
-        # Add failed hacks (treated as negative effect hacks)
-        num_failed = 3 - num_normal
-        for _ in range(num_failed):
-            failed_hack = random.choice(FAILED_HACKS)
-            # Convert failed hack to a hack-like structure for consistency
-            hack_struct = {
-                'name': failed_hack['name'],
-                'success_rate': 0.0,  # Will always fail
-                'image': failed_hack['image'],
-                'difficulty_penalty': 0.0
-            }
-            hacks.append(hack_struct)
-        
-        return hacks, True  # Failed scenario
+    for hack in HACKS:
+        weighted_hacks.append(hack)
+        weights.append(hack['success_rate'] * 10)  # Scale success rates for weights
+    
+    # Select 3 hacks without replacement
+    selected_indices = random.choices(range(len(weighted_hacks)), weights=weights, k=3)
+    hacks = [weighted_hacks[i] for i in selected_indices]
+    
+    return hacks, False  # Not failed scenario
 
 
 @api_view(["POST"])
@@ -197,27 +183,43 @@ def start_heist(request):
             wallet.spot_balance -= remaining_cost
 
         # ================= HEIST LOGIC =================
-        # Select hacks (70% normal, 30% failed scenario)
+        # First determine win type
+        roll = random.random()
+        
+        if roll < ABOVE_1_5X_CHANCE:  # 45% chance: win above 1.5x
+            win_type = 'above_1_5x'
+            is_loss = False
+        elif roll < ABOVE_1_5X_CHANCE + BELOW_1_5X_CHANCE:  # 10% chance: win below 1.5x
+            win_type = 'below_1_5x'
+            is_loss = False
+        else:  # 45% chance: lose
+            win_type = None
+            is_loss = True
+
+        # Select hacks
         hacks_used, is_failed_scenario = select_hacks()
         
-        if is_failed_scenario:
-            # Failed heist scenario - immediate loss
+        if is_loss:
+            # Immediate loss
             win_multiplier = Decimal("0.00")
             win_amount = Decimal("0.00")
             successful_hacks = []
-            failed_hacks = hacks_used
+            failed_hacks = []
             hack_multiplier = Decimal("0.00")
             base_multiplier = Decimal("0.00")
             heist_tier = "failed"
         else:
-            # Normal heist scenario
-            # Get base multiplier
-            base_multiplier = Decimal(str(get_heist_multiplier()))
-            
             # Calculate hack success and effects
             successful_hacks, failed_hacks, hack_multiplier = calculate_hack_success(
                 hacks_used, target['security'], target['difficulty']
             )
+            
+            # Get base multiplier based on win type
+            base_multiplier = Decimal(str(get_heist_multiplier(win_type)))
+            
+            # For above 1.5x wins, ensure multiplier stays above 1.5x
+            if win_type == 'above_1_5x':
+                base_multiplier = max(Decimal("1.51"), base_multiplier)
             
             # Calculate final multiplier (blend: 70% base, 30% hacks)
             blended_multiplier = (base_multiplier * Decimal("0.7")) + (hack_multiplier * Decimal("0.3"))
@@ -225,12 +227,15 @@ def start_heist(request):
             # Apply bank multiplier
             final_multiplier = blended_multiplier * Decimal(str(target['base_multiplier']))
             
-            # Ensure multiplier stays within 0.5x-3.5x range
-            final_multiplier = max(Decimal("0.5"), min(Decimal("3.5"), final_multiplier))
+            # Cap multipliers based on win type
+            if win_type == 'above_1_5x':
+                final_multiplier = max(Decimal("1.51"), min(Decimal("5.0"), final_multiplier))
+            else:  # below_1_5x
+                final_multiplier = min(Decimal("1.49"), final_multiplier)
             
             # Check escape success (based on hack performance)
             escape_success_rate = len(successful_hacks) / len(hacks_used) if hacks_used else 0
-            escape_success = random.random() < (0.5 + escape_success_rate * 0.5)  # 50-100% chance
+            escape_success = random.random() < (0.4 + escape_success_rate * 0.6)  # 40-100% chance
             
             if not escape_success:
                 # Escape failed - heist compromised
@@ -252,12 +257,12 @@ def start_heist(request):
         # Prepare hack results
         hack_results = {
             'used': hacks_used,
-            'successful': successful_hacks if not is_failed_scenario else [],
-            'failed': failed_hacks if not is_failed_scenario else hacks_used,
+            'successful': successful_hacks,
+            'failed': failed_hacks,
             'count': len(hacks_used),
-            'success_count': len(successful_hacks) if not is_failed_scenario else 0,
-            'failed_count': len(failed_hacks) if not is_failed_scenario else len(hacks_used),
-            'was_failed_scenario': is_failed_scenario
+            'success_count': len(successful_hacks),
+            'failed_count': len(failed_hacks),
+            'was_failed_scenario': is_loss  # Use is_loss instead of separate scenario flag
         }
 
         heist = CyberHeist.objects.create(
@@ -266,9 +271,9 @@ def start_heist(request):
             target_bank=target["name"],
             security_level=target["security"],
             hacks_used=hacks_used,
-            escape_success=win_amount > 0,  # Escape success determined by win
+            escape_success=win_amount > 0,
             win_amount=win_amount,
-            win_ratio=float(win_multiplier),  # Store multiplier as win ratio
+            win_ratio=float(win_multiplier),
         )
 
         stats, _ = HeistStats.objects.get_or_create(user=user)
@@ -307,34 +312,26 @@ def start_heist(request):
 
         # Determine win tier for frontend
         win_tier = "failed"
-        if win_amount > 0:
-            win_tier = heist_tier
+        if not is_loss:
+            if win_type == 'below_1_5x':
+                win_tier = "small"
+            else:
+                win_tier = heist_tier
 
         return Response({
             "target_bank": target,
             "hacks_used": hacks_used,
             "hack_results": hack_results,
             "escape_success": win_amount > 0,
-            "successful_hacks": len(successful_hacks) if not is_failed_scenario else 0,
-            "failed_hacks": len(failed_hacks) if not is_failed_scenario else len(hacks_used),
-            "hack_multiplier": float(hack_multiplier) if not is_failed_scenario else 0.0,
-            "base_multiplier": float(base_multiplier) if not is_failed_scenario else 0.0,
-            "bank_multiplier": float(target['base_multiplier']),
+            "successful_hacks": len(successful_hacks),
+            "failed_hacks": len(failed_hacks),
             "win_amount": float(win_amount),
             "win_multiplier": float(win_multiplier) if win_amount > 0 else 0.0,
-            "win_ratio": float(win_multiplier) if win_amount > 0 else 0.0,
             "win_tier": win_tier,
             "wallet_balance": float(wallet.balance),
             "spot_balance": float(wallet.spot_balance),
             "combined_balance": float(wallet.balance + wallet.spot_balance),
             "heist_id": heist.id,
-            "was_failed_scenario": is_failed_scenario,
-            "game_info": {
-                "win_chance": "70%",
-                "multiplier_range": "0.5x - 3.5x",
-                "failed_chance": "30%",
-                "hacks_used": len(hacks_used)
-            }
         })
 
 
@@ -380,26 +377,14 @@ def get_heist_stats(request):
             'medium_heists': stats.medium_heists,
             'large_heists': stats.large_heists,
             'epic_heists': stats.epic_heists,
-            'small_rate': round(small_rate, 2),
-            'medium_rate': round(medium_rate, 2),
-            'large_rate': round(large_rate, 2),
-            'epic_rate': round(epic_rate, 2),
             'total_won': round(total_won, 2),
             'total_bet': round(total_bet, 2),
             'total_profit': round(total_profit, 2),
-            'roi': round(roi, 2),
             'highest_heist': round(float(stats.highest_heist), 2),
             'highest_multiplier': round(stats.highest_win_ratio, 2),
             'favorite_bank': stats.favorite_bank,
-            'total_hacks_attempted': stats.total_hacks_attempted,
             'avg_hacks_per_heist': round(avg_hacks, 2),
             'hacker_rank': hacker_rank,
-            'game_info': {
-                'win_chance': '70%',
-                'multiplier_range': '0.5x - 3.5x',
-                'expected_rtp': '97%',
-                'house_edge': '3%'
-            }
         })
         
     except Exception as e:
@@ -420,11 +405,11 @@ def get_heist_history(request):
             # Determine win tier
             win_tier = "failed"
             if heist.win_ratio > 0:
-                if heist.win_ratio <= 1.5:
+                if heist.win_ratio < 1.5:
                     win_tier = "small"
                 elif heist.win_ratio <= 2.5:
                     win_tier = "medium"
-                elif heist.win_ratio <= 3.0:
+                elif heist.win_ratio <= 3.5:
                     win_tier = "large"
                 else:
                     win_tier = "epic"
@@ -432,7 +417,6 @@ def get_heist_history(request):
             history.append({
                 'id': heist.id,
                 'target_bank': heist.target_bank,
-                'security_level': heist.security_level,
                 'bet_amount': float(heist.bet_amount),
                 'win_amount': float(heist.win_amount),
                 'win_ratio': float(heist.win_ratio),
@@ -477,42 +461,14 @@ def calculate_hacker_rank(total_heists, successful_heists, highest_heist, highes
 @permission_classes([IsAuthenticated])
 def get_game_info(request):
     """
-    Get detailed cyber heist game information
+    Get cyber heist game information
     """
     return Response({
         'game_info': {
             'name': 'Cyber Heist',
             'description': 'Hack into digital banks using various cyber attacks!',
-            'win_chance': '70%',
-            'failed_chance': '30%',
-            'multiplier_range': '0.5x - 3.5x',
             'minimum_bet': '100.00',
         },
         'banks': BANKS,
         'hacks': HACKS,
-        'failed_hacks': FAILED_HACKS,
-        'multiplier_distribution': {
-            'small': '0.5x - 1.5x (40% of wins)',
-            'medium': '1.6x - 2.5x (40% of wins)',
-            'large': '2.6x - 3.0x (15% of wins)',
-            'epic': '3.1x - 3.5x (5% of wins)'
-        },
-        'bank_difficulty': {
-            'easy': 'Quantum Bank: 3 security, 1.0x multiplier',
-            'medium': 'Neo Financial: 5 security, 1.2x multiplier',
-            'hard': 'Cyber Trust: 7 security, 1.5x multiplier',
-            'expert': 'Digital Vault: 9 security, 2.0x multiplier'
-        },
-        'hack_success_rates': {
-            'Zero Day Exploit': '90% success rate',
-            'Social Engineering': '85% success rate',
-            'Phishing Attack': '80% success rate',
-            'Malware Payload': '80% success rate',
-            'SQL Injection': '70% success rate',
-            'Man-in-the-Middle': '75% success rate',
-            'Brute Force': '60% success rate',
-            'DDoS Attack': '65% success rate'
-        },
-        'expected_rtp': '97%',
-        'house_edge': '3%',
     })

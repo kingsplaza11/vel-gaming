@@ -64,6 +64,72 @@ export default function FortuneRabbit() {
   const unlockTimeoutRef = useRef(null);
 
   /* =========================
+     GAME RESULTS CONFIGURATION
+     Updated to match backend probabilities (40% above 1.5x)
+  ========================= */
+  const resultConfig = useMemo(() => ({
+    // 40% chance above 1.5x - Good wins
+    "safe": {
+      icon: "💰",
+      label: "Bonus",
+      color: "var(--success)",
+      effect: "effect-boost",
+      sound: "win"
+    },
+    "carrot_bonus": {
+      icon: "🥕",
+      label: "Carrot Bonus",
+      color: "var(--success)",
+      effect: "effect-carrot-bonus",
+      sound: "bonus"
+    },
+    
+    // 30% chance below 1.5x - Small wins
+    "small_win": {
+      icon: "💸",
+      label: "Small Win",
+      color: "var(--warning)",
+      effect: "effect-small-win",
+      sound: "small-win"
+    },
+    
+    // 15% chance penalty
+    "penalty": {
+      icon: "⚠️",
+      label: "Penalty",
+      color: "var(--warning)",
+      effect: "effect-penalty",
+      sound: "penalty"
+    },
+    
+    // 10% chance trap
+    "trap": {
+      icon: "💣",
+      label: "Trap",
+      color: "var(--danger)",
+      effect: "effect-game_over",
+      sound: "trap"
+    },
+    
+    // 5% chance reset
+    "reset": {
+      icon: "🔄",
+      label: "Reset",
+      color: "var(--info)",
+      effect: "effect-reset",
+      sound: "reset"
+    },
+    
+    "auto_cashout": {
+      icon: "⏰",
+      label: "Auto Cashout",
+      color: "var(--success)",
+      effect: "effect-cashout",
+      sound: "cashout"
+    }
+  }), []);
+
+  /* =========================
      RESET GAME
   ========================= */
   const resetGame = useCallback(() => {
@@ -210,17 +276,24 @@ export default function FortuneRabbit() {
         return;
       }
       
+      const resultType = res.data.result;
+      const resultInfo = resultConfig[resultType] || { icon: "?", label: "Unknown" };
+      
       // Check for carrot bonus
       const wasCarrotTile = tiles[id]?.hasCarrot;
-      const isCarrotBonus = res.data.result === "carrot_bonus";
+      const isCarrotBonus = resultType === "carrot_bonus";
       
       setTiles(prev =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, revealed: true, kind: res.data.result }
+            ? { ...t, revealed: true, kind: resultType }
             : t
         )
       );
+
+      // Apply visual effect based on result
+      setStageEffect(resultInfo.effect || "");
+      setTimeout(() => setStageEffect(""), 500);
 
       // Update carrot count
       if (wasCarrotTile || isCarrotBonus) {
@@ -230,7 +303,7 @@ export default function FortuneRabbit() {
       }
 
       // Handle game over (trap)
-      if (res.data.result === "trap") {
+      if (resultType === "trap") {
         setGame((g) => ({
           ...g,
           status: "lost",
@@ -239,20 +312,24 @@ export default function FortuneRabbit() {
           current_multiplier: res.data.current_multiplier,
         }));
 
-        setStageEffect("effect-game_over");
         setShake(true);
+
+        // Show result toast
+        toast.error(`${resultInfo.label}! Game Over!`, {
+          icon: resultInfo.icon,
+          duration: 3000,
+        });
 
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
-          toast.error("Rabbit got caught! Game Over!");
         }, 1400);
         
         return;
       }
       
       // Handle auto-cashout
-      if (res.data.result === "auto_cashout") {
+      if (resultType === "auto_cashout") {
         setGame((g) => ({
           ...g,
           status: "cashed_out",
@@ -261,31 +338,46 @@ export default function FortuneRabbit() {
           step_index: res.data.step_index,
         }));
 
-        setStageEffect("effect-cashout");
         refreshWallet();
+
+        // Show success toast
+        toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
+          duration: 3000,
+        });
 
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
-          toast.success(`Happy rabbit! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
         }, 1500);
         
         return;
       }
 
       // Handle other results
-      console.log("[FortuneRabbit] Tile result:", res.data.result);
+      console.log("[FortuneRabbit] Tile result:", resultType);
       
-      if (isCarrotBonus) {
-        setStageEffect("effect-carrot-bonus");
-        toast.success("Carrot Bonus! Double multiplier increase!");
-      } else if (res.data.result === "safe") {
-        setStageEffect("effect-safe");
-      } else {
-        setStageEffect("effect-update");
+      // Show result toast based on type
+      if (resultType === "safe" || resultType === "carrot_bonus") {
+        toast.success(`${resultInfo.label}! +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
+      } else if (resultType === "small_win") {
+        toast(`${resultInfo.label} +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
+      } else if (resultType === "penalty") {
+        toast.error(`${resultInfo.label} ${(parseFloat(game.current_multiplier) - parseFloat(res.data.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
+      } else if (resultType === "reset") {
+        toast(`${resultInfo.label} to 1.00x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
       }
-      
-      setTimeout(() => setStageEffect(""), 500);
       
       setGame((g) => ({
         ...g,
@@ -309,7 +401,7 @@ export default function FortuneRabbit() {
     } finally {
       tapLock.current = false;
     }
-  }, [activeSessionId, game.status, tiles, refreshWallet, resetGame]);
+  }, [activeSessionId, game, tiles, refreshWallet, resetGame, resultConfig]);
 
   const cashout = useCallback(async () => {
     if (!activeSessionId) {
@@ -395,13 +487,6 @@ export default function FortuneRabbit() {
           });
           setStakeOpen(false);
           
-          try {
-            const configRes = await fortuneService.getGameConfig("fortune_rabbit");
-            setGameConfig(prev => ({ ...prev, ...configRes.data }));
-          } catch (e) {
-            console.log("Could not load game config:", e);
-          }
-          
           toast.success("Recovered Rabbit game session");
         } else {
           localStorage.removeItem('fortune_rabbit_active_session');
@@ -417,16 +502,6 @@ export default function FortuneRabbit() {
   ========================= */
   
   useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const res = await fortuneService.getGameConfig("fortune_rabbit");
-        setGameConfig(prev => ({ ...prev, ...res.data }));
-      } catch (e) {
-        console.log("Could not load game config:", e);
-      }
-    };
-    
-    loadConfig();
     checkExistingSession();
     
     return () => {
@@ -456,6 +531,9 @@ export default function FortuneRabbit() {
     );
   }, [betAmount, walletBalance, gameConfig.min_stake]);
 
+  const currentResult = tiles.find(t => t.revealed && t.id === lastTileRef.current);
+  const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
+
   return (
     <div
       className={`fortune-stage rabbit-stage ${game.status} ${stageEffect} ${
@@ -468,7 +546,7 @@ export default function FortuneRabbit() {
           <div className="vault-orb rabbit pulse" />
           <div className="fortune-brand-text">
             <div className="fortune-name">Fortune Rabbit</div>
-            <div className="fortune-sub">Carrot Collection Adventure</div>
+            <div className="fortune-sub">Carrot collection adventure</div>
           </div>
         </div>
 
@@ -489,6 +567,16 @@ export default function FortuneRabbit() {
             <div className="hud-label">CARROTS</div>
             <div className="hud-value carrot-count">{carrotsCollected}</div>
           </div>
+          
+          {/* Last Result Display */}
+          {resultInfo && game.status === "active" && (
+            <div className="hud-card last-result" style={{ color: resultInfo.color }}>
+              <div className="hud-label">LAST</div>
+              <div className="hud-value">
+                {resultInfo.icon} {resultInfo.label}
+              </div>
+            </div>
+          )}
 
           <button
             className={`hud-cashout rabbit-cashout ${
@@ -509,46 +597,52 @@ export default function FortuneRabbit() {
       {/* BOARD */}
       <div className="fortune-board rabbit-board">
         <div className="fortune-grid rabbit-grid">
-          {tiles.map((tile) => (
-            <button
-              key={tile.id}
-              className={`fortune-tile rabbit-tile ${
-                tile.revealed ? tile.kind : ""
-              } ${tile.hasCarrot ? "has-carrot" : ""} ${
-                game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""
-              }`}
-              disabled={tile.revealed || game.status !== "active" || tapLock.current}
-              onClick={() => pickTile(tile.id)}
-            >
-              <div className="tile-face">
-                {!tile.revealed ? (
-                  <>
-                    <span className="tile-glyph">🥕</span>
-                    {tile.hasCarrot && !tile.revealed && (
-                      <div className="carrot-glow" />
-                    )}
-                  </>
-                ) : (
-                  <div className="tile-revealed">
-                    <span className="tile-icon">
-                      {tile.kind === "trap" ? "🪤" : 
-                       tile.kind === "safe" ? "💰" :
-                       tile.kind === "carrot_bonus" ? "🥕✨" :
-                       tile.kind === "penalty" ? "⚠️" :
-                       tile.kind === "reset" ? "🔄" : "?"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </button>
-          ))}
+          {tiles.map((tile) => {
+            const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
+            return (
+              <button
+                key={tile.id}
+                className={`fortune-tile rabbit-tile ${
+                  tile.revealed ? tile.kind : ""
+                } ${tile.hasCarrot ? "has-carrot" : ""} ${
+                  game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""
+                }`}
+                disabled={tile.revealed || game.status !== "active" || tapLock.current}
+                onClick={() => pickTile(tile.id)}
+                style={tileResultInfo && tile.revealed ? {
+                  borderColor: tileResultInfo.color,
+                  boxShadow: `0 0 10px ${tileResultInfo.color}40`
+                } : {}}
+              >
+                <div className="tile-face">
+                  {!tile.revealed ? (
+                    <>
+                      <span className="tile-glyph">🥕</span>
+                      {tile.hasCarrot && !tile.revealed && (
+                        <div className="carrot-glow" />
+                      )}
+                    </>
+                  ) : (
+                    <div className="tile-revealed">
+                      <span className="tile-icon">
+                        {tileResultInfo?.icon || "?"}
+                      </span>
+                      {tile.kind === "safe" || tile.kind === "carrot_bonus" ? (
+                        <div className="tile-sparkle"></div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
         
         {/* Game status overlays */}
         {game.status === "lost" && (
           <div className="game-overlay rabbit-lost">
             <div className="overlay-content">
-              <div className="overlay-icon">🪤</div>
+              <div className="overlay-icon">💣</div>
               <div className="overlay-title">Rabbit Trap!</div>
               <div className="overlay-subtitle">Game Over</div>
               <div className="overlay-multiplier">
@@ -593,12 +687,12 @@ export default function FortuneRabbit() {
               <div className="stake-badge">🐰</div>
               <div className="stake-title">
                 <div className="t1">Fortune Rabbit</div>
-                <div className="t2">Carrot collection adventure</div>
+                <div className="t2">Collect carrots for bonus multipliers</div>
               </div>
             </div>
 
             <div className="stake-balance">
-              <span className="label">Balance</span>
+              <span className="label">Available Balance</span>
               <span className="value">
                 ₦{walletBalance.toLocaleString("en-NG")}
               </span>
@@ -620,7 +714,7 @@ export default function FortuneRabbit() {
                     setBet(parseFloat(bet).toFixed(2));
                   }
                 }}
-                placeholder={`Min ₦${gameConfig.min_stake.toLocaleString("en-NG")}`}
+                placeholder={`Minimum ₦${gameConfig.min_stake.toLocaleString("en-NG")}`}
                 type="text"
                 inputMode="decimal"
                 autoFocus
@@ -632,11 +726,6 @@ export default function FortuneRabbit() {
                 Minimum ₦{gameConfig.min_stake.toLocaleString("en-NG")} – must not exceed balance
               </div>
             )}
-
-            <div className="stake-bonus-info">
-              <span className="bonus-icon">🥕</span>
-              <span className="bonus-text">Collect carrots for bonus multipliers! Every 3rd step has a carrot chance!</span>
-            </div>
 
             <div className="stake-actions">
               <button
@@ -652,7 +741,7 @@ export default function FortuneRabbit() {
                     Starting...
                   </>
                 ) : (
-                  "Start Rabbit Game"
+                  "Start Game"
                 )}
               </button>
               <button
@@ -662,12 +751,33 @@ export default function FortuneRabbit() {
                 Back to Games
               </button>
             </div>
-
-            <div className="stake-footnote">
-              <span className="spark" />
-              Carrot bonuses • Lower risk • Family friendly
-            </div>
           </div>
+        </div>
+      )}
+      
+      {/* Provably Fair Button */}
+      {game.status === "cashed_out" && (
+        <div className="provably-fair-section">
+          <button 
+            className="provably-fair-btn"
+            onClick={async () => {
+              try {
+                const res = await fortuneService.revealSeed(activeSessionId);
+                toast.success(
+                  <div>
+                    <div>Server Seed: {res.data.server_seed}</div>
+                    <div>Client Seed: {res.data.client_seed}</div>
+                    <div>Hash: {res.data.server_seed_hash}</div>
+                  </div>,
+                  { duration: 10000 }
+                );
+              } catch (e) {
+                toast.error("Failed to reveal seeds");
+              }
+            }}
+          >
+            Verify Fairness
+          </button>
         </div>
       )}
     </div>

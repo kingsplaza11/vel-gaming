@@ -30,14 +30,13 @@ export default function FortuneTiger() {
     icon: "🐯",
     grid_size: GRID_SIZE,
     min_stake: MINIMUM_STAKE,
-    risk_level: "high",
-    win_probability: "46%", // Added win probability
+    risk_level: "high"
   });
 
   const [stageEffect, setStageEffect] = useState("");
   const [shake, setShake] = useState(false);
   const [tigerRoar, setTigerRoar] = useState(false);
-  const [highlightTile, setHighlightTile] = useState(null); // For highlighting high-value tiles
+  const [highlightTile, setHighlightTile] = useState(null);
 
   const [game, setGame] = useState({
     status: "idle",
@@ -53,7 +52,7 @@ export default function FortuneTiger() {
       id: i,
       revealed: false,
       kind: null,
-      multiplier_value: null, // Track potential multiplier for each tile
+      multiplier_value: null,
     }))
   );
 
@@ -63,6 +62,74 @@ export default function FortuneTiger() {
   const tapLock = useRef(false);
   const lastTileRef = useRef(null);
   const unlockTimeoutRef = useRef(null);
+
+  /* =========================
+     GAME RESULTS CONFIGURATION
+     Updated to match backend probabilities (40% above 1.5x)
+  ========================= */
+  const resultConfig = useMemo(() => ({
+    // 40% chance above 1.5x - Big wins
+    "safe": {
+      icon: "💰",
+      label: "Tiger Roar",
+      color: "var(--success)",
+      effect: "effect-big-boost",
+      sound: "roar"
+    },
+    
+    // 25% chance below 1.5x - Small wins
+    "small_win": {
+      icon: "🐅",
+      label: "Small Win",
+      color: "var(--warning)",
+      effect: "effect-small-win",
+      sound: "growl"
+    },
+    
+    // 15% chance penalty
+    "penalty": {
+      icon: "⚠️",
+      label: "Claw Scratch",
+      color: "var(--warning)",
+      effect: "effect-penalty",
+      sound: "penalty"
+    },
+    
+    // 10% chance major penalty
+    "major_penalty": {
+      icon: "💥",
+      label: "Tiger Attack",
+      color: "var(--danger)",
+      effect: "effect-penalty",
+      sound: "attack"
+    },
+    
+    // 7% chance reset
+    "reset": {
+      icon: "🔄",
+      label: "Reset",
+      color: "var(--info)",
+      effect: "effect-reset",
+      sound: "reset"
+    },
+    
+    // 3% chance trap
+    "trap": {
+      icon: "💀",
+      label: "Trap",
+      color: "var(--danger)",
+      effect: "effect-game_over",
+      sound: "trap"
+    },
+    
+    "auto_cashout": {
+      icon: "⏰",
+      label: "Auto Cashout",
+      color: "var(--success)",
+      effect: "effect-cashout",
+      sound: "cashout"
+    }
+  }), []);
 
   /* =========================
      RESET GAME
@@ -128,8 +195,9 @@ export default function FortuneTiger() {
     setStarting(true);
     
     try {
+      // Change this in the startGame function:
       const res = await fortuneService.startSession({
-        game: "fortune_tiger",
+        game: "fortune_tiger", // Ensure this matches the backend exactly
         bet_amount: betAmount.toFixed(2),
         client_seed: `fortune_tiger:${Date.now()}:${Math.random()}`,
       });
@@ -165,14 +233,14 @@ export default function FortuneTiger() {
       setTigerRoar(true);
       setTimeout(() => setTigerRoar(false), 1000);
       
-      // Randomly highlight a potential high-value tile (visual cue)
+      // Randomly highlight a tile (visual cue)
       setTimeout(() => {
         const randomTile = Math.floor(Math.random() * GRID_SIZE);
         setHighlightTile(randomTile);
         setTimeout(() => setHighlightTile(null), 2000);
       }, 1500);
       
-      toast.success("Tiger game started! High risk, high reward! (46% win chance)");
+      toast.success("Tiger game started! High risk, high reward!");
     } catch (e) {
       console.error("[FortuneTiger] Failed to start game:", e);
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
@@ -221,16 +289,23 @@ export default function FortuneTiger() {
         return;
       }
       
+      const resultType = res.data.result;
+      const resultInfo = resultConfig[resultType] || { icon: "?", label: "Unknown" };
+      
       setTiles(prev =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, revealed: true, kind: res.data.result }
+            ? { ...t, revealed: true, kind: resultType }
             : t
         )
       );
 
-      // Handle game over (trap) - now 6% chance
-      if (res.data.result === "trap") {
+      // Apply visual effect based on result
+      setStageEffect(resultInfo.effect || "");
+      setTimeout(() => setStageEffect(""), 500);
+
+      // Handle game over (trap)
+      if (resultType === "trap") {
         setGame((g) => ({
           ...g,
           status: "lost",
@@ -239,21 +314,25 @@ export default function FortuneTiger() {
           current_multiplier: res.data.current_multiplier,
         }));
 
-        setStageEffect("effect-game_over");
         setShake(true);
         setTigerRoar(true);
+
+        // Show result toast
+        toast.error(`${resultInfo.label}! Game Over!`, {
+          icon: resultInfo.icon,
+          duration: 3000,
+        });
 
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
-          toast.error("Tiger got you! Game Over! (6% trap chance)");
         }, 1400);
         
         return;
       }
       
       // Handle auto-cashout
-      if (res.data.result === "auto_cashout") {
+      if (resultType === "auto_cashout") {
         setGame((g) => ({
           ...g,
           status: "cashed_out",
@@ -265,57 +344,45 @@ export default function FortuneTiger() {
         setStageEffect("effect-cashout");
         refreshWallet();
 
+        // Show success toast
+        toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
+          duration: 3000,
+        });
+
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
-          toast.success(`Tiger victory! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
         }, 1500);
         
         return;
       }
 
       // Handle other results
-      console.log("[FortuneTiger] Tile result:", res.data.result);
+      console.log("[FortuneTiger] Tile result:", resultType);
       
-      // Different effects for different results
-      if (res.data.result === "safe") {
-        setStageEffect("effect-big-boost");
+      // Show result toast based on type
+      if (resultType === "safe") {
+        toast.success(`${resultInfo.label}! +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
+        });
         setTigerRoar(true);
         setTimeout(() => setTigerRoar(false), 500);
-        
-        // Show multiplier gain animation
-        const multiplierGain = parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier);
-        if (multiplierGain > 2) {
-          toast.success(`+${multiplierGain.toFixed(2)}x! Tiger's roar pays big!`, {
-            icon: '🐯',
-            duration: 2000
-          });
-        }
-      } else if (res.data.result === "major_penalty") {
-        setStageEffect("effect-penalty");
-        setShake(true);
-        setTimeout(() => setShake(false), 500);
-        toast.error("Major penalty! Multiplier reduced!", {
-          icon: '🔻',
-          duration: 1500
+      } else if (resultType === "small_win") {
+        toast(`${resultInfo.label} +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
         });
-      } else if (res.data.result === "penalty") {
-        setStageEffect("effect-minor-penalty");
-        setTimeout(() => setStageEffect(""), 300);
-        toast("Minor penalty", {
-          icon: '⚠️',
-          duration: 1200
+      } else if (resultType === "penalty" || resultType === "major_penalty") {
+        toast.error(`${resultInfo.label} ${(parseFloat(game.current_multiplier) - parseFloat(res.data.current_multiplier)).toFixed(2)}x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
         });
-      } else if (res.data.result === "reset") {
-        setStageEffect("effect-reset");
-        setTimeout(() => setStageEffect(""), 300);
-        toast("Reset to 1x", {
-          icon: '🔄',
-          duration: 1200
+      } else if (resultType === "reset") {
+        toast(`${resultInfo.label} to 1.00x`, {
+          icon: resultInfo.icon,
+          duration: 2000,
         });
-      } else {
-        setStageEffect("effect-update");
-        setTimeout(() => setStageEffect(""), 300);
       }
       
       // Randomly highlight another tile for next move (visual guidance)
@@ -350,7 +417,7 @@ export default function FortuneTiger() {
     } finally {
       tapLock.current = false;
     }
-  }, [activeSessionId, game.status, game.step_index, game.current_multiplier, tiles, refreshWallet, resetGame]);
+  }, [activeSessionId, game, tiles, refreshWallet, resetGame, resultConfig]);
 
   const cashout = useCallback(async () => {
     if (!activeSessionId) {
@@ -391,11 +458,11 @@ export default function FortuneTiger() {
       
       toast.dismiss("cashout");
       
-      // Show success message with multiplier info
+      // Show success message
       const finalMultiplier = parseFloat(res.data.current_multiplier).toFixed(2);
       const winAmount = parseFloat(res.data.payout_amount).toLocaleString("en-NG");
       toast.success(
-        `Tiger roars with victory! Won ₦${winAmount} (${finalMultiplier}x)`,
+        `Tiger victory! Won ₦${winAmount} (${finalMultiplier}x)`,
         { 
           icon: '👑',
           duration: 3000
@@ -470,17 +537,6 @@ export default function FortuneTiger() {
   ========================= */
   
   useEffect(() => {
-    // Load game config
-    const loadConfig = async () => {
-      try {
-        const res = await fortuneService.getGameConfig("fortune_tiger");
-        setGameConfig(prev => ({ ...prev, ...res.data }));
-      } catch (e) {
-        console.log("Could not load game config:", e);
-      }
-    };
-    
-    loadConfig();
     checkExistingSession();
     
     return () => {
@@ -510,10 +566,8 @@ export default function FortuneTiger() {
     );
   }, [betAmount, walletBalance, gameConfig.min_stake]);
 
-  // Calculate win probability display
-  const winProbability = gameConfig.win_probability || "46%";
-  const riskLevel = "HIGH RISK";
-  const maxMultiplier = gameConfig.max_multiplier || "15.00";
+  const currentResult = tiles.find(t => t.revealed && t.id === lastTileRef.current);
+  const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
 
   return (
     <div
@@ -527,6 +581,7 @@ export default function FortuneTiger() {
           <div className="vault-orb tiger pulse" />
           <div className="fortune-brand-text">
             <div className="fortune-name">Fortune Tiger</div>
+            <div className="fortune-sub">High stakes, big wins</div>
           </div>
         </div>
 
@@ -542,11 +597,16 @@ export default function FortuneTiger() {
             <div className="hud-label">STEPS</div>
             <div className="hud-value">{game.step_index}</div>
           </div>
-
-          <div className="hud-card">
-            <div className="hud-label">WIN CHANCE</div>
-            <div className="hud-value">{winProbability}</div>
-          </div>
+          
+          {/* Last Result Display */}
+          {resultInfo && game.status === "active" && (
+            <div className="hud-card last-result" style={{ color: resultInfo.color }}>
+              <div className="hud-label">LAST</div>
+              <div className="hud-value">
+                {resultInfo.icon} {resultInfo.label}
+              </div>
+            </div>
+          )}
 
           <button
             className={`hud-cashout tiger-cashout ${
@@ -566,46 +626,43 @@ export default function FortuneTiger() {
       {/* BOARD */}
       <div className="fortune-board tiger-board">
         <div className="fortune-grid tiger-grid">
-          {tiles.map((tile) => (
-            <button
-              key={tile.id}
-              className={`fortune-tile tiger-tile ${
-                tile.revealed ? tile.kind : ""
-              } ${highlightTile === tile.id ? 'highlight-tile' : ''} ${
-                game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""
-              }`}
-              disabled={tile.revealed || game.status !== "active" || tapLock.current}
-              onClick={() => pickTile(tile.id)}
-            >
-              <div className="tile-face">
-                {!tile.revealed ? (
-                  <>
-                    <span className="tile-glyph">🐾</span>
-                    {highlightTile === tile.id && (
-                      <div className="tile-hint">?</div>
-                    )}
-                  </>
-                ) : (
-                  <div className="tile-revealed">
-                    <span className="tile-icon">
-                      {tile.kind === "trap" ? "💀" : 
-                       tile.kind === "safe" ? "💰" :
-                       tile.kind === "penalty" ? "⚠️" :
-                       tile.kind === "major_penalty" ? "🔻" :
-                       tile.kind === "reset" ? "🔄" : "?"}
-                    </span>
-                    <div className="tile-result">
-                      {tile.kind === "trap" ? "TRAP" :
-                       tile.kind === "safe" ? "WIN" :
-                       tile.kind === "penalty" ? "INJURED" :
-                       tile.kind === "major_penalty" ? "HIT" :
-                       tile.kind === "reset" ? "RESET" : ""}
+          {tiles.map((tile) => {
+            const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
+            return (
+              <button
+                key={tile.id}
+                className={`fortune-tile tiger-tile ${
+                  tile.revealed ? tile.kind : ""
+                } ${highlightTile === tile.id ? 'highlight-tile' : ''} ${
+                  game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""
+                }`}
+                disabled={tile.revealed || game.status !== "active" || tapLock.current}
+                onClick={() => pickTile(tile.id)}
+                style={tileResultInfo && tile.revealed ? {
+                  borderColor: tileResultInfo.color,
+                  boxShadow: `0 0 15px ${tileResultInfo.color}60`
+                } : {}}
+              >
+                <div className="tile-face">
+                  {!tile.revealed ? (
+                    <>
+                      <span className="tile-glyph">🐾</span>
+                      {highlightTile === tile.id && (
+                        <div className="tile-hint">?</div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="tile-revealed">
+                      <span className="tile-icon">
+                        {tileResultInfo?.icon || "?"}
+                      </span>
+                      {tile.kind === "safe" && <div className="tile-sparkle"></div>}
                     </div>
-                  </div>
-                )}
-              </div>
-            </button>
-          ))}
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
         
         {/* Game status overlays */}
@@ -617,9 +674,6 @@ export default function FortuneTiger() {
               <div className="overlay-subtitle">Game Over</div>
               <div className="overlay-multiplier">
                 Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
-              </div>
-              <div className="overlay-stats">
-                Steps taken: {game.step_index}
               </div>
             </div>
           </div>
@@ -633,9 +687,6 @@ export default function FortuneTiger() {
               <div className="overlay-subtitle">Won ₦{parseFloat(game.payout_amount).toLocaleString("en-NG")}</div>
               <div className="overlay-multiplier">
                 Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
-              </div>
-              <div className="overlay-stats">
-                Steps: {game.step_index} • Multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
               </div>
             </div>
           </div>
@@ -660,11 +711,12 @@ export default function FortuneTiger() {
               <div className="stake-badge">🐯</div>
               <div className="stake-title">
                 <div className="t1">Fortune Tiger</div>
+                <div className="t2">High stakes, big wins</div>
               </div>
             </div>
 
             <div className="stake-balance">
-              <span className="label">Balance</span>
+              <span className="label">Available Balance</span>
               <span className="value">
                 ₦{walletBalance.toLocaleString("en-NG")}
               </span>
@@ -686,7 +738,7 @@ export default function FortuneTiger() {
                     setBet(parseFloat(bet).toFixed(2));
                   }
                 }}
-                placeholder={`Min ₦${gameConfig.min_stake.toLocaleString("en-NG")}`}
+                placeholder={`Minimum ₦${gameConfig.min_stake.toLocaleString("en-NG")}`}
                 type="text"
                 inputMode="decimal"
                 autoFocus
@@ -714,7 +766,7 @@ export default function FortuneTiger() {
                     Starting...
                   </>
                 ) : (
-                  `Start Tiger Game`
+                  `Start Game`
                 )}
               </button>
               <button
@@ -725,6 +777,32 @@ export default function FortuneTiger() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Provably Fair Button */}
+      {game.status === "cashed_out" && (
+        <div className="provably-fair-section">
+          <button 
+            className="provably-fair-btn"
+            onClick={async () => {
+              try {
+                const res = await fortuneService.revealSeed(activeSessionId);
+                toast.success(
+                  <div>
+                    <div>Server Seed: {res.data.server_seed}</div>
+                    <div>Client Seed: {res.data.client_seed}</div>
+                    <div>Hash: {res.data.server_seed_hash}</div>
+                  </div>,
+                  { duration: 10000 }
+                );
+              } catch (e) {
+                toast.error("Failed to reveal seeds");
+              }
+            }}
+          >
+            Verify Fairness
+          </button>
         </div>
       )}
     </div>
