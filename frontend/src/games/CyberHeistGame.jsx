@@ -343,7 +343,7 @@ const CyberHeistGame = ({ user }) => {
 
   const handleReturnToGames = () => {
     cyberSound.playButtonClick();
-    navigate("/games");
+    navigate("/");
   };
 
   const selectedBank = banks.find(b => b.name === targetBank);
