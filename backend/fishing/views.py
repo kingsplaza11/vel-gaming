@@ -33,10 +33,10 @@ FISH_TYPES = {
     ],
     'rare': [
         # Wins above 1.5x (45% category)
-        {'name': 'Tuna', 'multiplier': 3.5, 'emoji': '🐟', 'rarity': 'Rare'},
-        {'name': 'Salmon', 'multiplier': 4.0, 'emoji': '🐠', 'rarity': 'Rare'},
-        {'name': 'Mahi Mahi', 'multiplier': 4.5, 'emoji': '🎣', 'rarity': 'Rare'},
-        {'name': 'Grouper', 'multiplier': 5.0, 'emoji': '🐡', 'rarity': 'Rare'},
+        {'name': 'Tuna', 'multiplier': 0.5, 'emoji': '🐟', 'rarity': 'Rare'},
+        {'name': 'Salmon', 'multiplier': 1.0, 'emoji': '🐠', 'rarity': 'Rare'},
+        {'name': 'Mahi Mahi', 'multiplier': 0.05, 'emoji': '🎣', 'rarity': 'Rare'},
+        {'name': 'Grouper', 'multiplier': 0.01, 'emoji': '🐡', 'rarity': 'Rare'},
     ],
     'legendary': [
         # Rare high wins above 1.5x (45% category)

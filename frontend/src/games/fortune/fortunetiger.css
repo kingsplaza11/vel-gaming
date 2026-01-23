@@ -1,0 +1,1562 @@
+/* fortunetiger.css - PERFECT ALIGNMENT OPTIMIZATION */
+
+/* =========================
+   CSS RESET & BASE STYLES
+   ========================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.tiger-stage {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a0f0f 100%);
+  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   HEADER - MOBILE LAYOUT (FULL SCREEN)
+   ========================= */
+.fortune-header {
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  flex-shrink: 0;
+  min-height: 64px;
+}
+
+/* Brand section - Centered on mobile */
+.fortune-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.vault-orb.tiger {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  animation: tigerPulse 2s infinite ease-in-out;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes tigerPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+  }
+}
+
+.fortune-brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fortune-name.tiger {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.25rem;
+}
+
+.fortune-sub.tiger {
+  font-size: 0.875rem;
+  color: rgba(239, 68, 68, 0.7);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+/* =========================
+   HUD SECTION - MOBILE 2×2 GRID (FULL SCREEN)
+   ========================= */
+.fortune-hud {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.hud-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  backdrop-filter: blur(5px);
+}
+
+.hud-label.tiger {
+  font-size: 0.7rem;
+  color: rgba(239, 68, 68, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.hud-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.hud-value.tiger-highlight {
+  color: #ef4444;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+  animation: tigerGlow 2s infinite;
+}
+
+@keyframes tigerGlow {
+  0%, 100% {
+    text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+  }
+}
+
+.last-result {
+  grid-column: span 2;
+  padding: 0.5rem;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.last-result .hud-label {
+  font-size: 0.65rem;
+  color: rgba(239, 68, 68, 0.6);
+}
+
+.last-result .hud-value {
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+/* Action Buttons Grid - Mobile 2×2 */
+.hud-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  grid-column: span 2;
+}
+
+.hud-cashout.tiger-cashout {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  height: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hud-cashout.tiger-cashout:hover:not(.disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, #f87171, #ef4444);
+}
+
+.hud-cashout.tiger-cashout.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.hud-exit.tiger-exit {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 40px;
+}
+
+.hud-exit.tiger-exit:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Audio Control - Centered below grid */
+.audio-control.tiger-audio {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.125rem;
+  margin: 0.5rem auto 0;
+  grid-column: span 2;
+}
+
+.audio-control.tiger-audio:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.1);
+}
+
+/* =========================
+   GAME BOARD - PERFECT CENTERING
+   ========================= */
+.fortune-board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Tiger scene background */
+.tiger-scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(120, 53, 15, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(154, 52, 18, 0.15) 0%, transparent 50%);
+  opacity: 0.4;
+  z-index: 0;
+}
+
+/* Perfectly centered grid with proper spacing */
+.fortune-grid.tiger-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 0.25rem;
+  z-index: 1;
+  position: relative;
+}
+
+/* Tiles with perfect spacing and alignment */
+.fortune-tile.tiger-tile {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, rgba(30, 10, 10, 0.8), rgba(50, 20, 20, 0.6));
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.fortune-tile.tiger-tile:hover:not(.disabled) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+  background: linear-gradient(135deg, rgba(50, 20, 20, 0.9), rgba(70, 30, 30, 0.7));
+}
+
+.fortune-tile.tiger-tile.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tile-face {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  position: relative;
+}
+
+.tile-glyph {
+  opacity: 0.8;
+  color: rgba(239, 68, 68, 0.5);
+}
+
+.tile-revealed {
+  animation: tileReveal 0.3s ease-out;
+}
+
+.tile-icon {
+  font-size: 1.75rem;
+}
+
+/* Highlight tile effect */
+.tiger-tile.highlight-tile {
+  animation: tigerTileGlow 1.5s infinite alternate;
+  border-color: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+}
+
+@keyframes tigerTileGlow {
+  0% {
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+    border-color: rgba(251, 191, 36, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.7);
+    border-color: rgba(251, 191, 36, 1);
+  }
+}
+
+.tile-hint {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(251, 191, 36, 0.8);
+  color: #000;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* Tile States - Tiger Themed */
+.tiger-tile.small_win {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.2));
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+}
+
+.tiger-tile.penalty {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.25), rgba(255, 152, 0, 0.2));
+  border-color: rgba(255, 152, 0, 0.7);
+  box-shadow: 0 0 12px rgba(255, 152, 0, 0.3);
+}
+
+.tiger-tile.major_penalty {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.25));
+  border-color: rgba(239, 68, 68, 0.8);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.4);
+  animation: penaltyPulse 1s infinite;
+}
+
+@keyframes penaltyPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(239, 68, 68, 0.6);
+  }
+}
+
+.tiger-tile.reset {
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.25), rgba(107, 114, 128, 0.2));
+  border-color: rgba(156, 163, 175, 0.7);
+}
+
+.tiger-tile.trap {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(50, 0, 0, 0.6));
+  border-color: rgba(127, 29, 29, 0.9);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: trapShake 0.5s ease-in-out;
+}
+
+.tiger-tile.auto_cashout {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.25));
+  border-color: rgba(16, 185, 129, 0.8);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.4);
+  animation: cashoutGlow 1s infinite;
+}
+
+@keyframes cashoutGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(16, 185, 129, 0.7);
+  }
+}
+
+/* =========================
+   GAME OVERLAYS - COMPACT
+   ========================= */
+.game-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.overlay-content {
+  text-align: center;
+  background: linear-gradient(135deg, #1a0f0f, #2a1a1a);
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  max-width: 320px;
+  width: 100%;
+  animation: slideUp 0.3s ease;
+}
+
+.tiger-lost .overlay-content {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.tiger-cashed .overlay-content {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.overlay-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.tiger-lost .overlay-icon {
+  animation: tigerLostIcon 1s infinite;
+  color: #ef4444;
+}
+
+@keyframes tigerLostIcon {
+  0%, 100% {
+    transform: scale(1) rotate(0);
+  }
+  25% {
+    transform: scale(1.1) rotate(-10deg);
+  }
+  75% {
+    transform: scale(1.1) rotate(10deg);
+  }
+}
+
+.tiger-cashed .overlay-icon {
+  animation: tigerCashedIcon 1s infinite;
+  color: #fbbf24;
+}
+
+@keyframes tigerCashedIcon {
+  0%, 100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-8px) rotate(10deg);
+  }
+}
+
+.overlay-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.tiger-lost .overlay-title {
+  color: #ef4444;
+  text-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.tiger-cashed .overlay-title {
+  color: #fbbf24;
+  text-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+}
+
+.overlay-subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1rem;
+}
+
+.overlay-multiplier {
+  font-size: 1.2rem;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+/* =========================
+   STAKE MODAL - TIGER THEME
+   ========================= */
+.fortune-stake-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.fortune-stake-modal.tiger-modal {
+  background: linear-gradient(135deg, #1a0f0f, #2a1a1a);
+  border-radius: 20px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 20px 40px rgba(239, 68, 68, 0.2);
+  animation: modalAppear 0.3s ease;
+}
+
+@keyframes modalAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.stake-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stake-badge {
+  font-size: 2.5rem;
+  width: 70px;
+  height: 70px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+}
+
+.stake-title {
+  flex: 1;
+}
+
+.stake-title .t1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.25rem;
+}
+
+.stake-title .t2 {
+  font-size: 0.9rem;
+  color: rgba(239, 68, 68, 0.8);
+}
+
+.stake-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.stake-balance .label {
+  color: rgba(239, 68, 68, 0.8);
+  font-size: 0.9rem;
+}
+
+.stake-balance .value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.stake-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stake-currency {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ef4444;
+  min-width: 30px;
+}
+
+.stake-input {
+  flex: 1;
+  padding: 0.875rem;
+  font-size: 1.3rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  color: white;
+  text-align: center;
+}
+
+.stake-input:focus {
+  outline: none;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.stake-input.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.stake-validation-error {
+  color: #fca5a5;
+  font-size: 0.8rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.stake-quick-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.quick-bet-btn {
+  flex: 1;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.quick-bet-btn:hover:not(.disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  transform: translateY(-1px);
+}
+
+/* =========================
+   LINE BREAKER
+   ========================= */
+.stake-line-breaker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  position: relative;
+}
+
+.stake-line-breaker .line-left,
+.stake-line-breaker .line-right {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(239, 68, 68, 0.4) 50%, 
+    transparent 100%
+  );
+}
+
+.stake-line-breaker .line-text {
+  color: rgba(239, 68, 68, 0.8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0 0.75rem;
+  white-space: nowrap;
+}
+
+/* =========================
+   STAKE ACTIONS
+   ========================= */
+.stake-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stake-btn {
+  padding: 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stake-btn.gold.tiger-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.stake-btn.gold.tiger-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, #f87171, #ef4444);
+}
+
+.stake-btn.gold.tiger-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.stake-btn.gold.tiger-btn.loading {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.stake-btn.secondary {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.stake-btn.secondary:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Spinner */
+.spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  display: inline-block;
+}
+
+.spinner.small {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border-width: 2px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================
+   DESKTOP NAVBAR LAYOUT (768px and above)
+   ========================= */
+@media (min-width: 768px) {
+  /* Single row navbar for desktop - NOT full screen */
+  .fortune-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    min-height: 72px;
+    gap: 1rem;
+    flex-wrap: nowrap;
+  }
+
+  /* Brand section - Horizontal on desktop */
+  .fortune-brand {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .vault-orb.tiger {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .fortune-brand-text {
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  /* HUD section - SINGLE ROW on desktop (navbar style) */
+  .fortune-hud {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    min-width: 0;
+    grid-template-columns: none;
+  }
+
+  .hud-card {
+    min-width: 100px;
+    padding: 0.75rem 1rem;
+    text-align: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  .hud-label {
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .hud-value {
+    font-size: 1.125rem;
+    white-space: nowrap;
+  }
+
+  .last-result {
+    grid-column: auto;
+    min-width: 120px;
+    flex-shrink: 0;
+  }
+
+  /* Action buttons - inline on desktop */
+  .hud-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 0.75rem;
+    grid-column: auto;
+    grid-template-columns: none;
+  }
+
+  .hud-cashout.tiger-cashout {
+    min-width: 120px;
+    height: 40px;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  .hud-exit.tiger-exit {
+    min-width: 80px;
+    height: 40px;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  .audio-control.tiger-audio {
+    margin: 0;
+    width: 40px;
+    height: 40px;
+    align-self: center;
+    flex-shrink: 0;
+    grid-column: auto;
+  }
+
+  /* Ensure everything stays in one line */
+  .fortune-brand,
+  .fortune-hud,
+  .hud-card,
+  .hud-cashout.tiger-cashout,
+  .hud-exit.tiger-exit,
+  .audio-control.tiger-audio {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Game board - Perfect desktop spacing */
+  .fortune-board {
+    padding: 1.5rem;
+  }
+
+  .fortune-grid.tiger-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  .fortune-tile.tiger-tile {
+    width: 80px;
+    height: 80px;
+  }
+
+  .tile-face {
+    font-size: 1.75rem;
+  }
+
+  .tile-icon {
+    font-size: 2rem;
+  }
+
+  /* Stake modal adjustments */
+  .fortune-stake-modal.tiger-modal {
+    padding: 2rem;
+    max-width: 450px;
+  }
+
+  .stake-quick-buttons {
+    gap: 0.75rem;
+  }
+
+  .stake-line-breaker {
+    margin: 2rem 0;
+  }
+}
+
+/* =========================
+   LARGER DESKTOP ENHANCEMENTS
+   ========================= */
+@media (min-width: 1024px) {
+  .fortune-header {
+    padding: 0.75rem 2rem;
+    min-height: 80px;
+    gap: 1.5rem;
+  }
+
+  .vault-orb.tiger {
+    width: 56px;
+    height: 56px;
+    font-size: 1.75rem;
+  }
+
+  .fortune-name.tiger {
+    font-size: 1.75rem;
+  }
+
+  .fortune-sub.tiger {
+    font-size: 0.875rem;
+  }
+
+  .hud-card {
+    min-width: 120px;
+    padding: 1rem 1.25rem;
+  }
+
+  .hud-label {
+    font-size: 0.75rem;
+  }
+
+  .hud-value {
+    font-size: 1.25rem;
+  }
+
+  .hud-cashout.tiger-cashout {
+    min-width: 140px;
+    height: 44px;
+    font-size: 0.875rem;
+  }
+
+  .hud-exit.tiger-exit {
+    min-width: 100px;
+    height: 44px;
+    font-size: 0.875rem;
+  }
+
+  .fortune-hud {
+    gap: 1rem;
+  }
+
+  /* Prevent wrapping */
+  .fortune-header {
+    overflow: hidden;
+  }
+
+  .fortune-brand {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .fortune-hud {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .fortune-grid.tiger-grid {
+    gap: 1rem;
+    padding: 0.75rem;
+  }
+
+  .fortune-tile.tiger-tile {
+    width: 90px;
+    height: 90px;
+  }
+
+  .tile-face {
+    font-size: 2rem;
+  }
+
+  .tile-icon {
+    font-size: 2.25rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .fortune-header {
+    padding: 1rem 2.5rem;
+    gap: 2rem;
+  }
+
+  /* Ensure navbar stays single row */
+  .fortune-brand {
+    flex: 0 0 auto;
+  }
+
+  .fortune-hud {
+    flex: 0 1 auto;
+  }
+
+  /* Prevent overflow */
+  .fortune-header {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .fortune-grid.tiger-grid {
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  .fortune-tile.tiger-tile {
+    width: 100px;
+    height: 100px;
+    border-radius: 12px;
+  }
+
+  .tile-face {
+    font-size: 2.25rem;
+  }
+
+  .tile-icon {
+    font-size: 2.5rem;
+  }
+}
+
+/* =========================
+   SMALL MOBILE OPTIMIZATIONS
+   ========================= */
+@media (max-width: 360px) {
+  .fortune-header {
+    padding: 0.5rem;
+    min-height: 56px;
+  }
+
+  .vault-orb.tiger {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+
+  .fortune-name.tiger {
+    font-size: 1.25rem;
+  }
+
+  .fortune-sub.tiger {
+    font-size: 0.75rem;
+  }
+
+  .fortune-grid.tiger-grid {
+    gap: 0.375rem;
+  }
+
+  .fortune-tile.tiger-tile {
+    width: 65px;
+    height: 65px;
+  }
+
+  .tile-face {
+    font-size: 1.375rem;
+  }
+
+  .tile-icon {
+    font-size: 1.5rem;
+  }
+
+  .hud-card {
+    padding: 0.5rem 0.375rem;
+  }
+
+  .hud-label {
+    font-size: 0.65rem;
+  }
+
+  .hud-value {
+    font-size: 0.875rem;
+  }
+
+  .hud-cashout.tiger-cashout, .hud-exit.tiger-exit {
+    height: 36px;
+    font-size: 0.7rem;
+  }
+
+  .stake-badge {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+  }
+
+  .stake-title .t1 {
+    font-size: 1.5rem;
+  }
+
+  .stake-title .t2 {
+    font-size: 0.8rem;
+  }
+
+  .stake-line-breaker .line-text {
+    font-size: 0.75rem;
+    padding: 0 0.5rem;
+  }
+}
+
+/* =========================
+   LANDSCAPE MOBILE
+   ========================= */
+@media (max-height: 600px) and (orientation: landscape) {
+  .fortune-header {
+    min-height: 56px;
+    padding: 0.5rem;
+    /* Keep mobile grid layout in landscape */
+    display: block;
+  }
+
+  .fortune-brand {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .vault-orb.tiger {
+    width: 36px;
+    height: 36px;
+    font-size: 1.125rem;
+  }
+
+  .fortune-name.tiger {
+    font-size: 1.125rem;
+    margin-bottom: 0;
+  }
+
+  .fortune-sub.tiger {
+    font-size: 0.7rem;
+  }
+
+  .fortune-hud {
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 0.5rem;
+    width: 100%;
+    display: grid;
+  }
+
+  .last-result {
+    grid-column: span 1;
+  }
+
+  .hud-actions {
+    grid-column: span 3;
+    display: grid;
+  }
+
+  .fortune-grid.tiger-grid {
+    gap: 0.375rem;
+  }
+
+  .fortune-tile.tiger-tile {
+    width: 60px;
+    height: 60px;
+  }
+
+  .tile-face {
+    font-size: 1.25rem;
+  }
+
+  .tile-icon {
+    font-size: 1.5rem;
+  }
+
+  .fortune-stake-modal.tiger-modal {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* =========================
+   ANIMATIONS
+   ========================= */
+@keyframes tileReveal {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes trapShake {
+  0%, 100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(3deg);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+}
+
+/* =========================
+   TIGER STAGE EFFECTS
+   ========================= */
+.tiger-stage.shake {
+  animation: tigerStageShake 0.5s ease-in-out;
+}
+
+@keyframes tigerStageShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.tiger-stage.effect-small-win {
+  animation: tigerSmallWinEffect 0.5s ease;
+}
+
+@keyframes tigerSmallWinEffect {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2) hue-rotate(10deg);
+  }
+}
+
+.tiger-stage.effect-penalty {
+  animation: tigerPenaltyEffect 0.5s ease;
+}
+
+@keyframes tigerPenaltyEffect {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(0.8) hue-rotate(-10deg);
+  }
+}
+
+.tiger-stage.effect-reset {
+  animation: tigerResetEffect 0.5s ease;
+}
+
+@keyframes tigerResetEffect {
+  0%, 100% {
+    filter: hue-rotate(0);
+  }
+  50% {
+    filter: hue-rotate(180deg) brightness(0.9);
+  }
+}
+
+.tiger-stage.effect-game_over {
+  animation: tigerGameOverEffect 1s ease;
+}
+
+@keyframes tigerGameOverEffect {
+  0% {
+    filter: brightness(1) hue-rotate(0);
+  }
+  50% {
+    filter: brightness(0.7) hue-rotate(90deg);
+  }
+  100% {
+    filter: brightness(0.5) hue-rotate(180deg);
+  }
+}
+
+.tiger-stage.effect-cashout {
+  animation: tigerCashoutEffect 1s ease;
+}
+
+@keyframes tigerCashoutEffect {
+  0%, 100% {
+    filter: brightness(1) hue-rotate(0);
+  }
+  25% {
+    filter: brightness(1.5) hue-rotate(60deg);
+  }
+  50% {
+    filter: brightness(1.8) hue-rotate(120deg);
+  }
+  75% {
+    filter: brightness(1.5) hue-rotate(60deg);
+  }
+}
+
+.tiger-stage.tiger-roar .tiger-scene {
+  animation: tigerRoarEffect 1s ease;
+}
+
+@keyframes tigerRoarEffect {
+  0%, 100% {
+    filter: brightness(1) blur(0);
+  }
+  50% {
+    filter: brightness(1.3) blur(1px);
+  }
+}
+
+/* =========================
+   FLOATING AUDIO CONTROL
+   ========================= */
+.floating-audio-control.tiger-floating {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.85));
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: tigerFloat 3s infinite ease-in-out;
+}
+
+@keyframes tigerFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+}
+
+.floating-audio-control.tiger-floating:hover {
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.95), rgba(239, 68, 68, 0.9));
+  transform: scale(1.1) rotate(10deg);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.floating-audio-control.tiger-floating:active {
+  transform: scale(0.95);
+}
+
+/* Responsive adjustments for floating button */
+@media (max-width: 768px) {
+  .floating-audio-control.tiger-floating {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-audio-control.tiger-floating {
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+    bottom: 12px;
+    right: 12px;
+  }
+}
+
+/* Hide floating button when stake modal is open */
+.fortune-stake-backdrop ~ .floating-audio-control {
+  display: none;
+}
+
+/* Hide header audio control when floating button is shown */
+.audio-control {
+  display: none;
+}
+
+/* Show header audio control on larger screens */
+@media (min-width: 1024px) {
+  .audio-control.tiger-audio {
+    display: flex;
+  }
+  
+  .floating-audio-control.tiger-floating {
+    display: none;
+  }
+}
+
+/* =========================
+   UTILITY CLASSES
+   ========================= */
+.hidden {
+  display: none !important;
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* iOS Safe Areas */
+@supports (padding: max(0px)) {
+  .tiger-stage {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .tiger-stage {
+    background: #000;
+  }
+  
+  .tiger-tile {
+    border-width: 3px;
+  }
+  
+  .stake-btn,
+  .hud-cashout,
+  .hud-exit {
+    border: 2px solid currentColor;
+  }
+}

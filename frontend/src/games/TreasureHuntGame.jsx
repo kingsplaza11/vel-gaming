@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../contexts/WalletContext";
 import { treasureService } from "../services/api";
+import { treasureSound } from "../utils/TreasureSoundManager";
 import "./TreasureHuntGame.css";
 
 const MIN_STAKE = 100;
@@ -18,6 +19,23 @@ const TreasureHuntGame = ({ user }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet();
 
+  /* ---------------- STATE ---------------- */
+  const [betAmount, setBetAmount] = useState(MIN_STAKE);
+  const [mapLevel, setMapLevel] = useState(1);
+  const [phase, setPhase] = useState("idle");
+  const [hunting, setHunting] = useState(false);
+  const [lastHunt, setLastHunt] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [showStartModal, setShowStartModal] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [revealedTreasures, setRevealedTreasures] = useState([]);
+  const [pulseAnimation, setPulseAnimation] = useState(false);
+  const [muteState, setMuteState] = useState(treasureSound.getMuteState());
+
+  const animationTimers = useRef([]);
+  const isMounted = useRef(true);
+
   /* ---------------- HELPER FUNCTIONS ---------------- */
   const getCombinedBalance = useCallback(() => {
     if (!wallet) return user?.balance || 0;
@@ -31,23 +49,6 @@ const TreasureHuntGame = ({ user }) => {
     return wallet.spot_balance || 0;
   }, [wallet]);
 
-  /* ---------------- STATE ---------------- */
-  const [betAmount, setBetAmount] = useState(MIN_STAKE);
-  const [mapLevel, setMapLevel] = useState(1);
-  const [phase, setPhase] = useState("idle");
-  const [hunting, setHunting] = useState(false);
-  const [lastHunt, setLastHunt] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [showStartModal, setShowStartModal] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [revealedTreasures, setRevealedTreasures] = useState([]);
-  const [pulseAnimation, setPulseAnimation] = useState(false);
-
-  const animationTimers = useRef([]);
-  const isMounted = useRef(true);
-
-  /* ---------------- WALLET ---------------- */
   const combinedBalance = Number(getCombinedBalance() || 0);
   const spotBalance = Number(getSpotBalance() || 0);
 
@@ -56,6 +57,16 @@ const TreasureHuntGame = ({ user }) => {
   const selectedMap = MAP_LEVELS.find((m) => m.level === mapLevel);
   const levelMultiplier = mapLevel * 1.5;
   const totalCost = betAmount * levelMultiplier;
+
+  /* ---------------- AUDIO CONTROLS ---------------- */
+  const toggleMute = () => {
+    const { bgMuted, gameMuted } = treasureSound.toggleMute();
+    setMuteState({ backgroundMusicMuted: bgMuted, gameSoundsMuted: gameMuted });
+  };
+
+  const allMuted = muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
+  const bgMutedOnly = muteState.backgroundMusicMuted && !muteState.gameSoundsMuted;
+  const gameMutedOnly = !muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
 
   /* ---------------- DEEP REFRESH FUNCTION ---------------- */
   const deepRefresh = useCallback(async () => {
@@ -86,16 +97,24 @@ const TreasureHuntGame = ({ user }) => {
         setShowStartModal(true);
         setPhase("idle");
         setHunting(false);
+        
+        // Start background music if not muted
+        if (!muteState.backgroundMusicMuted) {
+          treasureSound.playBackgroundMusic();
+        }
       }
     }
-  }, [refreshWallet]);
+  }, [refreshWallet, muteState.backgroundMusicMuted]);
 
   /* ---------------- TREASURE REVEAL ANIMATION ---------------- */
   const revealTreasuresProgressively = (treasures) => {
     setRevealedTreasures([]);
     
     if (!treasures || treasures.length === 0) {
-      // No treasures found - show result after delay
+      // No treasures found - play loss sound
+      treasureSound.playTreasureRevealSound('loss');
+      
+      // Show result after delay
       setTimeout(() => {
         setShowResultModal(true);
       }, 1500);
@@ -108,12 +127,25 @@ const TreasureHuntGame = ({ user }) => {
         if (isMounted.current) {
           setRevealedTreasures(prev => [...prev, treasure]);
           
+          // Play treasure found sound
+          treasureSound.playTreasureFoundSound(treasure.multiplier || 1);
+          
           // Trigger pulse animation for each reveal
           setPulseAnimation(true);
           setTimeout(() => setPulseAnimation(false), 300);
           
-          // After all treasures are revealed, show result
+          // After all treasures are revealed, play appropriate reveal sound
           if (index === treasures.length - 1) {
+            // Determine tier based on total value
+            const totalValue = treasures.reduce((sum, t) => sum + (t.value || 0), 0);
+            let tier = 'small';
+            if (totalValue > betAmount * 5) tier = 'great';
+            else if (totalValue > betAmount * 3) tier = 'high';
+            else if (totalValue > betAmount * 2) tier = 'normal';
+            else if (totalValue > betAmount) tier = 'low';
+            
+            treasureSound.playTreasureRevealSound(tier);
+            
             setTimeout(() => {
               if (isMounted.current) {
                 setShowResultModal(true);
@@ -129,6 +161,10 @@ const TreasureHuntGame = ({ user }) => {
   const clearTimers = () => {
     animationTimers.current.forEach(clearTimeout);
     animationTimers.current = [];
+    
+    // Stop phase-specific sounds
+    treasureSound.stopScanningSound();
+    treasureSound.stopDiggingSound();
   };
 
   const startAnimation = () => {
@@ -137,24 +173,29 @@ const TreasureHuntGame = ({ user }) => {
     // Sailing phase with wave animation
     setPhase("sailing");
     document.body.classList.add("phase-sailing");
+    treasureSound.playSailingSound();
     
     animationTimers.current.push(
       setTimeout(() => {
         setPhase("scanning");
         document.body.classList.remove("phase-sailing");
         document.body.classList.add("phase-scanning");
+        treasureSound.playScanningSound();
       }, 2500),
       
       setTimeout(() => {
         setPhase("digging");
         document.body.classList.remove("phase-scanning");
         document.body.classList.add("phase-digging");
+        treasureSound.stopScanningSound();
+        treasureSound.playDiggingSound();
       }, 4500),
       
       setTimeout(() => {
         setPhase("revealing");
         document.body.classList.remove("phase-digging");
         document.body.classList.add("phase-revealing");
+        treasureSound.stopDiggingSound();
       }, 6500)
     );
   };
@@ -163,9 +204,28 @@ const TreasureHuntGame = ({ user }) => {
   useEffect(() => {
     isMounted.current = true;
     
+    // Initialize audio on first interaction
+    const initAudioOnInteraction = () => {
+      treasureSound.init();
+      document.removeEventListener('click', initAudioOnInteraction);
+      document.removeEventListener('touchstart', initAudioOnInteraction);
+      
+      // Start background music if not muted
+      if (!muteState.backgroundMusicMuted) {
+        treasureSound.playBackgroundMusic();
+      }
+    };
+    
+    // Add event listeners for audio context initialization
+    document.addEventListener('click', initAudioOnInteraction);
+    document.addEventListener('touchstart', initAudioOnInteraction);
+    
     return () => {
       isMounted.current = false;
       clearTimers();
+      treasureSound.cleanup();
+      document.removeEventListener('click', initAudioOnInteraction);
+      document.removeEventListener('touchstart', initAudioOnInteraction);
       document.body.classList.remove(
         "phase-sailing", 
         "phase-scanning", 
@@ -193,6 +253,10 @@ const TreasureHuntGame = ({ user }) => {
       setErrorMessage("Insufficient wallet balance");
       return;
     }
+
+    // Play stake and start sounds
+    treasureSound.playStakeSound();
+    treasureSound.playExpeditionStartSound();
 
     // Reset states
     setErrorMessage(null);
@@ -253,23 +317,28 @@ const TreasureHuntGame = ({ user }) => {
 
   /* ---------------- MODAL HANDLERS ---------------- */
   const handleContinue = async () => {
+    // Play button click sound
+    if (!muteState.gameSoundsMuted) {
+      treasureSound.playCoinSound();
+    }
+    
     setShowResultModal(false);
     await deepRefresh();
   };
 
   const handleReturnToGames = () => {
-    navigate("/games");
+    navigate("/");
   };
 
-  /* ---------------- WIN TIER HELPERS (FOR BACKWARD COMPATIBILITY) ---------------- */
+  /* ---------------- WIN TIER HELPERS ---------------- */
   const getWinTierName = (tier) => {
     switch(tier) {
-      case "small": return "Small Catch";
-      case "low": return "Good Catch";
-      case "normal": return "Great Catch";
-      case "high": return "Excellent Catch";
-      case "great": return "Amazing Catch";
-      default: return "No Catch";
+      case "small": return "Small Treasure";
+      case "low": return "Good Treasure";
+      case "normal": return "Great Treasure";
+      case "high": return "Excellent Treasure";
+      case "great": return "Legendary Treasure";
+      default: return "No Treasure";
     }
   };
 
@@ -286,7 +355,7 @@ const TreasureHuntGame = ({ user }) => {
 
   const getResultEmoji = (tier) => {
     switch(tier) {
-      case "small": return "🎣";
+      case "small": return "🗺️";
       case "low": return "💰";
       case "normal": return "🏆";
       case "high": return "👑";
@@ -326,8 +395,40 @@ const TreasureHuntGame = ({ user }) => {
           <span className="game-title-icon">🧭</span>
           <div className="game-title-text">
             <h1>Treasure Expedition</h1>
+            <p>Uncover hidden treasures in uncharted lands!</p>
           </div>
         </div>
+
+        <div className="balance-pill">
+          {walletLoading ? (
+            <div className="balance-loading-inline">
+              <span className="loading-spinner-small" />
+              Loading...
+            </div>
+          ) : (
+            <div className="balance-details">
+              <div className="balance-total">
+                {formatNaira(combinedBalance)}
+              </div>
+              <div className="balance-breakdown">
+                <span className="balance-main">
+                  Main: {formatNaira(combinedBalance - spotBalance)}
+                </span>
+                <span className="balance-spot">
+                  Spot: {formatNaira(spotBalance)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button 
+          className="audio-control-btn"
+          onClick={toggleMute}
+          aria-label={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+        >
+          {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🧭"}
+        </button>
       </header>
 
       {/* ================= START MODAL ================= */}
@@ -346,7 +447,12 @@ const TreasureHuntGame = ({ user }) => {
                     map.level === mapLevel ? "active pulse" : ""
                   }`}
                   style={{animationDelay: `${map.level * 0.1}s`}}
-                  onClick={() => !walletLoading && !refreshing && setMapLevel(map.level)}
+                  onClick={() => {
+                    if (!walletLoading && !refreshing) {
+                      setMapLevel(map.level);
+                      treasureSound.playMapSelectSound();
+                    }
+                  }}
                   disabled={walletLoading || refreshing}
                 >
                   <div className="map-level-header">
@@ -475,11 +581,16 @@ const TreasureHuntGame = ({ user }) => {
                           style={{animationDelay: `${index * 0.2}s`}}
                         >
                           <div className="treasure-icon-reveal">
-                            {treasure.image}
+                            {treasure.image || "💰"}
                           </div>
                           <div className="treasure-name-reveal">
-                            {treasure.name}
+                            {treasure.name || "Mystery Treasure"}
                           </div>
+                          {treasure.multiplier && (
+                            <div className="treasure-multiplier">
+                              ×{treasure.multiplier}
+                            </div>
+                          )}
                         </div>
                       ))
                     ) : (
@@ -510,8 +621,8 @@ const TreasureHuntGame = ({ user }) => {
         <div className="modal-overlay result-modal-overlay animated-fadeIn">
           <div className="result-modal-content animated-slideUp">
             <div className="result-modal-header">
-              {/* Confetti for wins */}
-              {lastHunt.hasWon && (
+              {/* Confetti for big wins */}
+              {lastHunt.win_tier === 'great' && (
                 <>
                   <div className="confetti"></div>
                   <div className="confetti"></div>
@@ -567,8 +678,8 @@ const TreasureHuntGame = ({ user }) => {
                   <div className="treasures-grid-mini">
                     {lastHunt.treasures_found.map((t, i) => (
                       <div key={i} className="treasure-item-mini">
-                        <span className="treasure-icon-mini">{t.image}</span>
-                        <span className="treasure-name-mini">{t.name}</span>
+                        <span className="treasure-icon-mini">{t.image || "💰"}</span>
+                        <span className="treasure-name-mini">{t.name || "Treasure"}</span>
                       </div>
                     ))}
                   </div>
@@ -604,6 +715,15 @@ const TreasureHuntGame = ({ user }) => {
           </div>
         </div>
       )}
+      
+      {/* Floating Audio Control for Mobile */}
+      <button 
+        className="floating-audio-control" 
+        onClick={toggleMute}
+        aria-label={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+      >
+        {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🧭"}
+      </button>
     </div>
   );
 };

@@ -8,11 +8,12 @@ import React, {
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../contexts/WalletContext";
 import { fortuneService } from "../../services/api";
+import { tigerSound } from "../../utils/TigerSoundManager";
 import toast from "react-hot-toast";
-import "./fortune.css";
+import "./fortunetiger.css";
 
-const GRID_SIZE = 16; // Tiger has smaller grid
-const MINIMUM_STAKE = 100; // Higher minimum for tiger
+const GRID_SIZE = 16;
+const MINIMUM_STAKE = 100;
 
 export default function FortuneTiger() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function FortuneTiger() {
   const [bet, setBet] = useState("");
   const [starting, setStarting] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
+  const [muteState, setMuteState] = useState(tigerSound.getMuteState());
   const [gameConfig, setGameConfig] = useState({
     title: "Fortune Tiger",
     icon: "🐯",
@@ -64,70 +66,65 @@ export default function FortuneTiger() {
   const unlockTimeoutRef = useRef(null);
 
   /* =========================
+     AUDIO CONTROLS
+  ========================= */
+  const toggleMute = () => {
+    const { bgMuted, gameMuted } = tigerSound.toggleMute();
+    setMuteState({ backgroundMusicMuted: bgMuted, gameSoundsMuted: gameMuted });
+    
+    const bgText = bgMuted ? "Background music muted" : "Background music unmuted";
+    const gameText = gameMuted ? "Game sounds muted" : "Game sounds active";
+    
+    toast(
+      <div>
+        <div>{bgText}</div>
+        <div>{gameText}</div>
+      </div>,
+      {
+        icon: bgMuted && gameMuted ? "🔇" : bgMuted ? "🎵" : gameMuted ? "🔊" : "🐯"
+      }
+    );
+  };
+
+  /* =========================
      GAME RESULTS CONFIGURATION
-     Updated to match backend probabilities (40% above 1.5x)
   ========================= */
   const resultConfig = useMemo(() => ({
-    // 40% chance above 1.5x - Big wins
-    "safe": {
-      icon: "💰",
-      label: "Tiger Roar",
-      color: "var(--success)",
-      effect: "effect-big-boost",
-      sound: "roar"
-    },
-    
-    // 25% chance below 1.5x - Small wins
     "small_win": {
       icon: "🐅",
       label: "Small Win",
-      color: "var(--warning)",
+      color: "#fbbf24",
       effect: "effect-small-win",
-      sound: "growl"
     },
-    
-    // 15% chance penalty
     "penalty": {
       icon: "⚠️",
       label: "Claw Scratch",
-      color: "var(--warning)",
+      color: "#f97316",
       effect: "effect-penalty",
-      sound: "penalty"
     },
-    
-    // 10% chance major penalty
     "major_penalty": {
       icon: "💥",
       label: "Tiger Attack",
-      color: "var(--danger)",
+      color: "#ef4444",
       effect: "effect-penalty",
-      sound: "attack"
     },
-    
-    // 7% chance reset
     "reset": {
       icon: "🔄",
       label: "Reset",
-      color: "var(--info)",
+      color: "#8b5cf6",
       effect: "effect-reset",
-      sound: "reset"
     },
-    
-    // 3% chance trap
     "trap": {
       icon: "💀",
       label: "Trap",
-      color: "var(--danger)",
+      color: "#dc2626",
       effect: "effect-game_over",
-      sound: "trap"
     },
-    
     "auto_cashout": {
       icon: "⏰",
       label: "Auto Cashout",
-      color: "var(--success)",
+      color: "#10b981",
       effect: "effect-cashout",
-      sound: "cashout"
     }
   }), []);
 
@@ -162,6 +159,8 @@ export default function FortuneTiger() {
     setActiveSessionId(null);
     setHighlightTile(null);
     
+    tigerSound.stopBackgroundMusic();
+    
     if (unlockTimeoutRef.current) {
       clearTimeout(unlockTimeoutRef.current);
       unlockTimeoutRef.current = null;
@@ -194,10 +193,12 @@ export default function FortuneTiger() {
     console.log("[FortuneTiger] Starting game with bet:", betAmount);
     setStarting(true);
     
+    // Play stake sound (game sound, not background music)
+    tigerSound.playStake();
+    
     try {
-      // Change this in the startGame function:
       const res = await fortuneService.startSession({
-        game: "fortune_tiger", // Ensure this matches the backend exactly
+        game: "fortune_tiger",
         bet_amount: betAmount.toFixed(2),
         client_seed: `fortune_tiger:${Date.now()}:${Math.random()}`,
       });
@@ -227,9 +228,15 @@ export default function FortuneTiger() {
         }))
       );
       
+      // Start tiger background music if not muted
+      if (!muteState.backgroundMusicMuted) {
+        tigerSound.playBackgroundMusic();
+      }
+      
       refreshWallet();
       
-      // Tiger roar effect
+      // Tiger roar effect (game sound)
+      tigerSound.playRoar();
       setTigerRoar(true);
       setTimeout(() => setTigerRoar(false), 1000);
       
@@ -240,7 +247,10 @@ export default function FortuneTiger() {
         setTimeout(() => setHighlightTile(null), 2000);
       }, 1500);
       
-      toast.success("Tiger game started! High risk, high reward!");
+      toast.success("Tiger game started! High risk, high reward!", {
+        icon: "🐯",
+        duration: 2000
+      });
     } catch (e) {
       console.error("[FortuneTiger] Failed to start game:", e);
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
@@ -276,6 +286,9 @@ export default function FortuneTiger() {
 
     console.log("[FortuneTiger] Taking step for tile:", id);
     
+    // Play tiger tap sound (game sound)
+    tigerSound.playTap();
+    
     try {
       const res = await fortuneService.takeStep(activeSessionId, {
         tile_id: id,
@@ -300,6 +313,9 @@ export default function FortuneTiger() {
         )
       );
 
+      // Play tile reveal sound (game sound)
+      tigerSound.playTileSound(resultType);
+
       // Apply visual effect based on result
       setStageEffect(resultInfo.effect || "");
       setTimeout(() => setStageEffect(""), 500);
@@ -316,8 +332,11 @@ export default function FortuneTiger() {
 
         setShake(true);
         setTigerRoar(true);
+        
+        // Play game over sound (game sound)
+        tigerSound.playGameOverSound();
+        tigerSound.stopBackgroundMusic();
 
-        // Show result toast
         toast.error(`${resultInfo.label}! Game Over!`, {
           icon: resultInfo.icon,
           duration: 3000,
@@ -342,9 +361,10 @@ export default function FortuneTiger() {
         }));
 
         setStageEffect("effect-cashout");
+        tigerSound.playCashoutSound();
+        tigerSound.stopBackgroundMusic();
         refreshWallet();
 
-        // Show success toast
         toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
           duration: 3000,
         });
@@ -360,21 +380,17 @@ export default function FortuneTiger() {
       // Handle other results
       console.log("[FortuneTiger] Tile result:", resultType);
       
-      // Show result toast based on type
-      if (resultType === "safe") {
-        toast.success(`${resultInfo.label}! +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
-          icon: resultInfo.icon,
-          duration: 2000,
-        });
-        setTigerRoar(true);
-        setTimeout(() => setTigerRoar(false), 500);
-      } else if (resultType === "small_win") {
-        toast(`${resultInfo.label} +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+      const oldMultiplier = parseFloat(game.current_multiplier);
+      const newMultiplier = parseFloat(res.data.current_multiplier);
+      const multiplierChange = newMultiplier - oldMultiplier;
+      
+      if (resultType === "small_win") {
+        toast(`${resultInfo.label} +${multiplierChange.toFixed(2)}x`, {
           icon: resultInfo.icon,
           duration: 2000,
         });
       } else if (resultType === "penalty" || resultType === "major_penalty") {
-        toast.error(`${resultInfo.label} ${(parseFloat(game.current_multiplier) - parseFloat(res.data.current_multiplier)).toFixed(2)}x`, {
+        toast.error(`${resultInfo.label} -${Math.abs(multiplierChange).toFixed(2)}x`, {
           icon: resultInfo.icon,
           duration: 2000,
         });
@@ -385,7 +401,6 @@ export default function FortuneTiger() {
         });
       }
       
-      // Randomly highlight another tile for next move (visual guidance)
       if (game.step_index % 3 === 0) {
         const unrevealedTiles = tiles.filter(t => !t.revealed && t.id !== id);
         if (unrevealedTiles.length > 0) {
@@ -437,6 +452,9 @@ export default function FortuneTiger() {
 
     tapLock.current = true;
     
+    // Play tiger tap sound (game sound)
+    tigerSound.playTap();
+    
     toast.loading("Processing cashout...", { id: "cashout" });
 
     try {
@@ -453,12 +471,12 @@ export default function FortuneTiger() {
       }));
 
       setStageEffect("effect-cashout");
-      setTigerRoar(true);
+      tigerSound.playCashoutSound();
+      tigerSound.stopBackgroundMusic();
       refreshWallet();
       
       toast.dismiss("cashout");
       
-      // Show success message
       const finalMultiplier = parseFloat(res.data.current_multiplier).toFixed(2);
       const winAmount = parseFloat(res.data.payout_amount).toLocaleString("en-NG");
       toast.success(
@@ -514,7 +532,11 @@ export default function FortuneTiger() {
           });
           setStakeOpen(false);
           
-          // Load game config
+          // Start tiger background music if not muted
+          if (!muteState.backgroundMusicMuted) {
+            tigerSound.playBackgroundMusic();
+          }
+          
           try {
             const configRes = await fortuneService.getGameConfig("fortune_tiger");
             setGameConfig(prev => ({ ...prev, ...configRes.data }));
@@ -522,7 +544,9 @@ export default function FortuneTiger() {
             console.log("Could not load game config:", e);
           }
           
-          toast.success("Recovered Tiger game session");
+          toast.success("Recovered Tiger game session", {
+            icon: "🐯"
+          });
         } else {
           localStorage.removeItem('fortune_tiger_active_session');
         }
@@ -530,7 +554,7 @@ export default function FortuneTiger() {
         localStorage.removeItem('fortune_tiger_active_session');
       }
     }
-  }, []);
+  }, [muteState.backgroundMusicMuted]);
 
   /* =========================
      EFFECTS
@@ -540,6 +564,7 @@ export default function FortuneTiger() {
     checkExistingSession();
     
     return () => {
+      tigerSound.cleanup();
       resetGame();
     };
   }, [checkExistingSession, resetGame]);
@@ -569,40 +594,44 @@ export default function FortuneTiger() {
   const currentResult = tiles.find(t => t.revealed && t.id === lastTileRef.current);
   const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
 
+  const allMuted = muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
+  const bgMutedOnly = muteState.backgroundMusicMuted && !muteState.gameSoundsMuted;
+  const gameMutedOnly = !muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
+
   return (
     <div
       className={`fortune-stage tiger-stage ${game.status} ${stageEffect} ${
         shake ? "shake" : ""
       } ${tigerRoar ? "tiger-roar" : ""}`}
     >
-      {/* HEADER */}
-      <div className="fortune-header">
+      {/* HEADER - Single Row on Desktop */}
+      <div className="fortune-header tiger-header">
         <div className="fortune-brand">
           <div className="vault-orb tiger pulse" />
           <div className="fortune-brand-text">
-            <div className="fortune-name">Fortune Tiger</div>
-            <div className="fortune-sub">High stakes, big wins</div>
+            <div className="fortune-name tiger-name">Fortune Tiger</div>
+            <div className="fortune-sub tiger-sub">Small wins, high stakes</div>
           </div>
         </div>
 
-        <div className="fortune-hud">
-          <div className="hud-card">
-            <div className="hud-label">MULTI</div>
+        <div className="fortune-hud tiger-hud">
+          <div className="hud-card tiger-hud-card">
+            <div className="hud-label tiger-label">MULTI</div>
             <div className="hud-value highlight tiger-highlight">
               {parseFloat(game.current_multiplier).toFixed(2)}x
             </div>
           </div>
 
-          <div className="hud-card">
-            <div className="hud-label">STEPS</div>
-            <div className="hud-value">{game.step_index}</div>
+          <div className="hud-card tiger-hud-card">
+            <div className="hud-label tiger-label">STEPS</div>
+            <div className="hud-value tiger-value">{game.step_index}</div>
           </div>
           
           {/* Last Result Display */}
           {resultInfo && game.status === "active" && (
-            <div className="hud-card last-result" style={{ color: resultInfo.color }}>
-              <div className="hud-label">LAST</div>
-              <div className="hud-value">
+            <div className="hud-card tiger-hud-card last-result" style={{ color: resultInfo.color }}>
+              <div className="hud-label tiger-label">LAST</div>
+              <div className="hud-value tiger-value">
                 {resultInfo.icon} {resultInfo.label}
               </div>
             </div>
@@ -618,11 +647,17 @@ export default function FortuneTiger() {
             CASH OUT
           </button>
 
-          <button className="hud-exit" onClick={() => navigate("/")}>
+          <button className="hud-exit tiger-exit" onClick={() => navigate("/")}>
             EXIT
+          </button>
+          
+          {/* Audio Control Button */}
+          <button className="audio-control tiger-audio" onClick={toggleMute}>
+            {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🐯"}
           </button>
         </div>
       </div>
+      
       {/* BOARD */}
       <div className="fortune-board tiger-board">
         <div className="fortune-grid tiger-grid">
@@ -656,7 +691,6 @@ export default function FortuneTiger() {
                       <span className="tile-icon">
                         {tileResultInfo?.icon || "?"}
                       </span>
-                      {tile.kind === "safe" && <div className="tile-sparkle"></div>}
                     </div>
                   )}
                 </div>
@@ -691,19 +725,9 @@ export default function FortuneTiger() {
             </div>
           </div>
         )}
-        
-        {tapLock.current && game.status === "active" && (
-          <div className="game-overlay processing">
-            <div className="overlay-content">
-              <div className="spinner large"></div>
-              <div className="overlay-title">Tiger is thinking...</div>
-              <div className="overlay-subtitle">Calculating your fate</div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* STAKE MODAL */}
+      {/* STAKE MODAL with Line Breaker */}
       {stakeOpen && (
         <div className="fortune-stake-backdrop">
           <div className="fortune-stake-modal tiger-modal">
@@ -711,7 +735,7 @@ export default function FortuneTiger() {
               <div className="stake-badge">🐯</div>
               <div className="stake-title">
                 <div className="t1">Fortune Tiger</div>
-                <div className="t2">High stakes, big wins</div>
+                <div className="t2">Small wins, high stakes</div>
               </div>
             </div>
 
@@ -751,6 +775,24 @@ export default function FortuneTiger() {
               </div>
             )}
 
+            <div className="stake-quick-buttons">
+              {[100, 500, 1000].map(amount => (
+                <button
+                  key={amount}
+                  className="quick-bet-btn"
+                  onClick={() => setBet(Math.min(amount, walletBalance).toString())}
+                >
+                  ₦{amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+
+            {/* LINE BREAKER */}
+            <div className="stake-line-breaker">
+              <div className="line-left"></div>
+              <div className="line-text">Ready to Play?</div>
+              <div className="line-right"></div>
+            </div>
 
             <div className="stake-actions">
               <button
@@ -780,31 +822,15 @@ export default function FortuneTiger() {
         </div>
       )}
       
-      {/* Provably Fair Button */}
-      {game.status === "cashed_out" && (
-        <div className="provably-fair-section">
-          <button 
-            className="provably-fair-btn"
-            onClick={async () => {
-              try {
-                const res = await fortuneService.revealSeed(activeSessionId);
-                toast.success(
-                  <div>
-                    <div>Server Seed: {res.data.server_seed}</div>
-                    <div>Client Seed: {res.data.client_seed}</div>
-                    <div>Hash: {res.data.server_seed_hash}</div>
-                  </div>,
-                  { duration: 10000 }
-                );
-              } catch (e) {
-                toast.error("Failed to reveal seeds");
-              }
-            }}
-          >
-            Verify Fairness
-          </button>
-        </div>
-      )}
+      {/* Floating Audio Control */}
+      <button 
+        className="floating-audio-control tiger-floating" 
+        onClick={toggleMute}
+        aria-label={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+        title={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+      >
+        {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🐯"}
+      </button>
     </div>
   );
 }

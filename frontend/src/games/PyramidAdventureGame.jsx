@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../contexts/WalletContext";
 import { pyramidService } from "../services/api";
+import { pyramidSound } from "../utils/PyramidSoundManager";
 import "./PyramidAdventureGame.css";
 
 const MIN_STAKE = 100;
@@ -36,8 +37,12 @@ const PyramidAdventureGame = ({ user }) => {
   const [revealedChambers, setRevealedChambers] = useState([]);
   const [revealedArtifacts, setRevealedArtifacts] = useState([]);
   const [pulseAnimation, setPulseAnimation] = useState(false);
+  const [isMuted, setIsMuted] = useState(pyramidSound.isMuted);
+  const [isBgMuted, setIsBgMuted] = useState(pyramidSound.backgroundMusicMuted);
 
   const animationTimers = useRef([]);
+  const torchInterval = useRef(null);
+  const footstepInterval = useRef(null);
   const isMounted = useRef(true);
 
   /** ---------- BALANCE ---------- */
@@ -46,12 +51,107 @@ const PyramidAdventureGame = ({ user }) => {
 
   const formatNaira = (v) => `₦${Number(v || 0).toLocaleString("en-NG")}`;
 
+  /** ---------- SOUND EFFECTS ---------- */
+  useEffect(() => {
+    // Start background music automatically
+    if (!pyramidSound.backgroundMusicMuted) {
+      pyramidSound.playBackgroundMusic();
+    }
+
+    return () => {
+      pyramidSound.cleanup();
+      if (torchInterval.current) clearInterval(torchInterval.current);
+      if (footstepInterval.current) clearInterval(footstepInterval.current);
+    };
+  }, []);
+
+  // Play sounds based on phase changes
+  useEffect(() => {
+    if (!pyramidSound.isMuted) {
+      switch(phase) {
+        case "entering":
+          pyramidSound.playSandstormSound();
+          pyramidSound.playPyramidEntrance();
+          break;
+        case "exploring":
+          // Start continuous torch sounds
+          torchInterval.current = pyramidSound.playTorchSounds();
+          // Start footstep sounds
+          footstepInterval.current = setInterval(() => {
+            pyramidSound.playFootstepSound();
+          }, 600);
+          break;
+        case "chambers":
+          // Stop torch and footstep sounds
+          if (torchInterval.current) {
+            clearInterval(torchInterval.current);
+            torchInterval.current = null;
+          }
+          if (footstepInterval.current) {
+            clearInterval(footstepInterval.current);
+            footstepInterval.current = null;
+          }
+          break;
+      }
+    }
+  }, [phase]);
+
+  // Play chamber reveal sounds
+  useEffect(() => {
+    if (revealedChambers.length > 0 && !pyramidSound.isMuted) {
+      const lastChamber = revealedChambers[revealedChambers.length - 1];
+      pyramidSound.playChamberDiscovery();
+      
+      // Play danger sound for high danger chambers
+      if (lastChamber.danger > 0.7) {
+        pyramidSound.playDangerSound();
+      }
+    }
+  }, [revealedChambers]);
+
+  // Play artifact reveal sounds
+  useEffect(() => {
+    if (revealedArtifacts.length > 0 && !pyramidSound.isMuted) {
+      const lastArtifact = revealedArtifacts[revealedArtifacts.length - 1];
+      pyramidSound.playArtifactReveal(lastArtifact.rarity);
+    }
+  }, [revealedArtifacts]);
+
+  // Play win/loss sounds
+  useEffect(() => {
+    if (lastRun && !pyramidSound.isMuted) {
+      if (lastRun.win_amount > 0) {
+        if (lastRun.expedition_rank === 'legendary' || lastRun.expedition_rank === 'epic') {
+          pyramidSound.playBigWinSound();
+        } else {
+          pyramidSound.playSuccessSound();
+        }
+        pyramidSound.playCoinSound();
+      } else if (lastRun.traps_encountered > 0) {
+        pyramidSound.playCurseSound();
+      } else {
+        pyramidSound.playFailureSound();
+      }
+    }
+  }, [lastRun]);
+
+  /** ---------- TOGGLE MUTE ---------- */
+  const toggleMute = () => {
+    const { bgMuted, gameMuted } = pyramidSound.toggleMute();
+    setIsMuted(gameMuted);
+    setIsBgMuted(bgMuted);
+    pyramidSound.playButtonClick();
+  };
+
   /** ---------- CLEANUP ---------- */
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
       animationTimers.current.forEach(clearTimeout);
+      if (torchInterval.current) clearInterval(torchInterval.current);
+      if (footstepInterval.current) clearInterval(footstepInterval.current);
+      pyramidSound.cleanup();
     };
   }, []);
 
@@ -104,6 +204,11 @@ const PyramidAdventureGame = ({ user }) => {
           setPulseAnimation(true);
           setTimeout(() => setPulseAnimation(false), 300);
           
+          // Play trap sound if chamber has trap
+          if (chamber.trap_triggered && !pyramidSound.isMuted) {
+            pyramidSound.playTrapSound();
+          }
+          
           if (index === chambers.length - 1) {
             // After all chambers revealed, reveal artifacts if any
             if (lastRun?.artifacts_found?.length > 0) {
@@ -155,6 +260,9 @@ const PyramidAdventureGame = ({ user }) => {
   const startAdventure = async () => {
     if (exploring || refreshing) return;
 
+    // Play button click sound
+    pyramidSound.playButtonClick();
+
     if (walletLoading) {
       setError("Please wait while your balance loads...");
       return;
@@ -176,6 +284,10 @@ const PyramidAdventureGame = ({ user }) => {
     setShowResultModal(false);
     setRevealedChambers([]);
     setRevealedArtifacts([]);
+    
+    // Play expedition start sound
+    pyramidSound.playStartExpeditionSound();
+    
     startExplorationAnimation();
 
     try {
@@ -213,6 +325,7 @@ const PyramidAdventureGame = ({ user }) => {
 
   /** ---------- MODAL HANDLERS ---------- */
   const handleContinue = async () => {
+    pyramidSound.playButtonClick();
     setShowResultModal(false);
     await deepRefresh();
   };
@@ -220,6 +333,20 @@ const PyramidAdventureGame = ({ user }) => {
   /** ---------- RENDER ---------- */
   return (
     <div className="pyramid-game">
+      {/* Floating Mute Button */}
+      <button 
+        className={`floating-mute-button ${isMuted ? 'muted' : ''}`}
+        onClick={toggleMute}
+        aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+        style={{background: 'linear-gradient(135deg, #D2691E, #8B4513)'}}
+      >
+        {isMuted ? (
+          <span className="mute-icon">🔇</span>
+        ) : (
+          <span className="speaker-icon">🔊</span>
+        )}
+      </button>
+
       {/* Background ambient animation */}
       <div className="ambient-animation"></div>
       
@@ -227,7 +354,10 @@ const PyramidAdventureGame = ({ user }) => {
       <div className="top-bar animated-slideUp">
         <button 
           className="back-button" 
-          onClick={() => navigate("/")}
+          onClick={() => {
+            pyramidSound.playButtonClick();
+            navigate("/");
+          }}
           disabled={refreshing}
         >
           ← Back
@@ -260,7 +390,13 @@ const PyramidAdventureGame = ({ user }) => {
                   type="number"
                   min={MIN_STAKE}
                   value={betAmount}
-                  onChange={(e) => setBetAmount(Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setBetAmount(value);
+                    if (value >= MIN_STAKE) {
+                      pyramidSound.playStakeSound();
+                    }
+                  }}
                   disabled={walletLoading || refreshing}
                 />
                 <div className="input-glow"></div>

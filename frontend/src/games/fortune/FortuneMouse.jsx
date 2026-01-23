@@ -1,15 +1,10 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../contexts/WalletContext";
 import { fortuneService } from "../../services/api";
+import { fortuneSound } from "../../utils/FortuneSoundManager";
 import toast from "react-hot-toast";
-import "./fortune.css";
+import "./fortunemouse.css";
 
 const GRID_SIZE = 20;
 const MINIMUM_STAKE = 100;
@@ -30,9 +25,7 @@ export default function FortuneMouse() {
   const [bet, setBet] = useState("");
   const [starting, setStarting] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
-
-  const [stageEffect, setStageEffect] = useState("");
-  const [shake, setShake] = useState(false);
+  const [isMuted, setIsMuted] = useState(fortuneSound.isMuted);
 
   const [game, setGame] = useState({
     status: "idle", // idle | active | lost | cashed_out
@@ -55,88 +48,59 @@ export default function FortuneMouse() {
   ========================= */
   const tapLock = useRef(false);
   const lastTileRef = useRef(null);
-  const unlockTimeoutRef = useRef(null);
-  const gameStateIntervalRef = useRef(null);
 
   /* =========================
      GAME RESULTS CONFIGURATION
-     Updated to match backend probabilities
+     REMOVED: "safe" and "carrot_bonus" (bonus tiles)
   ========================= */
   const resultConfig = useMemo(() => ({
-    // Good wins (above 1.5x)
-    "safe": {
-      icon: "💰",
-      label: "Bonus",
-      color: "var(--success)",
-      effect: "effect-boost",
-      sound: "win"
-    },
-    "carrot_bonus": {
-      icon: "🥕",
-      label: "Carrot Bonus",
-      color: "var(--success)",
-      effect: "effect-boost",
-      sound: "win"
-    },
-    
-    // Small wins (below 1.5x)
     "small_win": {
       icon: "💸",
       label: "Small Win",
-      color: "var(--warning)",
-      effect: "effect-small-win",
-      sound: "small-win"
+      color: "#FFC107",
     },
-    
-    // Penalties
     "penalty": {
       icon: "⚠️",
       label: "Penalty",
-      color: "var(--warning)",
-      effect: "effect-penalty",
-      sound: "penalty"
+      color: "#FF9800",
     },
     "major_penalty": {
       icon: "💥",
       label: "Major Penalty",
-      color: "var(--danger)",
-      effect: "effect-penalty",
-      sound: "penalty"
+      color: "#F44336",
     },
-    
-    // Reset
     "reset": {
       icon: "🔄",
       label: "Reset",
-      color: "var(--info)",
-      effect: "effect-reset",
-      sound: "reset"
+      color: "#2196F3",
     },
-    
-    // Game over
     "trap": {
       icon: "💣",
       label: "Trap",
-      color: "var(--danger)",
-      effect: "effect-game_over",
-      sound: "trap"
+      color: "#9C27B0",
     },
-    
-    // Auto cashout
     "auto_cashout": {
       icon: "⏰",
       label: "Auto Cashout",
-      color: "var(--success)",
-      effect: "effect-cashout",
-      sound: "cashout"
+      color: "#4CAF50",
     }
   }), []);
+
+  /* =========================
+     AUDIO CONTROLS
+  ========================= */
+  const toggleMute = () => {
+    const muted = fortuneSound.toggleMute();
+    setIsMuted(muted);
+    toast(muted ? "Sound muted" : "Sound unmuted", {
+      icon: muted ? "🔇" : "🔊"
+    });
+  };
 
   /* =========================
      RESET GAME
   ========================= */
   const resetGame = useCallback(() => {
-    console.log("[FortuneMouse] Resetting game");
     setGame({
       status: "idle",
       step_index: 0,
@@ -155,21 +119,7 @@ export default function FortuneMouse() {
 
     tapLock.current = false;
     lastTileRef.current = null;
-    setStageEffect("");
-    setShake(false);
     setActiveSessionId(null);
-    
-    // Clear any pending timeout
-    if (unlockTimeoutRef.current) {
-      clearTimeout(unlockTimeoutRef.current);
-      unlockTimeoutRef.current = null;
-    }
-    
-    // Clear interval
-    if (gameStateIntervalRef.current) {
-      clearInterval(gameStateIntervalRef.current);
-      gameStateIntervalRef.current = null;
-    }
   }, []);
 
   /* =========================
@@ -187,7 +137,6 @@ export default function FortuneMouse() {
     );
 
     if (!isStakeValid || walletLoading) {
-      console.log("[FortuneMouse] Cannot start game: invalid stake or wallet loading");
       if (betAmount < MINIMUM_STAKE) {
         toast.error(`Minimum stake is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`);
       } else if (betAmount > totalBalance) {
@@ -196,8 +145,10 @@ export default function FortuneMouse() {
       return;
     }
 
-    console.log("[FortuneMouse] Starting game with bet:", betAmount);
     setStarting(true);
+    
+    // Play stake sound
+    fortuneSound.playStake();
     
     try {
       const res = await fortuneService.startSession({
@@ -205,8 +156,6 @@ export default function FortuneMouse() {
         bet_amount: betAmount.toFixed(2),
         client_seed: `fortune:${Date.now()}:${Math.random()}`,
       });
-
-      console.log("[FortuneMouse] Game started:", res.data);
       
       // Reset game state
       resetGame();
@@ -223,21 +172,17 @@ export default function FortuneMouse() {
       setActiveSessionId(res.data.session_id);
       setStakeOpen(false);
       
-      // Clear any previous tiles
-      setTiles(
-        Array.from({ length: GRID_SIZE }, (_, i) => ({
-          id: i,
-          revealed: false,
-          kind: null,
-        }))
-      );
+      // Start background music
+      fortuneSound.playBackgroundMusic();
       
       // Refresh wallet to show updated balance
       refreshWallet();
       
-      toast.success("Game started! Click tiles to reveal.");
+      toast.success("Game started! Click tiles to reveal.", {
+        icon: "🎮",
+        duration: 2000
+      });
     } catch (e) {
-      console.error("[FortuneMouse] Failed to start game:", e);
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
       toast.error(`Failed to start game: ${errorMsg}`);
     } finally {
@@ -247,25 +192,21 @@ export default function FortuneMouse() {
 
   const pickTile = useCallback(async (id) => {
     if (!activeSessionId) {
-      console.warn("[FortuneMouse] Cannot pick tile: no active session");
       toast.error("No active game session");
       return;
     }
     
     if (tapLock.current) {
-      console.warn("[FortuneMouse] Cannot pick tile: tap locked");
       toast.error("Please wait for previous action to complete");
       return;
     }
     
     if (game.status !== "active") {
-      console.warn("[FortuneMouse] Cannot pick tile: game not active, status is", game.status);
       toast.error("Game is not active");
       return;
     }
     
     if (tiles[id]?.revealed) {
-      console.warn("[FortuneMouse] Cannot pick tile: already revealed");
       toast.error("This tile has already been revealed");
       return;
     }
@@ -274,19 +215,16 @@ export default function FortuneMouse() {
     tapLock.current = true;
     lastTileRef.current = id;
 
-    console.log("[FortuneMouse] Taking step for tile:", id);
+    // Play click sound
+    fortuneSound.playClick();
     
     try {
       const res = await fortuneService.takeStep(activeSessionId, {
         tile_id: id,
         msg_id: crypto.randomUUID(),
       });
-
-      console.log("[FortuneMouse] Step result:", res.data);
       
-      // Handle duplicate response
       if (res.data.type === "duplicate") {
-        console.log("[FortuneMouse] Duplicate action ignored");
         tapLock.current = false;
         return;
       }
@@ -303,13 +241,11 @@ export default function FortuneMouse() {
         )
       );
 
-      // Apply visual effect based on result
-      setStageEffect(resultInfo.effect || "");
-      setTimeout(() => setStageEffect(""), 500);
+      // Play tile reveal sound
+      fortuneSound.playTileSound(resultType);
 
       // Handle game over (trap)
       if (resultType === "trap") {
-        console.log("[FortuneMouse] Game over - hit a trap");
         setGame((g) => ({
           ...g,
           status: "lost",
@@ -318,15 +254,14 @@ export default function FortuneMouse() {
           current_multiplier: res.data.current_multiplier,
         }));
 
-        setShake(true);
+        fortuneSound.playGameOverSound();
+        fortuneSound.stopBackgroundMusic();
 
-        // Show result toast
         toast.error(`Trap! ${resultInfo.label} - Game Over`, {
           icon: resultInfo.icon,
           duration: 3000,
         });
 
-        // Reset after delay
         setTimeout(() => {
           resetGame();
           setStakeOpen(true);
@@ -337,7 +272,6 @@ export default function FortuneMouse() {
       
       // Handle auto-cashout at max steps
       if (resultType === "auto_cashout") {
-        console.log("[FortuneMouse] Auto-cashout at max steps:", res.data.payout_amount);
         setGame((g) => ({
           ...g,
           status: "cashed_out",
@@ -346,9 +280,10 @@ export default function FortuneMouse() {
           step_index: res.data.step_index,
         }));
 
+        fortuneSound.playCashoutSound();
+        fortuneSound.stopBackgroundMusic();
         refreshWallet();
 
-        // Show success toast
         toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
           duration: 3000,
         });
@@ -361,22 +296,20 @@ export default function FortuneMouse() {
         return;
       }
 
-      // Handle other results
-      console.log("[FortuneMouse] Tile result:", resultType, "multiplier:", res.data.current_multiplier);
+      // Show result toast
+      const oldMultiplier = parseFloat(game.current_multiplier);
+      const newMultiplier = parseFloat(res.data.current_multiplier);
+      const multiplierChange = newMultiplier - oldMultiplier;
       
-      // Show result toast based on type
-      if (resultType === "safe" || resultType === "carrot_bonus") {
-        toast.success(`${resultInfo.label}! +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
-          icon: resultInfo.icon,
-          duration: 2000,
-        });
-      } else if (resultType === "small_win") {
-        toast(`${resultInfo.label} +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+      // REMOVED: Bonus tile toasts ("safe" and "carrot_bonus")
+      
+      if (resultType === "small_win") {
+        toast(`${resultInfo.label} +${multiplierChange.toFixed(2)}x`, {
           icon: resultInfo.icon,
           duration: 2000,
         });
       } else if (resultType === "penalty" || resultType === "major_penalty") {
-        toast.error(`${resultInfo.label} ${(parseFloat(game.current_multiplier) - parseFloat(res.data.current_multiplier)).toFixed(2)}x`, {
+        toast.error(`${resultInfo.label} -${Math.abs(multiplierChange).toFixed(2)}x`, {
           icon: resultInfo.icon,
           duration: 2000,
         });
@@ -395,11 +328,9 @@ export default function FortuneMouse() {
       }));
       
     } catch (e) {
-      console.error("[FortuneMouse] Failed to take step:", e);
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
       toast.error(`Failed to reveal tile: ${errorMsg}`);
       
-      // If session not found, reset game
       if (e.response?.status === 404) {
         setTimeout(() => {
           resetGame();
@@ -414,32 +345,29 @@ export default function FortuneMouse() {
 
   const cashout = useCallback(async () => {
     if (!activeSessionId) {
-      console.warn("[FortuneMouse] Cannot cashout: no active session");
       toast.error("No active game session");
       return;
     }
     
     if (game.status !== "active") {
-      console.warn("[FortuneMouse] Cannot cashout: game not active");
       toast.error("Cannot cashout: game is not active");
       return;
     }
 
     if (tapLock.current) {
-      console.warn("[FortuneMouse] Cannot cashout: tap locked");
       toast.error("Please wait for previous action to complete");
       return;
     }
 
-    // Lock during cashout
     tapLock.current = true;
+    
+    // Play click sound
+    fortuneSound.playClick();
     
     toast.loading("Processing cashout...", { id: "cashout" });
 
     try {
       const res = await fortuneService.cashout(activeSessionId);
-      
-      console.log("[FortuneMouse] Cashout successful:", res.data);
       
       setGame((g) => ({
         ...g,
@@ -449,7 +377,8 @@ export default function FortuneMouse() {
         step_index: res.data.step_index,
       }));
 
-      setStageEffect("effect-cashout");
+      fortuneSound.playCashoutSound();
+      fortuneSound.stopBackgroundMusic();
       refreshWallet();
       
       toast.dismiss("cashout");
@@ -461,12 +390,10 @@ export default function FortuneMouse() {
       }, 1500);
       
     } catch (e) {
-      console.error("[FortuneMouse] Failed to cashout:", e);
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
       toast.dismiss("cashout");
       toast.error(`Failed to cashout: ${errorMsg}`);
       
-      // If session not found, reset game
       if (e.response?.status === 404) {
         setTimeout(() => {
           resetGame();
@@ -480,54 +407,44 @@ export default function FortuneMouse() {
   }, [activeSessionId, game.status, refreshWallet, resetGame]);
 
   /* =========================
-     SESSION RECOVERY
-  ========================= */
-  
-  const checkExistingSession = useCallback(async () => {
-    // Check localStorage for active session
-    const savedSessionId = localStorage.getItem('fortune_active_session');
-    if (savedSessionId) {
-      try {
-        const res = await fortuneService.getSessionState(savedSessionId);
-        console.log("[FortuneMouse] Found existing session:", res.data);
-        
-        if (res.data.status === "active") {
-          // Recover active session
-          setActiveSessionId(savedSessionId);
-          setGame({
-            status: "active",
-            step_index: res.data.step_index,
-            current_multiplier: res.data.current_multiplier,
-            payout_amount: res.data.payout_amount,
-            session_id: savedSessionId,
-          });
-          setStakeOpen(false);
-          toast.success("Recovered previous game session");
-        } else {
-          // Clear expired session
-          localStorage.removeItem('fortune_active_session');
-        }
-      } catch (e) {
-        console.log("[FortuneMouse] Failed to recover session:", e);
-        localStorage.removeItem('fortune_active_session');
-      }
-    }
-  }, []);
-
-  /* =========================
      EFFECTS
   ========================= */
   
-  // Check for existing session on mount
   useEffect(() => {
-    checkExistingSession();
+    // Check for existing session
+    const savedSessionId = localStorage.getItem('fortune_active_session');
+    if (savedSessionId) {
+      fortuneService.getSessionState(savedSessionId)
+        .then(res => {
+          if (res.data.status === "active") {
+            setActiveSessionId(savedSessionId);
+            setGame({
+              status: "active",
+              step_index: res.data.step_index,
+              current_multiplier: res.data.current_multiplier,
+              payout_amount: res.data.payout_amount,
+              session_id: savedSessionId,
+            });
+            setStakeOpen(false);
+            fortuneSound.playBackgroundMusic();
+            toast.success("Recovered previous game session", {
+              icon: "🎮"
+            });
+          } else {
+            localStorage.removeItem('fortune_active_session');
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('fortune_active_session');
+        });
+    }
     
+    // Cleanup on unmount
     return () => {
-      resetGame();
+      fortuneSound.cleanup();
     };
-  }, [checkExistingSession, resetGame]);
+  }, []);
 
-  // Save active session ID to localStorage
   useEffect(() => {
     if (activeSessionId && game.status === "active") {
       localStorage.setItem('fortune_active_session', activeSessionId);
@@ -554,15 +471,11 @@ export default function FortuneMouse() {
   const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
 
   return (
-    <div
-      className={`fortune-stage ${game.status} ${stageEffect} ${
-        shake ? "shake" : ""
-      }`}
-    >
+    <div className="fortune-stage">
       {/* HEADER */}
       <div className="fortune-header">
         <div className="fortune-brand">
-          <div className="vault-orb pulse" />
+          <div className="vault-orb"></div>
           <div className="fortune-brand-text">
             <div className="fortune-name">Fortune Mouse</div>
             <div className="fortune-sub">Reveal tiles to boost your multiplier</div>
@@ -571,7 +484,7 @@ export default function FortuneMouse() {
 
         <div className="fortune-hud">
           <div className="hud-card">
-            <div className="hud-label">MULTI</div>
+            <div className="hud-label">MULTIPLIER</div>
             <div className="hud-value highlight">
               {parseFloat(game.current_multiplier).toFixed(2)}x
             </div>
@@ -582,15 +495,6 @@ export default function FortuneMouse() {
             <div className="hud-value">{game.step_index}</div>
           </div>
           
-          {/* Last Result Display */}
-          {resultInfo && game.status === "active" && (
-            <div className="hud-card last-result" style={{ color: resultInfo.color }}>
-              <div className="hud-label">LAST</div>
-              <div className="hud-value">
-                {resultInfo.icon} {resultInfo.label}
-              </div>
-            </div>
-          )}
 
           <button
             className={`hud-cashout ${!activeSessionId || game.status !== "active" ? "disabled" : ""}`}
@@ -603,11 +507,16 @@ export default function FortuneMouse() {
           <button className="hud-exit" onClick={() => navigate("/")}>
             EXIT
           </button>
+          
+          <button className="audio-control" onClick={toggleMute}>
+            {isMuted ? "🔇" : "🔊"}
+          </button>
         </div>
       </div>
+      
       {/* BOARD */}
       <div className="fortune-board">
-        <div className="fortune-grid enhanced">
+        <div className="fortune-grid">
           {tiles.map((tile) => {
             const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
             return (
@@ -618,23 +527,19 @@ export default function FortuneMouse() {
                 } ${game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""}`}
                 disabled={tile.revealed || game.status !== "active" || tapLock.current}
                 onClick={() => pickTile(tile.id)}
-                aria-label={`Tile ${tile.id + 1} ${tile.revealed ? `revealed as ${tile.kind}` : 'hidden'}`}
                 style={tileResultInfo && tile.revealed ? {
                   borderColor: tileResultInfo.color,
-                  boxShadow: `0 0 10px ${tileResultInfo.color}40`
+                  backgroundColor: `${tileResultInfo.color}15`
                 } : {}}
               >
                 <div className="tile-face">
                   {!tile.revealed ? (
-                    <span className="tile-glyph">✦</span>
+                    <span className="tile-glyph">?</span>
                   ) : (
                     <div className="tile-revealed">
                       <span className="tile-icon">
                         {tileResultInfo?.icon || "?"}
                       </span>
-                      {tile.kind === "safe" || tile.kind === "carrot_bonus" ? (
-                        <div className="tile-sparkle"></div>
-                      ) : null}
                     </div>
                   )}
                 </div>
@@ -647,7 +552,7 @@ export default function FortuneMouse() {
         {game.status === "lost" && (
           <div className="game-overlay lost">
             <div className="overlay-content">
-              <div className="overlay-icon">💥</div>
+              <div className="overlay-icon">💣</div>
               <div className="overlay-title">Game Over!</div>
               <div className="overlay-subtitle">Hit a trap tile</div>
               <div className="overlay-multiplier">
@@ -662,20 +567,12 @@ export default function FortuneMouse() {
             <div className="overlay-content">
               <div className="overlay-icon">💰</div>
               <div className="overlay-title">Cashed Out!</div>
-              <div className="overlay-subtitle">Won ₦{parseFloat(game.payout_amount).toLocaleString("en-NG")}</div>
+              <div className="overlay-subtitle">
+                Won ₦{parseFloat(game.payout_amount).toLocaleString("en-NG")}
+              </div>
               <div className="overlay-multiplier">
                 Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
               </div>
-            </div>
-          </div>
-        )}
-        
-        {tapLock.current && game.status === "active" && (
-          <div className="game-overlay processing">
-            <div className="overlay-content">
-              <div className="spinner large"></div>
-              <div className="overlay-title">Processing...</div>
-              <div className="overlay-subtitle">Please wait</div>
             </div>
           </div>
         )}
@@ -729,6 +626,18 @@ export default function FortuneMouse() {
               </div>
             )}
 
+            <div className="stake-quick-buttons">
+              {[100, 500, 1000].map(amount => (
+                <button
+                  key={amount}
+                  className="quick-bet-btn"
+                  onClick={() => setBet(Math.min(amount, totalBalance).toString())}
+                >
+                  ₦{amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+
             <div className="stake-actions">
               <button
                 className={`stake-btn gold ${
@@ -739,7 +648,7 @@ export default function FortuneMouse() {
               >
                 {starting ? (
                   <>
-                    <div className="spinner small"></div>
+                    <div className="spinner"></div>
                     Starting...
                   </>
                 ) : (
@@ -757,31 +666,15 @@ export default function FortuneMouse() {
         </div>
       )}
       
-      {/* Provably Fair Button */}
-      {game.status === "cashed_out" && (
-        <div className="provably-fair-section">
-          <button 
-            className="provably-fair-btn"
-            onClick={async () => {
-              try {
-                const res = await fortuneService.revealSeed(activeSessionId);
-                toast.success(
-                  <div>
-                    <div>Server Seed: {res.data.server_seed}</div>
-                    <div>Client Seed: {res.data.client_seed}</div>
-                    <div>Hash: {res.data.server_seed_hash}</div>
-                  </div>,
-                  { duration: 10000 }
-                );
-              } catch (e) {
-                toast.error("Failed to reveal seeds");
-              }
-            }}
-          >
-            Verify Fairness
-          </button>
-        </div>
-      )}
+      {/* Floating Audio Control */}
+      <button 
+        className="floating-audio-control" 
+        onClick={toggleMute}
+        aria-label={isMuted ? "Unmute sound" : "Mute sound"}
+        title={isMuted ? "Unmute sound" : "Mute sound"}
+      >
+        {isMuted ? "🔇" : "🔊"}
+      </button>
     </div>
   );
 }

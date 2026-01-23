@@ -1,0 +1,901 @@
+/* fortune.css - PERFECT ALIGNMENT OPTIMIZATION */
+
+/* =========================
+   CSS RESET & BASE STYLES
+   ========================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.fortune-stage {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #0a0a0f 0%, #151522 100%);
+  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   HEADER - MOBILE LAYOUT
+   ========================= */
+.fortune-header {
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  min-height: 64px;
+}
+
+/* Brand section - Centered on mobile */
+.fortune-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.vault-orb {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  animation: gentlePulse 2s infinite ease-in-out;
+}
+
+.fortune-brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fortune-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.25rem;
+}
+
+.fortune-sub {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+/* =========================
+   HUD SECTION - MOBILE 2×2 GRID
+   ========================= */
+.fortune-hud {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.hud-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  backdrop-filter: blur(5px);
+}
+
+.hud-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.hud-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.hud-value.highlight {
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+}
+
+.last-result {
+  grid-column: span 2;
+  padding: 0.5rem;
+}
+
+.last-result .hud-label {
+  font-size: 0.65rem;
+}
+
+.last-result .hud-value {
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+/* Action Buttons Grid - Mobile 2×2 */
+.hud-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  grid-column: span 2;
+}
+
+.hud-cashout {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  height: 40px;
+}
+
+.hud-cashout:hover:not(.disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(251, 191, 36, 0.3);
+}
+
+.hud-cashout.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.hud-exit {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 40px;
+}
+
+.hud-exit:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Audio Control - Centered below grid */
+.audio-control {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.125rem;
+  margin: 0.5rem auto 0;
+  grid-column: span 2;
+}
+
+.audio-control:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* =========================
+   GAME BOARD - PERFECT CENTERING
+   ========================= */
+.fortune-board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Perfectly centered grid with proper spacing */
+.fortune-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 0.25rem;
+}
+
+/* Tiles with perfect spacing and alignment */
+.fortune-tile {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fortune-tile:hover:not(.disabled) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 12px rgba(251, 191, 36, 0.25);
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+.fortune-tile.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tile-face {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  position: relative;
+}
+
+.tile-glyph {
+  opacity: 0.8;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.tile-revealed {
+  animation: tileReveal 0.3s ease-out;
+}
+
+.tile-icon {
+  font-size: 1.75rem;
+}
+
+/* Tile States - Well spaced */
+.fortune-tile.safe {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.1));
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+}
+
+.fortune-tile.carrot_bonus {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(251, 191, 36, 0.15));
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+  animation: gentleGlow 2s infinite;
+}
+
+.fortune-tile.small_win {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 193, 7, 0.1));
+  border-color: rgba(255, 193, 7, 0.5);
+  box-shadow: 0 0 10px rgba(255, 193, 7, 0.2);
+}
+
+.fortune-tile.penalty {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1));
+  border-color: rgba(255, 152, 0, 0.5);
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.2);
+}
+
+.fortune-tile.major_penalty {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.15));
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.fortune-tile.reset {
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.2), rgba(156, 163, 175, 0.1));
+  border-color: rgba(156, 163, 175, 0.5);
+}
+
+.fortune-tile.trap {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15));
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  animation: trapShake 0.5s ease-in-out;
+}
+
+/* =========================
+   GAME OVERLAYS - COMPACT
+   ========================= */
+.game-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.overlay-content {
+  text-align: center;
+  background: rgba(26, 28, 45, 0.95);
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  max-width: 320px;
+  width: 100%;
+  animation: slideUp 0.3s ease;
+}
+
+/* =========================
+   RESPONSIVE DESIGN
+   ========================= */
+
+/* Tablet (768px and above) - Switch to horizontal header */
+@media (min-width: 768px) {
+  /* Single row header for desktop */
+  .fortune-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    min-height: 72px;
+  }
+
+  /* Brand section - Horizontal on desktop */
+  .fortune-brand {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0;
+    flex: 1;
+  }
+
+  .vault-orb {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+  }
+
+  .fortune-brand-text {
+    align-items: flex-start;
+  }
+
+  /* HUD section - Single row on desktop */
+  .fortune-hud {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    margin-bottom: 0;
+    flex: 1;
+    max-width: 50%;
+  }
+
+  .hud-row {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .hud-card {
+    min-width: 100px;
+    padding: 0.75rem 1rem;
+    text-align: center;
+  }
+
+  .hud-label {
+    font-size: 0.75rem;
+  }
+
+  .hud-value {
+    font-size: 1.125rem;
+  }
+
+  .last-result {
+    grid-column: auto;
+    min-width: 120px;
+  }
+
+  .hud-actions {
+    display: flex;
+    gap: 0.75rem;
+    grid-column: auto;
+  }
+
+  .hud-cashout {
+    min-width: 120px;
+    height: 40px;
+    font-size: 0.875rem;
+  }
+
+  .hud-exit {
+    min-width: 80px;
+    height: 40px;
+    font-size: 0.875rem;
+  }
+
+  .audio-control {
+    margin: 0;
+    width: 40px;
+    height: 40px;
+    align-self: center;
+  }
+
+  /* Game board - Perfect desktop spacing */
+  .fortune-board {
+    padding: 1.5rem;
+  }
+
+  .fortune-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  .fortune-tile {
+    width: 80px;
+    height: 80px;
+  }
+
+  .tile-face {
+    font-size: 1.75rem;
+  }
+
+  .tile-icon {
+    font-size: 2rem;
+  }
+}
+
+/* Desktop (1024px and above) - Enhanced spacing */
+@media (min-width: 1024px) {
+  .fortune-header {
+    padding: 0.75rem 2rem;
+    min-height: 80px;
+  }
+
+  .vault-orb {
+    width: 56px;
+    height: 56px;
+    font-size: 1.75rem;
+  }
+
+  .fortune-name {
+    font-size: 1.75rem;
+  }
+
+  .fortune-sub {
+    font-size: 0.875rem;
+  }
+
+  .hud-card {
+    min-width: 120px;
+    padding: 1rem 1.25rem;
+  }
+
+  .hud-label {
+    font-size: 0.75rem;
+  }
+
+  .hud-value {
+    font-size: 1.25rem;
+  }
+
+  .hud-cashout {
+    min-width: 140px;
+    height: 44px;
+    font-size: 0.875rem;
+  }
+
+  .hud-exit {
+    min-width: 100px;
+    height: 44px;
+    font-size: 0.875rem;
+  }
+
+  .fortune-grid {
+    gap: 1rem;
+    padding: 0.75rem;
+  }
+
+  .fortune-tile {
+    width: 90px;
+    height: 90px;
+  }
+
+  .tile-face {
+    font-size: 2rem;
+  }
+
+  .tile-icon {
+    font-size: 2.25rem;
+  }
+}
+
+/* Large desktop (1200px and above) - Optimal spacing */
+@media (min-width: 1200px) {
+  .fortune-header {
+    padding: 1rem 2.5rem;
+  }
+
+  .fortune-grid {
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  .fortune-tile {
+    width: 100px;
+    height: 100px;
+    border-radius: 12px;
+  }
+
+  .tile-face {
+    font-size: 2.25rem;
+  }
+
+  .tile-icon {
+    font-size: 2.5rem;
+  }
+}
+
+/* Small mobile screens - Further optimization */
+@media (max-width: 360px) {
+  .fortune-header {
+    padding: 0.5rem;
+    min-height: 56px;
+  }
+
+  .vault-orb {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+
+  .fortune-name {
+    font-size: 1.25rem;
+  }
+
+  .fortune-sub {
+    font-size: 0.75rem;
+  }
+
+  .fortune-grid {
+    gap: 0.375rem;
+  }
+
+  .fortune-tile {
+    width: 65px;
+    height: 65px;
+  }
+
+  .tile-face {
+    font-size: 1.375rem;
+  }
+
+  .tile-icon {
+    font-size: 1.5rem;
+  }
+
+  .hud-card {
+    padding: 0.5rem 0.375rem;
+  }
+
+  .hud-label {
+    font-size: 0.65rem;
+  }
+
+  .hud-value {
+    font-size: 0.875rem;
+  }
+
+  .hud-cashout, .hud-exit {
+    height: 36px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Landscape mobile - Adjust spacing */
+@media (max-height: 600px) and (orientation: landscape) {
+  .fortune-header {
+    min-height: 56px;
+    padding: 0.5rem;
+  }
+
+  .fortune-brand {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0;
+  }
+
+  .vault-orb {
+    width: 36px;
+    height: 36px;
+    font-size: 1.125rem;
+  }
+
+  .fortune-name {
+    font-size: 1.125rem;
+    margin-bottom: 0;
+  }
+
+  .fortune-sub {
+    font-size: 0.7rem;
+  }
+
+  .fortune-hud {
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 0.5rem;
+  }
+
+  .last-result {
+    grid-column: span 1;
+  }
+
+  .hud-actions {
+    grid-column: span 3;
+  }
+
+  .fortune-grid {
+    gap: 0.375rem;
+  }
+
+  .fortune-tile {
+    width: 60px;
+    height: 60px;
+  }
+
+  .tile-face {
+    font-size: 1.25rem;
+  }
+
+  .tile-icon {
+    font-size: 1.5rem;
+  }
+}
+
+/* =========================
+   ANIMATIONS
+   ========================= */
+@keyframes gentlePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes gentleGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+  }
+}
+
+@keyframes tileReveal {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes trapShake {
+  0%, 100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(3deg);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+}
+
+/* =========================
+   UTILITY CLASSES
+   ========================= */
+.hidden {
+  display: none !important;
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* iOS Safe Areas */
+@supports (padding: max(0px)) {
+  .fortune-stage {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* =========================
+   FLOATING AUDIO CONTROL
+   ========================= */
+.floating-audio-control {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #000;
+  font-size: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: gentleFloat 3s infinite ease-in-out;
+}
+
+.floating-audio-control:hover {
+  background: rgba(251, 191, 36, 1);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
+}
+
+.floating-audio-control:active {
+  transform: scale(0.95);
+}
+
+/* Animation for floating effect */
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Responsive adjustments for floating button */
+@media (max-width: 768px) {
+  .floating-audio-control {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-audio-control {
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+    bottom: 12px;
+    right: 12px;
+  }
+}
+
+/* Hide the floating button when stake modal is open */
+.fortune-stake-backdrop ~ .floating-audio-control {
+  display: none;
+}
+
+/* Hide the header audio control when floating button is shown */
+.audio-control {
+  display: none;
+}
+
+/* Show header audio control on larger screens */
+@media (min-width: 1024px) {
+  .audio-control {
+    display: flex;
+  }
+  
+  .floating-audio-control {
+    display: none;
+  }
+}

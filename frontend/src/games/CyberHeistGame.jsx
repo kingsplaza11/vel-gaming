@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { heistService } from '../services/api';
+import { cyberSound } from '../utils/CyberSoundManager';
 import './CyberHeistGame.css';
 
 const MIN_STAKE = 100;
@@ -35,8 +36,12 @@ const CyberHeistGame = ({ user }) => {
   const [showResultModal, setShowResultModal] = useState(false);
   const [revealedHacks, setRevealedHacks] = useState([]);
   const [pulseAnimation, setPulseAnimation] = useState(false);
+  const [isMuted, setIsMuted] = useState(cyberSound.isMuted);
+  const [isBgMuted, setIsBgMuted] = useState(cyberSound.backgroundMusicMuted);
 
   const animationTimers = useRef([]);
+  const scanningInterval = useRef(null);
+  const dataStreamInterval = useRef(null);
   const isMounted = useRef(true);
 
   const banks = [
@@ -51,6 +56,95 @@ const CyberHeistGame = ({ user }) => {
   const spotBalance = Number(getSpotBalance() || 0);
   const formatNaira = (v) => `₦${Number(v || 0).toLocaleString("en-NG")}`;
 
+  /** ---------- SOUND EFFECTS ---------- */
+  useEffect(() => {
+    // Start background music automatically
+    if (!cyberSound.backgroundMusicMuted) {
+      cyberSound.playBackgroundMusic();
+    }
+
+    return () => {
+      cyberSound.cleanup();
+      if (scanningInterval.current) clearInterval(scanningInterval.current);
+      if (dataStreamInterval.current) clearInterval(dataStreamInterval.current);
+    };
+  }, []);
+
+  // Play sounds based on phase changes
+  useEffect(() => {
+    if (!cyberSound.isMuted) {
+      switch(phase) {
+        case 'scanning':
+          cyberSound.playScanningSound();
+          scanningInterval.current = setInterval(() => {
+            cyberSound.playScanningSound();
+          }, 1200);
+          break;
+        case 'infiltrating':
+          cyberSound.playInfiltrationSound();
+          dataStreamInterval.current = setInterval(() => {
+            cyberSound.playDataStreamSound();
+          }, 300);
+          break;
+        case 'hacking':
+          cyberSound.playHackingSound();
+          break;
+        case 'escaping':
+          cyberSound.playEscapeSound();
+          break;
+        case 'result':
+          // Clear intervals
+          if (scanningInterval.current) {
+            clearInterval(scanningInterval.current);
+            scanningInterval.current = null;
+          }
+          if (dataStreamInterval.current) {
+            clearInterval(dataStreamInterval.current);
+            dataStreamInterval.current = null;
+          }
+          break;
+      }
+    } else {
+      // Clear intervals when muted
+      if (scanningInterval.current) {
+        clearInterval(scanningInterval.current);
+        scanningInterval.current = null;
+      }
+      if (dataStreamInterval.current) {
+        clearInterval(dataStreamInterval.current);
+        dataStreamInterval.current = null;
+      }
+    }
+  }, [phase]);
+
+  // Play hack reveal sounds
+  useEffect(() => {
+    if (revealedHacks.length > 0 && !cyberSound.isMuted) {
+      cyberSound.playHackRevealSound();
+    }
+  }, [revealedHacks]);
+
+  // Play win/loss sounds
+  useEffect(() => {
+    if (result && !cyberSound.isMuted) {
+      if (result.win_amount > 0) {
+        cyberSound.playSuccessSound(result.win_tier);
+        cyberSound.playCoinSound();
+      } else {
+        cyberSound.playFailureSound();
+        cyberSound.playAlarmSound();
+      }
+    }
+  }, [result]);
+
+  /** ---------- TOGGLE MUTE ---------- */
+  const toggleMute = () => {
+    const { bgMuted, gameMuted } = cyberSound.toggleMute();
+    setIsMuted(gameMuted);
+    setIsBgMuted(bgMuted);
+    cyberSound.playButtonClick();
+  };
+
   // Cleanup
   useEffect(() => {
     isMounted.current = true;
@@ -58,6 +152,7 @@ const CyberHeistGame = ({ user }) => {
     return () => {
       isMounted.current = false;
       animationTimers.current.forEach(clearTimeout);
+      cyberSound.cleanup();
     };
   }, []);
 
@@ -171,6 +266,9 @@ const CyberHeistGame = ({ user }) => {
   const startHeist = async () => {
     if (heisting || refreshing) return;
 
+    // Play button click sound
+    cyberSound.playButtonClick();
+
     if (walletLoading) {
       setError("Please wait while your balance loads...");
       return;
@@ -192,6 +290,9 @@ const CyberHeistGame = ({ user }) => {
     setResult(null);
     setRevealedHacks([]);
     setShowResultModal(false);
+    
+    // Play start heist sound
+    cyberSound.playStartHeistSound();
     
     startHeistAnimation();
 
@@ -235,11 +336,13 @@ const CyberHeistGame = ({ user }) => {
 
   // Modal handlers
   const handleContinue = async () => {
+    cyberSound.playButtonClick();
     setShowResultModal(false);
     await deepRefresh();
   };
 
   const handleReturnToGames = () => {
+    cyberSound.playButtonClick();
     navigate("/games");
   };
 
@@ -247,13 +350,29 @@ const CyberHeistGame = ({ user }) => {
 
   return (
     <div className="cyber-heist-game">
+      {/* Floating Mute Button */}
+      <button 
+        className={`floating-mute-button ${isMuted ? 'muted' : ''}`}
+        onClick={toggleMute}
+        aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+      >
+        {isMuted ? (
+          <span className="mute-icon">🔇</span>
+        ) : (
+          <span className="speaker-icon">🔊</span>
+        )}
+      </button>
+
       {/* Ambient animation */}
       <div className="ambient-animation"></div>
       
       {/* HEADER */}
       <div className="cyber-header">
         <button 
-          onClick={() => navigate("/games")} 
+          onClick={() => {
+            cyberSound.playButtonClick();
+            navigate("/games");
+          }} 
           className="cyber-back-btn"
           disabled={refreshing}
         >
@@ -281,7 +400,12 @@ const CyberHeistGame = ({ user }) => {
                     key={bank.name}
                     className={`cyber-bank-card animated-bounceIn ${targetBank === bank.name ? 'active pulse' : ''}`}
                     style={{animationDelay: `${banks.indexOf(bank) * 0.1}s`}}
-                    onClick={() => !walletLoading && !refreshing && setTargetBank(bank.name)}
+                    onClick={() => {
+                      if (!walletLoading && !refreshing) {
+                        cyberSound.playButtonClick();
+                        setTargetBank(bank.name);
+                      }
+                    }}
                   >
                     <div className="bank-card-header">
                       <span className="bank-icon">{bank.image}</span>
@@ -309,7 +433,13 @@ const CyberHeistGame = ({ user }) => {
                   type="number"
                   value={betAmount}
                   min={MIN_STAKE}
-                  onChange={(e) => setBetAmount(Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setBetAmount(value);
+                    if (value >= MIN_STAKE) {
+                      cyberSound.playStakeSound();
+                    }
+                  }}
                   disabled={walletLoading || refreshing}
                   placeholder={`Minimum ₦${MIN_STAKE}`}
                 />
@@ -337,7 +467,7 @@ const CyberHeistGame = ({ user }) => {
 
       {/* GAME DISPLAY */}
       {!showModal && (
-        <div className="cyber-terminal">
+        <div className="">
           <div className={`cyber-terminal-screen cyber-screen--${phase}`}>
             
             {phase === 'scanning' && (
@@ -404,6 +534,9 @@ const CyberHeistGame = ({ user }) => {
                       <div className="hack-name-reveal">
                         {hack.name}
                       </div>
+                      <div className="hack-success-rate">
+                        Success: {Math.round((hack.success_rate || 0.5) * 100)}%
+                      </div>
                     </div>
                   ))}
                   
@@ -467,12 +600,6 @@ const CyberHeistGame = ({ user }) => {
                 <div className="financial-row total" style={{ 
                   color: result.win_amount > 0 ? '#10B981' : '#EF4444'
                 }}>
-                  <span>Result:</span>
-                  <span>
-                    {result.win_amount > 0 
-                      ? `+${formatNaira(result.win_amount - result.bet_amount)}`
-                      : `-${formatNaira(result.bet_amount - result.win_amount)}`}
-                  </span>
                 </div>
               </div>
               

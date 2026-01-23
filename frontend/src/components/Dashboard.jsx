@@ -1,11 +1,14 @@
 // src/pages/Dashboard.jsx
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { useLoading } from "../contexts/LoadingContext"; // Use useLoading hook
 import "./Dashboard.css";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { startGameLoading } = useLoading(); // Use the hook
+  const [clickedGame, setClickedGame] = useState(null);
 
   const games = [
     // ===== FORTUNE SERIES (POPULAR) =====
@@ -17,7 +20,8 @@ const Dashboard = () => {
       popular: true,
       category: "Fortune Series",
       players: "5.2k",
-      multiplier: "1000x"
+      multiplier: "1000x",
+      loadingAnimation: "fortune"
     },
     {
       id: "fortune_tiger",
@@ -27,7 +31,8 @@ const Dashboard = () => {
       popular: true,
       category: "Fortune Series",
       players: "8.7k",
-      multiplier: "5000x"
+      multiplier: "5000x",
+      loadingAnimation: "fortune"
     },
     {
       id: "fortune_rabbit",
@@ -37,7 +42,8 @@ const Dashboard = () => {
       popular: true,
       category: "Fortune Series",
       players: "4.3k",
-      multiplier: "2500x"
+      multiplier: "2500x",
+      loadingAnimation: "fortune"
     },
 
     // ===== CORE GAMES =====
@@ -49,7 +55,8 @@ const Dashboard = () => {
       popular: false,
       category: "Crash Game",
       players: "9.8k",
-      multiplier: "10000x"
+      multiplier: "10000x",
+      loadingAnimation: "rocket"
     },
     {
       id: "fishing",
@@ -59,7 +66,8 @@ const Dashboard = () => {
       popular: false,
       category: "Arcade",
       players: "3.2k",
-      multiplier: "200x"
+      multiplier: "200x",
+      loadingAnimation: "ocean"
     },
     {
       id: "treasure",
@@ -69,7 +77,8 @@ const Dashboard = () => {
       popular: false,
       category: "Adventure",
       players: "2.7k",
-      multiplier: "1000x"
+      multiplier: "1000x",
+      loadingAnimation: "treasure"
     },
     {
       id: "potion",
@@ -79,7 +88,8 @@ const Dashboard = () => {
       popular: false,
       category: "Puzzle",
       players: "1.9k",
-      multiplier: "500x"
+      multiplier: "500x",
+      loadingAnimation: "magic"
     },
     {
       id: "pyramid",
@@ -89,7 +99,8 @@ const Dashboard = () => {
       popular: false,
       category: "Adventure",
       players: "3.5k",
-      multiplier: "750x"
+      multiplier: "750x",
+      loadingAnimation: "egypt"
     },
     {
       id: "heist",
@@ -99,7 +110,8 @@ const Dashboard = () => {
       popular: false,
       category: "Strategy",
       players: "4.1k",
-      multiplier: "1500x"
+      multiplier: "1500x",
+      loadingAnimation: "cyber"
     },
     {
       id: "minesweeper",
@@ -109,7 +121,8 @@ const Dashboard = () => {
       popular: false,
       category: "Strategy",
       players: "2.8k",
-      multiplier: "3000x"
+      multiplier: "3000x",
+      loadingAnimation: "mine"
     },
     {
       id: "tower",
@@ -119,7 +132,8 @@ const Dashboard = () => {
       popular: false,
       category: "Arcade",
       players: "2.1k",
-      multiplier: "400x"
+      multiplier: "400x",
+      loadingAnimation: "block"
     },
     {
       id: "cards",
@@ -129,7 +143,8 @@ const Dashboard = () => {
       popular: false,
       category: "Card Game",
       players: "1.6k",
-      multiplier: "200x"
+      multiplier: "200x",
+      loadingAnimation: "card"
     },
     {
       id: "guessing",
@@ -139,7 +154,8 @@ const Dashboard = () => {
       popular: false,
       category: "Prediction",
       players: "3.9k",
-      multiplier: "50x"
+      multiplier: "50x",
+      loadingAnimation: "number"
     },
     {
       id: "colorswitch",
@@ -149,17 +165,33 @@ const Dashboard = () => {
       popular: false,
       category: "Arcade",
       players: "2.4k",
-      multiplier: "100x"
+      multiplier: "100x",
+      loadingAnimation: "color"
     },
   ];
 
   const popularGames = games.filter((g) => g.popular);
   const allGames = games.filter((g) => !g.popular);
 
+  const handleGameClick = (game) => {
+    // Set the clicked game for visual feedback
+    setClickedGame(game.id);
+    
+    // Start the loading animation
+    startGameLoading(game);
+    
+    // Navigate after delay
+    setTimeout(() => {
+      navigate(game.path);
+      // Reset clicked state after navigation
+      setTimeout(() => setClickedGame(null), 500);
+    }, 5000); // 5 seconds delay
+  };
+
   const GameCard = ({ game, highlight = false }) => (
     <div
-      className={`game-card ${highlight ? "popular" : ""}`}
-      onClick={() => navigate(game.path)}
+      className={`game-card ${highlight ? "popular" : ""} ${clickedGame === game.id ? "clicked" : ""}`}
+      onClick={() => handleGameClick(game)}
     >
       <div className="game-card-inner">
         <div className="game-image-container">
@@ -207,7 +239,12 @@ const Dashboard = () => {
       {/* ================= SLOTS FLOATING BUTTON ================= */}
       <button 
         className="slots-floating-btn"
-        onClick={() => navigate("/slots")}
+        onClick={() => handleGameClick({
+          id: "slots",
+          name: "Golden Slots",
+          path: "/slots",
+          loadingAnimation: "slot"
+        })}
         aria-label="Play Golden Slots"
       >
         <div className="slots-btn-glow"></div>

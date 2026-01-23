@@ -8,15 +8,16 @@ import React, {
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../contexts/WalletContext";
 import { fortuneService } from "../../services/api";
+import { rabbitSound } from "../../utils/RabbitSoundManager";
 import toast from "react-hot-toast";
-import "./fortune.css";
+import "./fortunerabbit.css"; // We'll create this CSS file
 
-const GRID_SIZE = 25; // Rabbit has larger grid
+const GRID_SIZE = 16; // Changed to 4x4 like Tiger
 const MINIMUM_STAKE = 100;
 
 export default function FortuneRabbit() {
   const navigate = useNavigate();
-  const { wallet, loading: walletLoading, refreshWallet, availableBalance  } = useWallet();
+  const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet();
 
   /* =========================
      STATE
@@ -25,18 +26,20 @@ export default function FortuneRabbit() {
   const [bet, setBet] = useState("");
   const [starting, setStarting] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
+  const [muteState, setMuteState] = useState(rabbitSound.getMuteState());
   const [gameConfig, setGameConfig] = useState({
     title: "Fortune Rabbit",
     icon: "🐰",
     grid_size: GRID_SIZE,
     min_stake: MINIMUM_STAKE,
-    risk_level: "low",
+    risk_level: "low"
   });
 
   const [stageEffect, setStageEffect] = useState("");
   const [shake, setShake] = useState(false);
   const [carrotBonus, setCarrotBonus] = useState(false);
   const [carrotsCollected, setCarrotsCollected] = useState(0);
+  const [highlightTile, setHighlightTile] = useState(null);
 
   const [game, setGame] = useState({
     status: "idle",
@@ -52,7 +55,7 @@ export default function FortuneRabbit() {
       id: i,
       revealed: false,
       kind: null,
-      hasCarrot: false,
+      multiplier_value: null,
     }))
   );
 
@@ -64,68 +67,71 @@ export default function FortuneRabbit() {
   const unlockTimeoutRef = useRef(null);
 
   /* =========================
+     AUDIO CONTROLS
+  ========================= */
+  const toggleMute = () => {
+    const { bgMuted, gameMuted } = rabbitSound.toggleMute();
+    setMuteState({ backgroundMusicMuted: bgMuted, gameSoundsMuted: gameMuted });
+    
+    const bgText = bgMuted ? "Background music muted" : "Background music unmuted";
+    const gameText = gameMuted ? "Game sounds muted" : "Game sounds active";
+    
+    toast(
+      <div>
+        <div>{bgText}</div>
+        <div>{gameText}</div>
+      </div>,
+      {
+        icon: bgMuted && gameMuted ? "🔇" : bgMuted ? "🎵" : gameMuted ? "🔊" : "🐰"
+      }
+    );
+  };
+
+  /* =========================
      GAME RESULTS CONFIGURATION
-     Updated to match backend probabilities (40% above 1.5x)
   ========================= */
   const resultConfig = useMemo(() => ({
-    // 40% chance above 1.5x - Good wins
     "safe": {
       icon: "💰",
       label: "Bonus",
-      color: "var(--success)",
-      effect: "effect-boost",
-      sound: "win"
+      color: "#10b981", // Green
+      effect: "effect-small-win",
     },
     "carrot_bonus": {
       icon: "🥕",
       label: "Carrot Bonus",
-      color: "var(--success)",
-      effect: "effect-carrot-bonus",
-      sound: "bonus"
+      color: "#fbbf24", // Yellow
+      effect: "effect-small-win",
     },
-    
-    // 30% chance below 1.5x - Small wins
     "small_win": {
       icon: "💸",
       label: "Small Win",
-      color: "var(--warning)",
+      color: "#f59e0b", // Orange
       effect: "effect-small-win",
-      sound: "small-win"
     },
-    
-    // 15% chance penalty
     "penalty": {
       icon: "⚠️",
       label: "Penalty",
-      color: "var(--warning)",
+      color: "#f97316", // Orange
       effect: "effect-penalty",
-      sound: "penalty"
     },
-    
-    // 10% chance trap
     "trap": {
       icon: "💣",
       label: "Trap",
-      color: "var(--danger)",
+      color: "#ef4444", // Red
       effect: "effect-game_over",
-      sound: "trap"
     },
-    
-    // 5% chance reset
     "reset": {
       icon: "🔄",
       label: "Reset",
-      color: "var(--info)",
+      color: "#8b5cf6", // Purple
       effect: "effect-reset",
-      sound: "reset"
     },
-    
     "auto_cashout": {
       icon: "⏰",
       label: "Auto Cashout",
-      color: "var(--success)",
+      color: "#10b981", // Green
       effect: "effect-cashout",
-      sound: "cashout"
     }
   }), []);
 
@@ -148,7 +154,7 @@ export default function FortuneRabbit() {
         id: i,
         revealed: false,
         kind: null,
-        hasCarrot: false,
+        multiplier_value: null,
       }))
     );
 
@@ -159,6 +165,9 @@ export default function FortuneRabbit() {
     setCarrotBonus(false);
     setCarrotsCollected(0);
     setActiveSessionId(null);
+    setHighlightTile(null);
+    
+    rabbitSound.stopBackgroundMusic();
     
     if (unlockTimeoutRef.current) {
       clearTimeout(unlockTimeoutRef.current);
@@ -192,6 +201,9 @@ export default function FortuneRabbit() {
     console.log("[FortuneRabbit] Starting game with bet:", betAmount);
     setStarting(true);
     
+    // Play stake sound (game sound, not background music)
+    rabbitSound.playStake();
+    
     try {
       const res = await fortuneService.startSession({
         game: "fortune_rabbit",
@@ -215,19 +227,36 @@ export default function FortuneRabbit() {
       setActiveSessionId(res.data.session_id);
       setStakeOpen(false);
       
-      const gridSize = res.data.grid_size || GRID_SIZE;
       setTiles(
-        Array.from({ length: gridSize }, (_, i) => ({
+        Array.from({ length: res.data.grid_size || GRID_SIZE }, (_, i) => ({
           id: i,
           revealed: false,
           kind: null,
-          hasCarrot: (i + 1) % 5 === 0, // Every 5th tile starts with a carrot
+          multiplier_value: null,
         }))
       );
       
+      // Start rabbit background music if not muted
+      if (!muteState.backgroundMusicMuted) {
+        rabbitSound.playBackgroundMusic();
+      }
+      
       refreshWallet();
       
-      toast.success("Rabbit game started! Collect carrots for bonuses!");
+      // Rabbit happy hop effect (game sound)
+      rabbitSound.playHappyHop();
+      
+      // Randomly highlight a tile (visual cue)
+      setTimeout(() => {
+        const randomTile = Math.floor(Math.random() * GRID_SIZE);
+        setHighlightTile(randomTile);
+        setTimeout(() => setHighlightTile(null), 2000);
+      }, 1000);
+      
+      toast.success("Rabbit game started! Collect carrots for bonuses!", {
+        icon: "🐰",
+        duration: 2000
+      });
     } catch (e) {
       console.error("[FortuneRabbit] Failed to start game:", e);
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
@@ -263,6 +292,9 @@ export default function FortuneRabbit() {
 
     console.log("[FortuneRabbit] Taking step for tile:", id);
     
+    // Play rabbit hop sound (game sound)
+    rabbitSound.playHop();
+    
     try {
       const res = await fortuneService.takeStep(activeSessionId, {
         tile_id: id,
@@ -280,7 +312,6 @@ export default function FortuneRabbit() {
       const resultInfo = resultConfig[resultType] || { icon: "?", label: "Unknown" };
       
       // Check for carrot bonus
-      const wasCarrotTile = tiles[id]?.hasCarrot;
       const isCarrotBonus = resultType === "carrot_bonus";
       
       setTiles(prev =>
@@ -291,12 +322,15 @@ export default function FortuneRabbit() {
         )
       );
 
+      // Play tile reveal sound (game sound)
+      rabbitSound.playTileSound(resultType);
+
       // Apply visual effect based on result
       setStageEffect(resultInfo.effect || "");
       setTimeout(() => setStageEffect(""), 500);
 
-      // Update carrot count
-      if (wasCarrotTile || isCarrotBonus) {
+      // Update carrot count for carrot bonus
+      if (isCarrotBonus) {
         setCarrotsCollected(prev => prev + 1);
         setCarrotBonus(true);
         setTimeout(() => setCarrotBonus(false), 1000);
@@ -313,8 +347,11 @@ export default function FortuneRabbit() {
         }));
 
         setShake(true);
+        
+        // Play game over sound (game sound)
+        rabbitSound.playGameOverSound();
+        rabbitSound.stopBackgroundMusic();
 
-        // Show result toast
         toast.error(`${resultInfo.label}! Game Over!`, {
           icon: resultInfo.icon,
           duration: 3000,
@@ -338,9 +375,11 @@ export default function FortuneRabbit() {
           step_index: res.data.step_index,
         }));
 
+        setStageEffect("effect-cashout");
+        rabbitSound.playCashoutSound();
+        rabbitSound.stopBackgroundMusic();
         refreshWallet();
 
-        // Show success toast
         toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
           duration: 3000,
         });
@@ -356,19 +395,22 @@ export default function FortuneRabbit() {
       // Handle other results
       console.log("[FortuneRabbit] Tile result:", resultType);
       
-      // Show result toast based on type
+      const oldMultiplier = parseFloat(game.current_multiplier);
+      const newMultiplier = parseFloat(res.data.current_multiplier);
+      const multiplierChange = newMultiplier - oldMultiplier;
+      
       if (resultType === "safe" || resultType === "carrot_bonus") {
-        toast.success(`${resultInfo.label}! +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+        toast.success(`${resultInfo.label}! +${multiplierChange.toFixed(2)}x`, {
           icon: resultInfo.icon,
           duration: 2000,
         });
       } else if (resultType === "small_win") {
-        toast(`${resultInfo.label} +${(parseFloat(res.data.current_multiplier) - parseFloat(game.current_multiplier)).toFixed(2)}x`, {
+        toast(`${resultInfo.label} +${multiplierChange.toFixed(2)}x`, {
           icon: resultInfo.icon,
           duration: 2000,
         });
       } else if (resultType === "penalty") {
-        toast.error(`${resultInfo.label} ${(parseFloat(game.current_multiplier) - parseFloat(res.data.current_multiplier)).toFixed(2)}x`, {
+        toast.error(`${resultInfo.label} -${Math.abs(multiplierChange).toFixed(2)}x`, {
           icon: resultInfo.icon,
           duration: 2000,
         });
@@ -377,6 +419,16 @@ export default function FortuneRabbit() {
           icon: resultInfo.icon,
           duration: 2000,
         });
+      }
+      
+      // Randomly highlight next tile every 2 steps
+      if (game.step_index % 2 === 0) {
+        const unrevealedTiles = tiles.filter(t => !t.revealed && t.id !== id);
+        if (unrevealedTiles.length > 0) {
+          const randomTile = unrevealedTiles[Math.floor(Math.random() * unrevealedTiles.length)].id;
+          setHighlightTile(randomTile);
+          setTimeout(() => setHighlightTile(null), 1500);
+        }
       }
       
       setGame((g) => ({
@@ -421,6 +473,9 @@ export default function FortuneRabbit() {
 
     tapLock.current = true;
     
+    // Play rabbit hop sound (game sound)
+    rabbitSound.playHop();
+    
     toast.loading("Processing cashout...", { id: "cashout" });
 
     try {
@@ -437,10 +492,21 @@ export default function FortuneRabbit() {
       }));
 
       setStageEffect("effect-cashout");
+      rabbitSound.playCashoutSound();
+      rabbitSound.stopBackgroundMusic();
       refreshWallet();
       
       toast.dismiss("cashout");
-      toast.success(`Happy rabbit! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
+      
+      const finalMultiplier = parseFloat(res.data.current_multiplier).toFixed(2);
+      const winAmount = parseFloat(res.data.payout_amount).toLocaleString("en-NG");
+      toast.success(
+        `Happy rabbit! Won ₦${winAmount} (${finalMultiplier}x)`,
+        { 
+          icon: '🏆',
+          duration: 3000
+        }
+      );
 
       setTimeout(() => {
         resetGame();
@@ -487,7 +553,21 @@ export default function FortuneRabbit() {
           });
           setStakeOpen(false);
           
-          toast.success("Recovered Rabbit game session");
+          // Start rabbit background music if not muted
+          if (!muteState.backgroundMusicMuted) {
+            rabbitSound.playBackgroundMusic();
+          }
+          
+          try {
+            const configRes = await fortuneService.getGameConfig("fortune_rabbit");
+            setGameConfig(prev => ({ ...prev, ...configRes.data }));
+          } catch (e) {
+            console.log("Could not load game config:", e);
+          }
+          
+          toast.success("Recovered Rabbit game session", {
+            icon: "🐰"
+          });
         } else {
           localStorage.removeItem('fortune_rabbit_active_session');
         }
@@ -495,7 +575,7 @@ export default function FortuneRabbit() {
         localStorage.removeItem('fortune_rabbit_active_session');
       }
     }
-  }, []);
+  }, [muteState.backgroundMusicMuted]);
 
   /* =========================
      EFFECTS
@@ -505,6 +585,7 @@ export default function FortuneRabbit() {
     checkExistingSession();
     
     return () => {
+      rabbitSound.cleanup();
       resetGame();
     };
   }, [checkExistingSession, resetGame]);
@@ -534,49 +615,38 @@ export default function FortuneRabbit() {
   const currentResult = tiles.find(t => t.revealed && t.id === lastTileRef.current);
   const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
 
+  const allMuted = muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
+  const bgMutedOnly = muteState.backgroundMusicMuted && !muteState.gameSoundsMuted;
+  const gameMutedOnly = !muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
+
   return (
     <div
       className={`fortune-stage rabbit-stage ${game.status} ${stageEffect} ${
         shake ? "shake" : ""
       } ${carrotBonus ? "carrot-bonus-active" : ""}`}
     >
-      {/* HEADER */}
-      <div className="fortune-header">
+      {/* HEADER - Single Row on Desktop */}
+      <div className="fortune-header rabbit-header">
         <div className="fortune-brand">
           <div className="vault-orb rabbit pulse" />
           <div className="fortune-brand-text">
-            <div className="fortune-name">Fortune Rabbit</div>
-            <div className="fortune-sub">Carrot collection adventure</div>
+            <div className="fortune-name rabbit-name">Fortune Rabbit</div>
+            <div className="fortune-sub rabbit-sub">Carrot collection adventure</div>
           </div>
         </div>
 
-        <div className="fortune-hud">
-          <div className="hud-card">
-            <div className="hud-label">MULTI</div>
+        <div className="fortune-hud rabbit-hud">
+          <div className="hud-card rabbit-hud-card">
+            <div className="hud-label rabbit-label">MULTI</div>
             <div className="hud-value highlight rabbit-highlight">
               {parseFloat(game.current_multiplier).toFixed(2)}x
             </div>
           </div>
 
-          <div className="hud-card">
-            <div className="hud-label">STEPS</div>
-            <div className="hud-value">{game.step_index}</div>
+          <div className="hud-card rabbit-hud-card">
+            <div className="hud-label rabbit-label">STEPS</div>
+            <div className="hud-value rabbit-value">{game.step_index}</div>
           </div>
-
-          <div className="hud-card">
-            <div className="hud-label">CARROTS</div>
-            <div className="hud-value carrot-count">{carrotsCollected}</div>
-          </div>
-          
-          {/* Last Result Display */}
-          {resultInfo && game.status === "active" && (
-            <div className="hud-card last-result" style={{ color: resultInfo.color }}>
-              <div className="hud-label">LAST</div>
-              <div className="hud-value">
-                {resultInfo.icon} {resultInfo.label}
-              </div>
-            </div>
-          )}
 
           <button
             className={`hud-cashout rabbit-cashout ${
@@ -588,12 +658,17 @@ export default function FortuneRabbit() {
             CASH OUT
           </button>
 
-          <button className="hud-exit" onClick={() => navigate("/")}>
+          <button className="hud-exit rabbit-exit" onClick={() => navigate("/")}>
             EXIT
+          </button>
+          
+          {/* Audio Control Button */}
+          <button className="audio-control rabbit-audio" onClick={toggleMute}>
+            {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🐰"}
           </button>
         </div>
       </div>
-
+      
       {/* BOARD */}
       <div className="fortune-board rabbit-board">
         <div className="fortune-grid rabbit-grid">
@@ -604,22 +679,22 @@ export default function FortuneRabbit() {
                 key={tile.id}
                 className={`fortune-tile rabbit-tile ${
                   tile.revealed ? tile.kind : ""
-                } ${tile.hasCarrot ? "has-carrot" : ""} ${
+                } ${highlightTile === tile.id ? 'highlight-tile' : ''} ${
                   game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""
                 }`}
                 disabled={tile.revealed || game.status !== "active" || tapLock.current}
                 onClick={() => pickTile(tile.id)}
                 style={tileResultInfo && tile.revealed ? {
                   borderColor: tileResultInfo.color,
-                  boxShadow: `0 0 10px ${tileResultInfo.color}40`
+                  boxShadow: `0 0 15px ${tileResultInfo.color}60`
                 } : {}}
               >
                 <div className="tile-face">
                   {!tile.revealed ? (
                     <>
                       <span className="tile-glyph">🥕</span>
-                      {tile.hasCarrot && !tile.revealed && (
-                        <div className="carrot-glow" />
+                      {highlightTile === tile.id && (
+                        <div className="tile-hint">?</div>
                       )}
                     </>
                   ) : (
@@ -627,9 +702,6 @@ export default function FortuneRabbit() {
                       <span className="tile-icon">
                         {tileResultInfo?.icon || "?"}
                       </span>
-                      {tile.kind === "safe" || tile.kind === "carrot_bonus" ? (
-                        <div className="tile-sparkle"></div>
-                      ) : null}
                     </div>
                   )}
                 </div>
@@ -647,6 +719,9 @@ export default function FortuneRabbit() {
               <div className="overlay-subtitle">Game Over</div>
               <div className="overlay-multiplier">
                 Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
+              </div>
+              <div className="overlay-carrots">
+                Carrots collected: {carrotsCollected}
               </div>
             </div>
           </div>
@@ -667,19 +742,9 @@ export default function FortuneRabbit() {
             </div>
           </div>
         )}
-        
-        {tapLock.current && game.status === "active" && (
-          <div className="game-overlay processing">
-            <div className="overlay-content">
-              <div className="spinner large"></div>
-              <div className="overlay-title">Rabbit is hopping...</div>
-              <div className="overlay-subtitle">Please wait</div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* STAKE MODAL */}
+      {/* STAKE MODAL with Line Breaker */}
       {stakeOpen && (
         <div className="fortune-stake-backdrop">
           <div className="fortune-stake-modal rabbit-modal">
@@ -727,6 +792,25 @@ export default function FortuneRabbit() {
               </div>
             )}
 
+            <div className="stake-quick-buttons">
+              {[100, 500, 1000].map(amount => (
+                <button
+                  key={amount}
+                  className="quick-bet-btn"
+                  onClick={() => setBet(Math.min(amount, walletBalance).toString())}
+                >
+                  ₦{amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+
+            {/* LINE BREAKER */}
+            <div className="stake-line-breaker">
+              <div className="line-left"></div>
+              <div className="line-text">Ready to Hop?</div>
+              <div className="line-right"></div>
+            </div>
+
             <div className="stake-actions">
               <button
                 className={`stake-btn gold rabbit-btn ${
@@ -741,7 +825,7 @@ export default function FortuneRabbit() {
                     Starting...
                   </>
                 ) : (
-                  "Start Game"
+                  `Start Game`
                 )}
               </button>
               <button
@@ -755,31 +839,15 @@ export default function FortuneRabbit() {
         </div>
       )}
       
-      {/* Provably Fair Button */}
-      {game.status === "cashed_out" && (
-        <div className="provably-fair-section">
-          <button 
-            className="provably-fair-btn"
-            onClick={async () => {
-              try {
-                const res = await fortuneService.revealSeed(activeSessionId);
-                toast.success(
-                  <div>
-                    <div>Server Seed: {res.data.server_seed}</div>
-                    <div>Client Seed: {res.data.client_seed}</div>
-                    <div>Hash: {res.data.server_seed_hash}</div>
-                  </div>,
-                  { duration: 10000 }
-                );
-              } catch (e) {
-                toast.error("Failed to reveal seeds");
-              }
-            }}
-          >
-            Verify Fairness
-          </button>
-        </div>
-      )}
+      {/* Floating Audio Control */}
+      <button 
+        className="floating-audio-control rabbit-floating" 
+        onClick={toggleMute}
+        aria-label={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+        title={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+      >
+        {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🐰"}
+      </button>
     </div>
   );
 }

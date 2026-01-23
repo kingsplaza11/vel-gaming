@@ -1,0 +1,1272 @@
+/* fortunerabbit.css - RABBIT THEME STYLING - COMPACT NAVBAR */
+
+/* =========================
+   CSS RESET & BASE STYLES
+   ========================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.rabbit-stage {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #0a0f0a 0%, #1a2a1a 100%);
+  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   MOBILE HEADER - COMPACT HEIGHT
+   ========================= */
+.rabbit-header {
+  padding: 0.5rem 0.75rem; /* Reduced padding */
+  background: rgba(16, 185, 129, 0.1);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  flex-shrink: 0;
+  min-height: 56px; /* Reduced from 64px */
+}
+
+/* Brand section - Centered on mobile */
+.rabbit-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.375rem; /* Reduced gap */
+  margin-bottom: 0.5rem; /* Reduced margin */
+}
+
+.vault-orb.rabbit {
+  width: 40px; /* Reduced from 48px */
+  height: 40px; /* Reduced from 48px */
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem; /* Reduced from 1.5rem */
+  animation: rabbitPulse 2s infinite ease-in-out;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4); /* Reduced shadow */
+}
+
+@keyframes rabbitPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+  }
+}
+
+.rabbit-brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rabbit-name {
+  font-size: 1.25rem; /* Reduced from 1.5rem */
+  font-weight: 700;
+  background: linear-gradient(135deg, #10b981, #059669);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.125rem; /* Reduced margin */
+  line-height: 1.1;
+}
+
+.rabbit-sub {
+  font-size: 0.75rem; /* Reduced from 0.875rem */
+  color: rgba(16, 185, 129, 0.7);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+/* =========================
+   MOBILE HUD - COMPACT
+   ========================= */
+.rabbit-hud {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.375rem; /* Reduced gap */
+  margin-bottom: 0.5rem; /* Reduced margin */
+}
+
+.hud-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 6px; /* Reduced border radius */
+  padding: 0.5rem 0.375rem; /* Reduced padding */
+  text-align: center;
+  backdrop-filter: blur(5px);
+  min-height: 45px; /* Fixed minimum height */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hud-label.rabbit {
+  font-size: 0.65rem; /* Reduced from 0.7rem */
+  color: rgba(16, 185, 129, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.125rem; /* Reduced margin */
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.hud-value {
+  font-size: 0.875rem; /* Reduced from 1rem */
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.hud-value.rabbit-highlight {
+  color: #10b981;
+  text-shadow: 0 0 6px rgba(16, 185, 129, 0.3); /* Reduced shadow */
+  animation: rabbitGlow 2s infinite;
+}
+
+@keyframes rabbitGlow {
+  0%, 100% {
+    text-shadow: 0 0 6px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  }
+}
+
+.last-result {
+  grid-column: span 2;
+  padding: 0.375rem; /* Reduced padding */
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.last-result .hud-label {
+  font-size: 0.6rem; /* Reduced from 0.65rem */
+  color: rgba(16, 185, 129, 0.6);
+}
+
+.last-result .hud-value {
+  font-size: 0.8rem; /* Reduced from 0.875rem */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+/* Action Buttons Grid - Mobile 2×2 */
+.hud-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.375rem; /* Reduced gap */
+  grid-column: span 2;
+}
+
+.hud-cashout.rabbit-cashout {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  border-radius: 6px; /* Reduced border radius */
+  padding: 0.625rem; /* Reduced padding */
+  font-weight: 600;
+  font-size: 0.7rem; /* Reduced from 0.75rem */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  height: 36px; /* Reduced from 40px */
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-cashout.rabbit-cashout:hover:not(.disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.4); /* Reduced shadow */
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+.hud-cashout.rabbit-cashout.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.hud-exit.rabbit-exit {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px; /* Reduced border radius */
+  padding: 0.625rem; /* Reduced padding */
+  font-size: 0.7rem; /* Reduced from 0.75rem */
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 36px; /* Reduced from 40px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-exit.rabbit-exit:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* Audio Control - Centered below grid */
+.audio-control.rabbit-audio {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  border-radius: 50%;
+  width: 36px; /* Reduced from 40px */
+  height: 36px; /* Reduced from 40px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem; /* Reduced from 1.125rem */
+  margin: 0.375rem auto 0; /* Reduced margin */
+  grid-column: span 2;
+  align-self: center;
+}
+
+.audio-control.rabbit-audio:hover {
+  background: rgba(16, 185, 129, 0.2);
+  transform: scale(1.1);
+}
+
+/* =========================
+   MOBILE GAME BOARD - REDUCED HEIGHT
+   ========================= */
+.rabbit-board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem; /* Reduced padding */
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Garden scene background */
+.garden-scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(22, 163, 74, 0.15) 0%, transparent 50%);
+  opacity: 0.4;
+  z-index: 0;
+}
+
+/* Perfectly centered grid with proper spacing */
+.rabbit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.375rem; /* Reduced gap */
+  width: fit-content;
+  margin: 0 auto;
+  padding: 0.125rem; /* Reduced padding */
+  z-index: 1;
+  position: relative;
+}
+
+/* Tiles with perfect spacing and alignment */
+.rabbit-tile {
+  width: 60px; /* Reduced from 70px */
+  height: 60px; /* Reduced from 70px */
+  background: linear-gradient(135deg, rgba(30, 41, 30, 0.8), rgba(40, 51, 40, 0.6));
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px; /* Reduced from 10px */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.rabbit-tile:hover:not(.disabled) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.25); /* Reduced shadow */
+  border-color: rgba(16, 185, 129, 0.6);
+  background: linear-gradient(135deg, rgba(40, 51, 40, 0.9), rgba(50, 61, 50, 0.7));
+}
+
+.rabbit-tile.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tile-face {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem; /* Reduced from 1.5rem */
+  position: relative;
+}
+
+.tile-glyph {
+  opacity: 0.8;
+  color: rgba(16, 185, 129, 0.5);
+}
+
+.tile-revealed {
+  animation: tileReveal 0.3s ease-out;
+}
+
+.tile-icon {
+  font-size: 1.5rem; /* Reduced from 1.75rem */
+}
+
+/* Highlight tile effect */
+.rabbit-tile.highlight-tile {
+  animation: rabbitTileGlow 1.5s infinite alternate;
+  border-color: rgba(245, 158, 11, 0.8);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4); /* Reduced shadow */
+}
+
+@keyframes rabbitTileGlow {
+  0% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    border-color: rgba(245, 158, 11, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
+    border-color: rgba(245, 158, 11, 1);
+  }
+}
+
+.tile-hint {
+  position: absolute;
+  top: 4px; /* Reduced from 5px */
+  right: 4px; /* Reduced from 5px */
+  background: rgba(245, 158, 11, 0.8);
+  color: #000;
+  width: 16px; /* Reduced from 18px */
+  height: 16px; /* Reduced from 18px */
+  border-radius: 50%;
+  font-size: 0.65rem; /* Reduced from 0.7rem */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* =========================
+   DESKTOP NAVBAR - COMPACT SINGLE ROW
+   ========================= */
+@media (min-width: 768px) {
+  /* Compact single row navbar for desktop */
+  .rabbit-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1.25rem; /* Reduced padding */
+    min-height: 60px; /* Reduced from 72px */
+    gap: 1rem;
+    flex-wrap: nowrap;
+    height: 60px; /* Fixed height */
+  }
+
+  /* Brand section - Horizontal on desktop */
+  .rabbit-brand {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 0.625rem; /* Reduced gap */
+    margin-bottom: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .vault-orb.rabbit {
+    width: 42px; /* Reduced from 48px */
+    height: 42px; /* Reduced from 48px */
+    font-size: 1.3rem; /* Reduced from 1.5rem */
+    flex-shrink: 0;
+  }
+
+  .rabbit-brand-text {
+    align-items: flex-start;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .rabbit-name {
+    font-size: 1.4rem; /* Adjusted for desktop */
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  .rabbit-sub {
+    font-size: 0.75rem; /* Adjusted for desktop */
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  /* HUD section - SINGLE ROW on desktop with perfect spacing */
+  .rabbit-hud {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.625rem; /* Reduced gap */
+    margin-bottom: 0;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    min-width: 0;
+    grid-template-columns: none;
+    height: 100%;
+    flex: 1;
+    max-width: calc(100% - 250px); /* Prevent overflow */
+  }
+
+  .hud-card {
+    min-width: 85px; /* Reduced from 100px */
+    padding: 0.5rem 0.75rem; /* Reduced padding */
+    text-align: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin: 0;
+    border-radius: 6px; /* Reduced border radius */
+    min-height: 40px; /* Reduced height */
+    height: fit-content;
+    align-self: center;
+  }
+
+  .hud-label {
+    font-size: 0.7rem; /* Adjusted for desktop */
+    white-space: nowrap;
+    margin-bottom: 0.125rem; /* Reduced margin */
+    line-height: 1;
+  }
+
+  .hud-value {
+    font-size: 1rem; /* Adjusted for desktop */
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .last-result {
+    grid-column: auto;
+    min-width: 100px; /* Reduced from 120px */
+    flex-shrink: 0;
+  }
+
+  /* Action buttons - inline on desktop */
+  .hud-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 0.625rem; /* Reduced gap */
+    grid-column: auto;
+    grid-template-columns: none;
+    flex-shrink: 0;
+  }
+
+  .hud-cashout.rabbit-cashout {
+    min-width: 100px; /* Reduced from 120px */
+    height: 36px; /* Reduced from 40px */
+    font-size: 0.8rem; /* Adjusted for desktop */
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin: 0;
+    padding: 0.5rem 0.75rem; /* Reduced padding */
+    border-radius: 6px; /* Reduced border radius */
+  }
+
+  .hud-exit.rabbit-exit {
+    min-width: 70px; /* Reduced from 80px */
+    height: 36px; /* Reduced from 40px */
+    font-size: 0.8rem; /* Adjusted for desktop */
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin: 0;
+    padding: 0.5rem 0.75rem; /* Reduced padding */
+    border-radius: 6px; /* Reduced border radius */
+  }
+
+  .audio-control.rabbit-audio {
+    margin: 0;
+    width: 36px; /* Reduced from 40px */
+    height: 36px; /* Reduced from 40px */
+    align-self: center;
+    flex-shrink: 0;
+    grid-column: auto;
+    font-size: 1rem; /* Reduced from 1.125rem */
+  }
+
+  /* Ensure everything stays in one line */
+  .rabbit-brand,
+  .rabbit-hud,
+  .hud-card,
+  .hud-cashout.rabbit-cashout,
+  .hud-exit.rabbit-exit,
+  .audio-control.rabbit-audio {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Prevent line breaks in the header */
+  .rabbit-header > * {
+    flex-shrink: 0;
+  }
+
+  /* Force single line layout */
+  .rabbit-hud > * {
+    flex-shrink: 0;
+  }
+
+  /* Shrink brand on smaller desktop screens */
+  @media (max-width: 900px) {
+    .rabbit-brand {
+      max-width: 35%;
+    }
+    
+    .rabbit-name {
+      font-size: 1.2rem;
+      max-width: 150px;
+    }
+    
+    .rabbit-sub {
+      font-size: 0.7rem;
+      max-width: 150px;
+    }
+    
+    .hud-card {
+      min-width: 75px;
+      padding: 0.5rem 0.625rem;
+    }
+    
+    .hud-label {
+      font-size: 0.65rem;
+    }
+    
+    .hud-value {
+      font-size: 0.9rem;
+    }
+    
+    .hud-cashout.rabbit-cashout {
+      min-width: 90px;
+      font-size: 0.75rem;
+    }
+    
+    .hud-exit.rabbit-exit {
+      min-width: 60px;
+      font-size: 0.75rem;
+    }
+  }
+
+  /* Game board - Perfect desktop spacing */
+  .rabbit-board {
+    padding: 1rem; /* Reduced from 1.5rem */
+  }
+
+  .rabbit-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.625rem; /* Reduced from 0.75rem */
+    padding: 0.375rem; /* Reduced from 0.5rem */
+  }
+
+  .rabbit-tile {
+    width: 70px; /* Reduced from 80px for better mobile-desktop transition */
+    height: 70px; /* Reduced from 80px */
+  }
+
+  .tile-face {
+    font-size: 1.5rem; /* Reduced from 1.75rem */
+  }
+
+  .tile-icon {
+    font-size: 1.75rem; /* Reduced from 2rem */
+  }
+}
+
+/* =========================
+   LARGER DESKTOP ENHANCEMENTS
+   ========================= */
+@media (min-width: 1024px) {
+  .rabbit-header {
+    padding: 0.5rem 1.5rem; /* Adjusted padding */
+    min-height: 60px; /* Keep compact */
+    gap: 1.25rem;
+  }
+
+  .vault-orb.rabbit {
+    width: 44px; /* Keep compact */
+    height: 44px;
+    font-size: 1.4rem;
+  }
+
+  .rabbit-name {
+    font-size: 1.5rem;
+    max-width: 200px;
+  }
+
+  .rabbit-sub {
+    font-size: 0.8rem;
+    max-width: 200px;
+  }
+
+  .hud-card {
+    min-width: 90px; /* Keep reasonable size */
+    padding: 0.625rem 0.875rem;
+  }
+
+  .hud-label {
+    font-size: 0.7rem;
+  }
+
+  .hud-value {
+    font-size: 1.1rem;
+  }
+
+  .hud-cashout.rabbit-cashout {
+    min-width: 110px; /* Reduced from 140px */
+    height: 38px; /* Slightly increased */
+    font-size: 0.85rem;
+  }
+
+  .hud-exit.rabbit-exit {
+    min-width: 80px; /* Reduced from 100px */
+    height: 38px;
+    font-size: 0.85rem;
+  }
+
+  .rabbit-hud {
+    gap: 0.875rem;
+  }
+
+  /* Prevent wrapping */
+  .rabbit-header {
+    overflow: hidden;
+  }
+
+  .rabbit-brand {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .rabbit-hud {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .rabbit-grid {
+    gap: 0.875rem;
+    padding: 0.5rem;
+  }
+
+  .rabbit-tile {
+    width: 80px; /* Increased for larger screens */
+    height: 80px;
+  }
+
+  .tile-face {
+    font-size: 1.75rem;
+  }
+
+  .tile-icon {
+    font-size: 2rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .rabbit-header {
+    padding: 0.625rem 2rem; /* Slightly increased */
+    gap: 1.5rem;
+  }
+
+  /* Ensure navbar stays single row */
+  .rabbit-brand {
+    flex: 0 0 auto;
+  }
+
+  .rabbit-hud {
+    flex: 0 1 auto;
+  }
+
+  /* Prevent overflow */
+  .rabbit-header {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .rabbit-grid {
+    gap: 1rem;
+    padding: 0.625rem;
+  }
+
+  .rabbit-tile {
+    width: 90px;
+    height: 90px;
+    border-radius: 10px; /* Slightly increased */
+  }
+
+  .tile-face {
+    font-size: 2rem;
+  }
+
+  .tile-icon {
+    font-size: 2.25rem;
+  }
+}
+
+/* =========================
+   EXTRA COMPACT FOR SMALLER DESKTOPS
+   ========================= */
+@media (min-width: 768px) and (max-width: 850px) {
+  .rabbit-header {
+    padding: 0.375rem 1rem;
+    gap: 0.5rem;
+    min-height: 56px;
+  }
+  
+  .vault-orb.rabbit {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+  }
+  
+  .rabbit-name {
+    font-size: 1.1rem;
+    max-width: 120px;
+  }
+  
+  .rabbit-sub {
+    font-size: 0.65rem;
+    max-width: 120px;
+  }
+  
+  .hud-card {
+    min-width: 70px;
+    padding: 0.375rem 0.5rem;
+  }
+  
+  .hud-label {
+    font-size: 0.6rem;
+  }
+  
+  .hud-value {
+    font-size: 0.85rem;
+  }
+  
+  .hud-cashout.rabbit-cashout {
+    min-width: 85px;
+    height: 34px;
+    font-size: 0.7rem;
+    padding: 0.375rem 0.625rem;
+  }
+  
+  .hud-exit.rabbit-exit {
+    min-width: 55px;
+    height: 34px;
+    font-size: 0.7rem;
+    padding: 0.375rem 0.625rem;
+  }
+  
+  .audio-control.rabbit-audio {
+    width: 34px;
+    height: 34px;
+    font-size: 0.9rem;
+  }
+}
+
+/* =========================
+   SMALL MOBILE FURTHER REDUCTIONS
+   ========================= */
+@media (max-width: 360px) {
+  .rabbit-header {
+    padding: 0.375rem;
+    min-height: 52px;
+  }
+
+  .vault-orb.rabbit {
+    width: 36px;
+    height: 36px;
+    font-size: 1.125rem;
+  }
+
+  .rabbit-name {
+    font-size: 1.125rem;
+  }
+
+  .rabbit-sub {
+    font-size: 0.7rem;
+  }
+
+  .rabbit-grid {
+    gap: 0.25rem;
+  }
+
+  .rabbit-tile {
+    width: 55px;
+    height: 55px;
+  }
+
+  .tile-face {
+    font-size: 1.125rem;
+  }
+
+  .tile-icon {
+    font-size: 1.375rem;
+  }
+
+  .hud-card {
+    padding: 0.375rem 0.25rem;
+    min-height: 40px;
+  }
+
+  .hud-label {
+    font-size: 0.6rem;
+  }
+
+  .hud-value {
+    font-size: 0.8rem;
+  }
+
+  .hud-cashout.rabbit-cashout, .hud-exit.rabbit-exit {
+    height: 34px;
+    font-size: 0.65rem;
+    padding: 0.5rem;
+  }
+
+  .stake-badge {
+    width: 55px;
+    height: 55px;
+    font-size: 1.8rem;
+  }
+
+  .stake-title .t1 {
+    font-size: 1.4rem;
+  }
+
+  .stake-title .t2 {
+    font-size: 0.75rem;
+  }
+
+  .stake-line-breaker .line-text {
+    font-size: 0.7rem;
+    padding: 0 0.375rem;
+  }
+}
+
+/* =========================
+   LANDSCAPE MOBILE - FURTHER HEIGHT REDUCTION
+   ========================= */
+@media (max-height: 600px) and (orientation: landscape) {
+  .rabbit-header {
+    min-height: 48px;
+    padding: 0.25rem;
+  }
+
+  .vault-orb.rabbit {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .rabbit-name {
+    font-size: 1rem;
+    margin-bottom: 0;
+  }
+
+  .rabbit-sub {
+    font-size: 0.65rem;
+  }
+
+  .rabbit-hud {
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .last-result {
+    grid-column: span 1;
+  }
+
+  .hud-actions {
+    grid-column: span 3;
+  }
+
+  .rabbit-grid {
+    gap: 0.25rem;
+  }
+
+  .rabbit-tile {
+    width: 50px;
+    height: 50px;
+  }
+
+  .tile-face {
+    font-size: 1rem;
+  }
+
+  .tile-icon {
+    font-size: 1.25rem;
+  }
+
+  .hud-card {
+    padding: 0.25rem;
+    min-height: 35px;
+  }
+
+  .hud-label {
+    font-size: 0.55rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .hud-value {
+    font-size: 0.75rem;
+  }
+
+  .hud-cashout.rabbit-cashout, 
+  .hud-exit.rabbit-exit {
+    height: 30px;
+    font-size: 0.6rem;
+    padding: 0.375rem;
+  }
+
+  .audio-control.rabbit-audio {
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+  }
+
+  .rabbit-board {
+    padding: 0.25rem;
+  }
+}
+
+/* =========================
+   ANIMATIONS (Unchanged)
+   ========================= */
+@keyframes tileReveal {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================
+   RABBIT STAGE EFFECTS (Unchanged)
+   ========================= */
+.rabbit-stage.shake {
+  animation: rabbitStageShake 0.5s ease-in-out;
+}
+
+@keyframes rabbitStageShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.rabbit-stage.effect-small-win {
+  animation: rabbitSmallWinEffect 0.5s ease;
+}
+
+@keyframes rabbitSmallWinEffect {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2) hue-rotate(5deg);
+  }
+}
+
+.rabbit-stage.effect-penalty {
+  animation: rabbitPenaltyEffect 0.5s ease;
+}
+
+@keyframes rabbitPenaltyEffect {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(0.9) hue-rotate(-5deg);
+  }
+}
+
+.rabbit-stage.effect-reset {
+  animation: rabbitResetEffect 0.5s ease;
+}
+
+@keyframes rabbitResetEffect {
+  0%, 100% {
+    filter: hue-rotate(0);
+  }
+  50% {
+    filter: hue-rotate(120deg) brightness(0.9);
+  }
+}
+
+.rabbit-stage.effect-game_over {
+  animation: rabbitGameOverEffect 1s ease;
+}
+
+@keyframes rabbitGameOverEffect {
+  0% {
+    filter: brightness(1) hue-rotate(0);
+  }
+  50% {
+    filter: brightness(0.8) hue-rotate(60deg);
+  }
+  100% {
+    filter: brightness(0.6) hue-rotate(120deg);
+  }
+}
+
+.rabbit-stage.effect-cashout {
+  animation: rabbitCashoutEffect 1s ease;
+}
+
+@keyframes rabbitCashoutEffect {
+  0%, 100% {
+    filter: brightness(1) hue-rotate(0);
+  }
+  25% {
+    filter: brightness(1.3) hue-rotate(30deg);
+  }
+  50% {
+    filter: brightness(1.5) hue-rotate(60deg);
+  }
+  75% {
+    filter: brightness(1.3) hue-rotate(30deg);
+  }
+}
+
+.rabbit-stage.carrot-bonus-active .rabbit-tile:not(.revealed) {
+  animation: carrotBonusGlow 2s infinite;
+}
+
+@keyframes carrotBonusGlow {
+  0%, 100% {
+    box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.6);
+  }
+}
+
+/* =========================
+   FLOATING AUDIO CONTROL - COMPACT
+   ========================= */
+.floating-audio-control.rabbit-floating {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.85));
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: rabbitFloat 3s infinite ease-in-out;
+}
+
+@keyframes rabbitFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-4px) rotate(5deg);
+  }
+}
+
+.floating-audio-control.rabbit-floating:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(16, 185, 129, 0.9));
+  transform: scale(1.1) rotate(10deg);
+  box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+}
+
+.floating-audio-control.rabbit-floating:active {
+  transform: scale(0.95);
+}
+
+/* Responsive adjustments for floating button */
+@media (max-width: 768px) {
+  .floating-audio-control.rabbit-floating {
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+    bottom: 12px;
+    right: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-audio-control.rabbit-floating {
+    width: 40px;
+    height: 40px;
+    font-size: 1.125rem;
+    bottom: 10px;
+    right: 10px;
+  }
+}
+
+/* Hide the floating button when stake modal is open */
+.fortune-stake-backdrop ~ .floating-audio-control {
+  display: none;
+}
+
+/* Hide header audio control when floating button is shown */
+.audio-control {
+  display: none;
+}
+
+/* Show header audio control on larger screens */
+@media (min-width: 1024px) {
+  .audio-control.rabbit-audio {
+    display: flex;
+  }
+  
+  .floating-audio-control.rabbit-floating {
+    display: none;
+  }
+}
+
+/* =========================
+   UTILITY CLASSES
+   ========================= */
+.hidden {
+  display: none !important;
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* iOS Safe Areas */
+@supports (padding: max(0px)) {
+  .rabbit-stage {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .rabbit-stage {
+    background: #000;
+  }
+  
+  .rabbit-tile {
+    border-width: 3px;
+  }
+  
+  .stake-btn,
+  .hud-cashout,
+  .hud-exit {
+    border: 2px solid currentColor;
+  }
+}

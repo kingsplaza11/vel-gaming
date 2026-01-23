@@ -1,0 +1,642 @@
+/* src/components/LoadingAnimation.css */
+.game-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.loading-content {
+  max-width: 700px;
+  width: 90%;
+  background: linear-gradient(145deg, rgba(26, 28, 45, 0.95), rgba(16, 18, 35, 0.95));
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+.loading-content::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent, 
+    rgba(255, 215, 0, 0.1), 
+    transparent 30%
+  );
+  animation: rotate 4s linear infinite;
+}
+
+/* Subtle game background image */
+.game-background-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.1;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(4px) grayscale(0.5);
+}
+
+.background-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.8) 80%);
+}
+
+.loading-header {
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.loading-title {
+  font-size: 2.2rem;
+  background: linear-gradient(45deg, #FFD700, #FFA500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 10px 0;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0 20px;
+}
+
+.loading-subtitle {
+  color: #A0A0C0;
+  font-size: 1.1rem;
+  margin: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.animation-container {
+  height: 200px;
+  margin: 30px 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+/* Fortune Animation */
+.fortune-animation {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.fortune-wheel {
+  width: 180px;
+  height: 180px;
+  position: relative;
+  margin: 0 auto;
+}
+
+.wheel-outer {
+  width: 100%;
+  height: 100%;
+  border: 4px solid #FFD700;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  animation: spin 3s linear infinite;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.wheel-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.fortune-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+}
+
+.wheel-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+  filter: blur(20px);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.fortune-coins {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.coin {
+  position: absolute;
+  font-size: 24px;
+  color: #FFD700;
+  animation: float 2s ease-in-out infinite;
+}
+
+.coin1 { top: 10%; left: 20%; animation-delay: 0s; }
+.coin2 { top: 60%; left: 80%; animation-delay: 0.5s; }
+.coin3 { top: 80%; left: 40%; animation-delay: 1s; }
+
+/* Rocket Animation */
+.rocket-animation {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.rocket-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: launch 3s ease-in-out infinite;
+}
+
+.rocket-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+}
+
+.rocket-flames {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+}
+
+.flame {
+  width: 10px;
+  height: 30px;
+  background: linear-gradient(to top, #FF4500, #FFD700);
+  border-radius: 50% 50% 0 0;
+  filter: blur(2px);
+  animation: flame 0.5s ease-in-out infinite;
+}
+
+.flame2 { animation-delay: 0.1s; }
+.flame3 { animation-delay: 0.2s; }
+
+/* Ocean Animation */
+.ocean-animation {
+  position: relative;
+  width: 300px;
+  height: 200px;
+  overflow: hidden;
+}
+
+.water-surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, rgba(0, 150, 255, 0.3), transparent);
+  animation: wave 2s ease-in-out infinite;
+}
+
+.ocean-logo-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 100, 200, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 150, 255, 0.3);
+}
+
+.ocean-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+}
+
+.fish {
+  position: absolute;
+  font-size: 24px;
+  color: #00BFFF;
+  animation: swim 4s linear infinite;
+}
+
+.fish1 { top: 30%; animation-delay: 0s; }
+.fish2 { top: 60%; animation-delay: 1s; }
+
+/* Treasure Animation */
+.treasure-animation {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.treasure-chest {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(145deg, rgba(184, 134, 11, 0.1), rgba(139, 69, 19, 0.1));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(184, 134, 11, 0.3);
+  animation: bounce 1s ease-in-out infinite;
+}
+
+.treasure-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+}
+
+/* Magic Animation */
+.magic-animation {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.potion-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(145deg, rgba(138, 43, 226, 0.1), rgba(75, 0, 130, 0.1));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(138, 43, 226, 0.3);
+}
+
+.potion-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+}
+
+/* Cyber Animation */
+.cyber-animation {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.cyber-terminal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(0, 100, 255, 0.1));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 255, 255, 0.3);
+}
+
+.cyber-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+}
+
+/* Slot Animation */
+.slot-animation {
+  position: relative;
+  width: 250px;
+  height: 200px;
+}
+
+.slot-machine {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.slot-reel {
+  width: 60px;
+  height: 80px;
+  background: linear-gradient(145deg, rgba(255, 0, 0, 0.1), rgba(255, 215, 0, 0.1));
+  border: 2px solid rgba(255, 0, 0, 0.3);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  animation: slotSpin 1s ease-in-out infinite;
+}
+
+.reel2 { animation-delay: 0.2s; }
+.reel3 { animation-delay: 0.4s; }
+
+.slot-logo-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+}
+
+/* Default Animation */
+.default-animation {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.default-logo-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.default-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  filter: brightness(1.2) saturate(1.5);
+  position: relative;
+  z-index: 2;
+}
+
+.loading-spinner {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+}
+
+/* Progress Bar */
+.loading-progress {
+  margin-top: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+.progress-text {
+  margin-top: 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #4CAF50;
+}
+
+.progress-hint {
+  font-size: 0.9rem;
+  color: #A0A0C0;
+  margin-top: 5px;
+}
+
+.loading-footer {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.game-tips {
+  padding: 10px 15px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 10px;
+  color: #FFD700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.audio-indicator {
+  padding: 8px 12px;
+  background: rgba(0, 150, 255, 0.1);
+  border-radius: 8px;
+  color: #00BFFF;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.cancel-loading-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #A0A0C0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 3;
+}
+
+.cancel-loading-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Animations */
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.05); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(10deg); }
+}
+
+@keyframes launch {
+  0%, 100% { transform: translate(-50%, -50%); }
+  50% { transform: translate(-50%, -55%); }
+}
+
+@keyframes flame {
+  0%, 100% { height: 20px; opacity: 0.7; }
+  50% { height: 30px; opacity: 1; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes wave {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes swim {
+  0% { left: -30px; transform: scaleX(1); }
+  50% { transform: scaleX(-1); }
+  100% { left: 100%; transform: scaleX(-1); }
+}
+
+@keyframes rise {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-150px);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+@keyframes slotSpin {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}

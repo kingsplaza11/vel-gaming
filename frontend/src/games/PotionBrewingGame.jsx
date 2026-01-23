@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { potionService } from '../services/api';
+import { potionSound } from '../utils/PotionSoundManager';
 import './PotionBrewingGame.css';
 
 const MIN_STAKE = 100;
@@ -44,6 +45,8 @@ const PotionBrewingGame = ({ user }) => {
   const [revealedIngredients, setRevealedIngredients] = useState([]);
   const [pulseAnimation, setPulseAnimation] = useState(false);
   const [gameInfo, setGameInfo] = useState(null);
+  const [isMuted, setIsMuted] = useState(potionSound.isMuted);
+  const [isBgMuted, setIsBgMuted] = useState(potionSound.backgroundMusicMuted);
 
   const timers = useRef([]);
   const isMounted = useRef(true);
@@ -53,6 +56,87 @@ const PotionBrewingGame = ({ user }) => {
   const spotBalance = Number(getSpotBalance() || 0);
 
   const formatNaira = (v) => `₦${Number(v || 0).toLocaleString("en-NG")}`;
+
+  /** ---------- SOUND EFFECTS ---------- */
+  useEffect(() => {
+    // Start background music automatically
+    if (!potionSound.backgroundMusicMuted) {
+      potionSound.playBackgroundMusic();
+    }
+
+    return () => {
+      potionSound.cleanup();
+    };
+  }, []);
+
+  // Play sounds based on phase changes
+  useEffect(() => {
+    if (!potionSound.isMuted) {
+      switch(phase) {
+        case 'ingredients':
+          potionSound.playIngredientDrop();
+          break;
+        case 'heating':
+          potionSound.playFireHeating();
+          potionSound.playFireSounds();
+          break;
+        case 'brewing':
+          potionSound.playBubbleBrew();
+          potionSound.playCauldronBubbles();
+          break;
+        case 'result':
+          // Stop continuous sounds
+          if (potionSound.fireInterval) {
+            clearInterval(potionSound.fireInterval);
+            potionSound.fireInterval = null;
+          }
+          if (potionSound.bubbleInterval) {
+            clearInterval(potionSound.bubbleInterval);
+            potionSound.bubbleInterval = null;
+          }
+          break;
+      }
+    }
+  }, [phase]);
+
+  // Play ingredient reveal sounds
+  useEffect(() => {
+    if (revealedIngredients.length > 0 && !potionSound.isMuted) {
+      const lastIngredient = revealedIngredients[revealedIngredients.length - 1];
+      potionSound.playIngredientReveal();
+      
+      // Play rarity-specific sound
+      if (lastIngredient.rarity) {
+        potionSound.playRaritySound(lastIngredient.rarity);
+      }
+    }
+  }, [revealedIngredients]);
+
+  // Play win/loss sounds
+  useEffect(() => {
+    if (result && !potionSound.isMuted) {
+      if (result.win_amount > 0) {
+        if (result.success_level === 'perfect') {
+          potionSound.playBigWinSound();
+        } else {
+          potionSound.playSuccessSound();
+        }
+        potionSound.playCoinSound();
+      } else if (result.was_cursed) {
+        potionSound.playCursedSound();
+      } else {
+        potionSound.playFailureSound();
+      }
+    }
+  }, [result]);
+
+  /** ---------- TOGGLE MUTE ---------- */
+  const toggleMute = () => {
+    const { bgMuted, gameMuted } = potionSound.toggleMute();
+    setIsMuted(gameMuted);
+    setIsBgMuted(bgMuted);
+    potionSound.playButtonClick();
+  };
 
   /** ---------- FETCH GAME INFO ---------- */
   const fetchGameInfo = useCallback(async () => {
@@ -72,6 +156,7 @@ const PotionBrewingGame = ({ user }) => {
     return () => {
       isMounted.current = false;
       timers.current.forEach(clearTimeout);
+      potionSound.cleanup();
     };
   }, [fetchGameInfo]);
 
@@ -190,6 +275,9 @@ const PotionBrewingGame = ({ user }) => {
   const handleBrew = async () => {
     if (brewing || refreshing) return;
 
+    // Play button click sound
+    potionSound.playButtonClick();
+
     if (walletLoading) {
       alert('Please wait while your balance loads...');
       return;
@@ -211,6 +299,10 @@ const PotionBrewingGame = ({ user }) => {
     setShowModal(false);
     setShowWinModal(false);
     setShowLossModal(false);
+    
+    // Play start brew sound
+    potionSound.playStartBrewSound();
+    
     startAnimation();
 
     try {
@@ -256,11 +348,13 @@ const PotionBrewingGame = ({ user }) => {
 
   /** ---------- MODAL HANDLERS ---------- */
   const handleContinue = async () => {
+    potionSound.playButtonClick();
     setShowWinModal(false);
     await deepRefresh();
   };
 
   const handleTryAgain = async () => {
+    potionSound.playButtonClick();
     setShowLossModal(false);
     await deepRefresh();
   };
@@ -273,12 +367,32 @@ const PotionBrewingGame = ({ user }) => {
   /** ---------- RENDER ---------- */
   return (
     <div className="potion-game">
+      {/* Floating Mute Button */}
+      <button 
+        className={`floating-mute-button ${isMuted ? 'muted' : ''}`}
+        onClick={toggleMute}
+        aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+      >
+        {isMuted ? (
+          <span className="mute-icon">🔇</span>
+        ) : (
+          <span className="speaker-icon">🔊</span>
+        )}
+      </button>
+
       {/* Background ambient animation */}
       <div className="ambient-animation"></div>
       
       {/* ===== HEADER ===== */}
       <header className="game-header">
-        <button className="back-button" onClick={() => navigate('/')} disabled={refreshing}>
+        <button 
+          className="back-button" 
+          onClick={() => {
+            potionSound.playButtonClick();
+            navigate('/');
+          }} 
+          disabled={refreshing}
+        >
           ← Back
         </button>
       </header>
@@ -384,7 +498,10 @@ const PotionBrewingGame = ({ user }) => {
                   key={p.value}
                   className={`potion-type animated-bounceIn ${potionType === p.value ? 'active pulse' : ''}`}
                   style={{animationDelay: `${POTIONS.indexOf(p) * 0.1}s`}}
-                  onClick={() => setPotionType(p.value)}
+                  onClick={() => {
+                    potionSound.playButtonClick();
+                    setPotionType(p.value);
+                  }}
                   disabled={walletLoading || refreshing}
                 >
                   <strong>{p.label}</strong>
@@ -402,7 +519,13 @@ const PotionBrewingGame = ({ user }) => {
                   min={MIN_STAKE}
                   step="100"
                   value={betAmount}
-                  onChange={(e) => setBetAmount(Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setBetAmount(value);
+                    if (value >= MIN_STAKE) {
+                      potionSound.playStakeSound();
+                    }
+                  }}
                   placeholder={`Minimum ₦${MIN_STAKE}`}
                   disabled={walletLoading || refreshing}
                 />

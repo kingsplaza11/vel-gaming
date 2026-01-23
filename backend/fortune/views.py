@@ -42,11 +42,11 @@ def seed_hash(seed: str) -> str:
 
 
 # =====================================================
-# GAME-SPECIFIC LOGIC - UPDATED FOR 40% ABOVE 1.5x WIN CHANCE
+# GAME-SPECIFIC LOGIC - UPDATED FOR SMALL WINS ONLY (BELOW 1.5x)
 # =====================================================
 
 class FortuneMouseEngine:
-    """Fortune Mouse game engine - 40% chance to win above 1.5x"""
+    """Fortune Mouse game engine - Small wins only (below 1.5x), no bonus tiles"""
     
     @staticmethod
     def calculate_step(session: GameSession, tile_id: int) -> tuple[str, Decimal, bool]:
@@ -56,47 +56,44 @@ class FortuneMouseEngine:
         """
         roll = random.random()
         
-        # 40% chance to win above 1.5x multiplier
-        if roll < 0.40:
-            # Generate multiplier strictly above 1.5x for winning steps
-            # Adjusted to ensure multipliers are > 1.5x
-            multiplier_choices = [
-                Decimal("1.51"), Decimal("1.75"), Decimal("2.00"), 
-                Decimal("2.25"), Decimal("2.50"), Decimal("2.75"),
-                Decimal("3.00"), Decimal("3.25"), Decimal("3.50"),
-                Decimal("3.75"), Decimal("4.00"), Decimal("4.50"), Decimal("5.00")
+        # 60% chance for win below 1.5x (no more bonus tiles above 1.5x)
+        if roll < 0.60:
+            # Small wins ONLY below 1.5x, mostly below 1x
+            small_multiplier_choices = [
+                Decimal("0.05"), Decimal("0.10"), Decimal("0.15"), 
+                Decimal("0.20"), Decimal("0.25"), Decimal("0.30"),
+                Decimal("0.35"), Decimal("0.40"), Decimal("0.45"),
+                Decimal("0.50"), Decimal("0.60"), Decimal("0.70"),
+                Decimal("0.80"), Decimal("0.90"), Decimal("1.00"),
+                Decimal("1.10"), Decimal("1.20"), Decimal("1.30"),
+                Decimal("1.40"), Decimal("1.49")  # Strictly below 1.5x
             ]
-            # Weights favoring moderate multipliers (1.5x-3x) more than extreme ones
-            weights = [0.20, 0.18, 0.15, 0.12, 0.10, 
-                      0.08, 0.06, 0.04, 0.03, 0.02, 0.01, 0.005, 0.005]
+            # Weights favoring smaller multipliers (0.05-0.50 range)
+            weights = [
+                0.10, 0.09, 0.08, 0.08, 0.07, 0.07,  # 0.05-0.30
+                0.06, 0.06, 0.05, 0.05, 0.04, 0.04,  # 0.35-0.70
+                0.03, 0.03, 0.03, 0.03, 0.02, 0.02,  # 0.80-1.30
+                0.01, 0.01                            # 1.40-1.49
+            ]
             
-            delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
+            delta = random.choices(small_multiplier_choices, weights=weights, k=1)[0]
             new_multiplier = session.current_multiplier + delta
             
             # Ensure multiplier doesn't exceed reasonable bounds
             if new_multiplier > Decimal("10.00"):
                 new_multiplier = Decimal("10.00")
             
-            return "safe", new_multiplier, False
-        
-        # 30% chance for win below 1.5x (part of the 60% losing/low-win category)
-        elif roll < 0.70:
-            # Small wins below 1.5x
-            small_multiplier_choices = [
-                Decimal("0.10"), Decimal("0.25"), Decimal("0.50"), 
-                Decimal("0.75"), Decimal("1.00"), Decimal("1.25")
-            ]
-            weights = [0.10, 0.15, 0.20, 0.25, 0.20, 0.10]
-            
-            delta = random.choices(small_multiplier_choices, weights=weights, k=1)[0]
-            new_multiplier = session.current_multiplier + delta
-            
             return "small_win", new_multiplier, False
         
         # 15% chance for penalty (moderate loss)
-        elif roll < 0.85:
+        elif roll < 0.75:
             new_multiplier = session.current_multiplier * Decimal("0.5")  # 50% penalty
             return "penalty", max(new_multiplier, Decimal("0.10")), False
+        
+        # 10% chance for major penalty (severe loss)
+        elif roll < 0.85:
+            new_multiplier = session.current_multiplier * Decimal("0.2")  # 80% penalty
+            return "major_penalty", max(new_multiplier, Decimal("0.10")), False
         
         # 10% chance for trap (instant loss)
         elif roll < 0.95:
@@ -108,120 +105,114 @@ class FortuneMouseEngine:
 
 
 class FortuneTigerEngine:
-    """Fortune Tiger game engine - Higher risk, higher rewards with 40% above 1.5x"""
+    """Fortune Tiger game engine - Small wins only (below 1.5x), no bonus tiles"""
     
     @staticmethod
     def calculate_step(session: GameSession, tile_id: int) -> tuple[str, Decimal, bool]:
         roll = random.random()
         
-        # 40% chance to win above 1.5x multiplier
-        if roll < 0.40:
-            # Higher potential multipliers for Tiger (above 1.5x to 8.0x)
-            # Focus on multipliers strictly above 1.5x
-            multiplier_choices = [
-                Decimal("1.51"), Decimal("2.00"), Decimal("2.50"),
-                Decimal("3.00"), Decimal("3.50"), Decimal("4.00"),
-                Decimal("4.50"), Decimal("5.00"), Decimal("6.00"),
-                Decimal("7.00"), Decimal("8.00")
+        # 50% chance for win below 1.5x (no more bonus tiles above 1.5x)
+        if roll < 0.50:
+            # Small wins ONLY below 1.5x, mostly below 1x
+            small_multiplier_choices = [
+                Decimal("0.05"), Decimal("0.10"), Decimal("0.15"), 
+                Decimal("0.20"), Decimal("0.25"), Decimal("0.30"),
+                Decimal("0.35"), Decimal("0.40"), Decimal("0.45"),
+                Decimal("0.50"), Decimal("0.60"), Decimal("0.70"),
+                Decimal("0.80"), Decimal("0.90"), Decimal("1.00"),
+                Decimal("1.10"), Decimal("1.20"), Decimal("1.30"),
+                Decimal("1.40"), Decimal("1.49")  # Strictly below 1.5x
             ]
-            # Weights for Tiger - slightly more aggressive than Mouse
-            weights = [0.15, 0.15, 0.14, 0.13, 0.12, 
-                      0.10, 0.08, 0.06, 0.04, 0.02, 0.01]
+            # Weights for Tiger - slightly more aggressive than Mouse but still below 1.5x
+            weights = [
+                0.08, 0.08, 0.08, 0.08, 0.07, 0.07,  # 0.05-0.30
+                0.06, 0.06, 0.06, 0.06, 0.05, 0.05,  # 0.35-0.70
+                0.04, 0.04, 0.04, 0.04, 0.03, 0.03,  # 0.80-1.30
+                0.02, 0.02                            # 1.40-1.49
+            ]
             
-            delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
+            delta = random.choices(small_multiplier_choices, weights=weights, k=1)[0]
             new_multiplier = session.current_multiplier + delta
             
             if new_multiplier > Decimal("15.00"):
                 new_multiplier = Decimal("15.00")
             
-            return "safe", new_multiplier, False
-        
-        # 25% chance for win below 1.5x
-        elif roll < 0.65:
-            # Small wins below 1.5x
-            small_multiplier_choices = [
-                Decimal("0.05"), Decimal("0.20"), Decimal("0.40"), 
-                Decimal("0.60"), Decimal("0.85"), Decimal("1.20")
-            ]
-            weights = [0.10, 0.15, 0.20, 0.25, 0.20, 0.10]
-            
-            delta = random.choices(small_multiplier_choices, weights=weights, k=1)[0]
-            new_multiplier = session.current_multiplier + delta
-            
             return "small_win", new_multiplier, False
         
         # 15% chance for penalty (moderate loss)
-        elif roll < 0.80:
+        elif roll < 0.65:
             new_multiplier = session.current_multiplier * Decimal("0.4")  # 60% penalty
             return "penalty", max(new_multiplier, Decimal("0.10")), False
         
-        # 10% chance for major penalty (severe loss)
-        elif roll < 0.90:
+        # 15% chance for major penalty (severe loss)
+        elif roll < 0.80:
             new_multiplier = session.current_multiplier * Decimal("0.2")  # 80% penalty
             return "major_penalty", max(new_multiplier, Decimal("0.10")), False
         
-        # 7% chance for trap (instant loss)
-        elif roll < 0.97:
+        # 10% chance for trap (instant loss)
+        elif roll < 0.90:
             return "trap", session.current_multiplier, True
         
-        # 3% chance for complete reset
+        # 10% chance for complete reset
         else:
             return "reset", Decimal("1.00"), False
 
 
 class FortuneRabbitEngine:
-    """Fortune Rabbit game engine - 40% above 1.5x with carrot bonuses"""
+    """Fortune Rabbit game engine - Small wins only (below 1.5x) with carrot bonus"""
     
     @staticmethod
     def calculate_step(session: GameSession, tile_id: int) -> tuple[str, Decimal, bool]:
         roll = random.random()
         
-        # 40% chance to win above 1.5x multiplier
-        if roll < 0.40:
-            # Check for carrot bonus (every 3rd step has higher chance)
+        # 60% chance for win below 1.5x (no more carrot bonuses above 1.5x)
+        if roll < 0.60:
+            # Check for carrot bonus (every 3rd step has higher chance) - but no bonus multipliers
             has_carrot_bonus = (session.step_index + 1) % 3 == 0
             
-            # Multipliers strictly above 1.5x
-            multiplier_choices = [
-                Decimal("1.51"), Decimal("1.75"), Decimal("2.00"),
-                Decimal("2.25"), Decimal("2.50"), Decimal("2.75"),
-                Decimal("3.00"), Decimal("3.25"), Decimal("3.50"),
-                Decimal("4.00"), Decimal("5.00")
+            # Small wins ONLY below 1.5x, mostly below 1x
+            small_multiplier_choices = [
+                Decimal("0.10"), Decimal("0.15"), Decimal("0.20"), 
+                Decimal("0.25"), Decimal("0.30"), Decimal("0.35"),
+                Decimal("0.40"), Decimal("0.45"), Decimal("0.50"),
+                Decimal("0.60"), Decimal("0.70"), Decimal("0.80"),
+                Decimal("0.90"), Decimal("1.00"), Decimal("1.10"),
+                Decimal("1.20"), Decimal("1.30"), Decimal("1.40"),
+                Decimal("1.49")  # Strictly below 1.5x
             ]
             
             if has_carrot_bonus and roll < 0.20:  # 20% of wins get carrot bonus on 3rd steps
-                # Carrot bonus - use higher multipliers
-                weights = [0.10, 0.12, 0.14, 0.15, 0.14, 
-                          0.12, 0.10, 0.06, 0.04, 0.02, 0.01]
-                delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
+                # Carrot bonus - slightly better small wins
+                weights = [
+                    0.05, 0.06, 0.07, 0.07, 0.07, 0.07,  # 0.10-0.35
+                    0.08, 0.08, 0.08, 0.08, 0.07, 0.07,  # 0.40-0.80
+                    0.06, 0.06, 0.05, 0.04, 0.03, 0.02,  # 0.90-1.40
+                    0.01                                # 1.49
+                ]
+                delta = random.choices(small_multiplier_choices, weights=weights, k=1)[0]
                 new_multiplier = session.current_multiplier + delta
                 return "carrot_bonus", new_multiplier, False
             else:
-                # Normal safe - adjust weights for better payouts
-                weights = [0.20, 0.18, 0.16, 0.14, 0.12,
-                          0.08, 0.05, 0.04, 0.02, 0.01, 0.005]
-                delta = random.choices(multiplier_choices, weights=weights, k=1)[0]
+                # Normal small win - adjust weights for better small payouts
+                weights = [
+                    0.08, 0.08, 0.08, 0.08, 0.07, 0.07,  # 0.10-0.35
+                    0.07, 0.07, 0.07, 0.06, 0.06, 0.06,  # 0.40-0.80
+                    0.05, 0.05, 0.04, 0.03, 0.02, 0.02,  # 0.90-1.40
+                    0.01                                # 1.49
+                ]
+                delta = random.choices(small_multiplier_choices, weights=weights, k=1)[0]
                 new_multiplier = session.current_multiplier + delta
-                return "safe", new_multiplier, False
-        
-        # 30% chance for win below 1.5x
-        elif roll < 0.70:
-            # Small wins below 1.5x
-            small_multiplier_choices = [
-                Decimal("0.15"), Decimal("0.35"), Decimal("0.55"), 
-                Decimal("0.80"), Decimal("1.00"), Decimal("1.30")
-            ]
-            weights = [0.15, 0.20, 0.25, 0.20, 0.15, 0.05]
-            
-            delta = random.choices(small_multiplier_choices, weights=weights, k=1)[0]
-            new_multiplier = session.current_multiplier + delta
-            
-            return "small_win", new_multiplier, False
+                return "small_win", new_multiplier, False
         
         # 15% chance for minor penalty
-        elif roll < 0.85:
+        elif roll < 0.75:
             new_multiplier = session.current_multiplier * Decimal("0.6")  # 40% penalty
             return "penalty", max(new_multiplier, Decimal("0.10")), False
+        
+        # 10% chance for major penalty
+        elif roll < 0.85:
+            new_multiplier = session.current_multiplier * Decimal("0.3")  # 70% penalty
+            return "major_penalty", max(new_multiplier, Decimal("0.10")), False
         
         # 10% chance for trap (instant loss)
         elif roll < 0.95:
@@ -251,7 +242,7 @@ class GameEngineFactory:
 
 
 # =====================================================
-# GAME CONFIGURATIONS
+# GAME CONFIGURATIONS - UPDATED DESCRIPTIONS
 # =====================================================
 
 def get_game_config(game_type: str) -> dict:
@@ -259,39 +250,39 @@ def get_game_config(game_type: str) -> dict:
     configs = {
         "fortune_mouse": {
             "title": "Fortune Mouse",
-            "description": "Classic grid adventure with 40% chance to win above 1.5x",
+            "description": "Classic grid adventure with small wins only (below 1.5x)",
             "icon": "🐭",
             "grid_size": 20,
             "min_stake": Decimal("100.00"),
             "risk_level": "medium",
             "color": "#4A90E2",
             "character": "🐭",
-            "win_probability": "40% above 1.5x",
-            "total_win_chance": "70% (40% above 1.5x + 30% below 1.5x)",
+            "win_probability": "60% small wins (below 1.5x)",
+            "total_win_chance": "60% (all below 1.5x)",
         },
         "fortune_tiger": {
             "title": "Fortune Tiger",
-            "description": "High risk, high reward with 40% chance to win above 1.5x",
+            "description": "High risk game with small wins only (below 1.5x)",
             "icon": "🐯",
             "grid_size": 16,
             "min_stake": Decimal("100.00"),
             "risk_level": "high",
             "color": "#FF6B35",
             "character": "🐯",
-            "win_probability": "40% above 1.5x",
-            "total_win_chance": "65% (40% above 1.5x + 25% below 1.5x)",
+            "win_probability": "50% small wins (below 1.5x)",
+            "total_win_chance": "50% (all below 1.5x)",
         },
         "fortune_rabbit": {
             "title": "Fortune Rabbit",
-            "description": "Carrot collection with 40% chance to win above 1.5x",
+            "description": "Carrot collection with small wins only (below 1.5x)",
             "icon": "🐰",
             "grid_size": 25,
             "min_stake": Decimal("100.00"),
             "risk_level": "low",
             "color": "#FF69B4",
             "character": "🐰",
-            "win_probability": "40% above 1.5x",
-            "total_win_chance": "70% (40% above 1.5x + 30% below 1.5x)",
+            "win_probability": "60% small wins (below 1.5x)",
+            "total_win_chance": "60% (all below 1.5x)",
         },
     }
     return configs.get(game_type, configs["fortune_mouse"])
@@ -333,7 +324,6 @@ def game_config(request, game_type: str):
     return Response(GameConfigOut(response_data).data)
 
 
-# [Rest of the views remain the same - from start_session() onward]
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def start_session(request):
