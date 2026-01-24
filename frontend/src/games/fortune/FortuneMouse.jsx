@@ -4,10 +4,36 @@ import { useWallet } from "../../contexts/WalletContext";
 import { fortuneService } from "../../services/api";
 import { fortuneSound } from "../../utils/FortuneSoundManager";
 import toast from "react-hot-toast";
+import Confetti from "react-confetti";
 import "./fortunemouse.css";
 
 const GRID_SIZE = 20;
 const MINIMUM_STAKE = 100;
+
+// Flower component for additional visual effects
+const Flower = ({ x, y, size, color, rotation, delay }) => {
+  return (
+    <div 
+      className="flower-effect"
+      style={{
+        position: 'absolute',
+        left: `${x}%`,
+        top: `${y}%`,
+        width: `${size}px`,
+        height: `${size}px`,
+        transform: `rotate(${rotation}deg)`,
+        animationDelay: `${delay}s`,
+        zIndex: 9998,
+      }}
+    >
+      <div className="flower-petal" style={{ backgroundColor: color }}></div>
+      <div className="flower-petal" style={{ backgroundColor: color }}></div>
+      <div className="flower-petal" style={{ backgroundColor: color }}></div>
+      <div className="flower-petal" style={{ backgroundColor: color }}></div>
+      <div className="flower-center" style={{ backgroundColor: '#FFD700' }}></div>
+    </div>
+  );
+};
 
 export default function FortuneMouse() {
   const navigate = useNavigate();
@@ -26,9 +52,16 @@ export default function FortuneMouse() {
   const [starting, setStarting] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [isMuted, setIsMuted] = useState(fortuneSound.isMuted);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showFlowers, setShowFlowers] = useState(false);
+  const [confettiKey, setConfettiKey] = useState(0);
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
 
   const [game, setGame] = useState({
-    status: "idle", // idle | active | lost | cashed_out
+    status: "idle",
     step_index: 0,
     current_multiplier: "1.00",
     payout_amount: "0.00",
@@ -48,10 +81,12 @@ export default function FortuneMouse() {
   ========================= */
   const tapLock = useRef(false);
   const lastTileRef = useRef(null);
+  const confettiTimeoutRef = useRef(null);
+  const flowersTimeoutRef = useRef(null);
+  const modalTimeoutRef = useRef(null);
 
   /* =========================
      GAME RESULTS CONFIGURATION
-     REMOVED: "safe" and "carrot_bonus" (bonus tiles)
   ========================= */
   const resultConfig = useMemo(() => ({
     "small_win": {
@@ -87,6 +122,21 @@ export default function FortuneMouse() {
   }), []);
 
   /* =========================
+     WINDOW SIZE TRACKING
+  ========================= */
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  /* =========================
      AUDIO CONTROLS
   ========================= */
   const toggleMute = () => {
@@ -98,9 +148,90 @@ export default function FortuneMouse() {
   };
 
   /* =========================
+     VISUAL EFFECTS FUNCTIONS
+  ========================= */
+  const triggerWinEffects = useCallback(() => {
+    // Clear any existing timeouts
+    if (confettiTimeoutRef.current) {
+      clearTimeout(confettiTimeoutRef.current);
+    }
+    if (flowersTimeoutRef.current) {
+      clearTimeout(flowersTimeoutRef.current);
+    }
+
+    // Reset confetti key to ensure new instance
+    setConfettiKey(prev => prev + 1);
+    
+    // Show confetti and flowers
+    setShowConfetti(true);
+    setShowFlowers(true);
+
+    // Hide effects after 6 seconds
+    confettiTimeoutRef.current = setTimeout(() => {
+      setShowConfetti(false);
+    }, 6000);
+
+    flowersTimeoutRef.current = setTimeout(() => {
+      setShowFlowers(false);
+    }, 6000);
+  }, []);
+
+  const cleanupEffects = useCallback(() => {
+    if (confettiTimeoutRef.current) {
+      clearTimeout(confettiTimeoutRef.current);
+    }
+    if (flowersTimeoutRef.current) {
+      clearTimeout(flowersTimeoutRef.current);
+    }
+    if (modalTimeoutRef.current) {
+      clearTimeout(modalTimeoutRef.current);
+    }
+    setShowConfetti(false);
+    setShowFlowers(false);
+  }, []);
+
+  /* =========================
+     GENERATE FLOWERS
+  ========================= */
+  const generateFlowers = useMemo(() => {
+    if (!showFlowers) return [];
+    
+    const flowers = [];
+    const colors = [
+      '#FF6B6B', // Red
+      '#4ECDC4', // Teal
+      '#FFD700', // Gold
+      '#A29BFE', // Purple
+      '#81ECEC', // Cyan
+      '#FFEAA7', // Light Yellow
+      '#55EFC4', // Mint
+      '#FF9FF3', // Pink
+      '#F368E0', // Magenta
+      '#00D2D3', // Turquoise
+    ];
+    
+    for (let i = 0; i < 15; i++) {
+      flowers.push({
+        id: i,
+        x: Math.random() * 80 + 10, // 10-90% to avoid edges
+        y: Math.random() * 80 + 10,
+        size: Math.random() * 40 + 30, // 30-70px
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * 360,
+        delay: Math.random() * 1.5,
+      });
+    }
+    
+    return flowers;
+  }, [showFlowers]);
+
+  /* =========================
      RESET GAME
   ========================= */
   const resetGame = useCallback(() => {
+    // Cleanup effects
+    cleanupEffects();
+    
     setGame({
       status: "idle",
       step_index: 0,
@@ -120,7 +251,21 @@ export default function FortuneMouse() {
     tapLock.current = false;
     lastTileRef.current = null;
     setActiveSessionId(null);
-  }, []);
+  }, [cleanupEffects]);
+
+  /* =========================
+     RESET GAME AFTER MODAL
+  ========================= */
+  const resetGameAfterModal = useCallback(() => {
+    if (modalTimeoutRef.current) {
+      clearTimeout(modalTimeoutRef.current);
+    }
+    
+    modalTimeoutRef.current = setTimeout(() => {
+      resetGame();
+      setStakeOpen(true);
+    }, 3000); // 3 seconds delay for modal display
+  }, [resetGame]);
 
   /* =========================
      GAME ACTIONS
@@ -147,6 +292,9 @@ export default function FortuneMouse() {
 
     setStarting(true);
     
+    // Cleanup any existing effects
+    cleanupEffects();
+    
     // Play stake sound
     fortuneSound.playStake();
     
@@ -171,9 +319,6 @@ export default function FortuneMouse() {
       
       setActiveSessionId(res.data.session_id);
       setStakeOpen(false);
-      
-      // Start background music
-      fortuneSound.playBackgroundMusic();
       
       // Refresh wallet to show updated balance
       refreshWallet();
@@ -255,17 +400,14 @@ export default function FortuneMouse() {
         }));
 
         fortuneSound.playGameOverSound();
-        fortuneSound.stopBackgroundMusic();
 
         toast.error(`Trap! ${resultInfo.label} - Game Over`, {
           icon: resultInfo.icon,
           duration: 3000,
         });
 
-        setTimeout(() => {
-          resetGame();
-          setStakeOpen(true);
-        }, 1400);
+        // 3 seconds delay for modal display
+        resetGameAfterModal();
         
         return;
       }
@@ -281,17 +423,17 @@ export default function FortuneMouse() {
         }));
 
         fortuneSound.playCashoutSound();
-        fortuneSound.stopBackgroundMusic();
         refreshWallet();
 
         toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
           duration: 3000,
         });
 
-        setTimeout(() => {
-          resetGame();
-          setStakeOpen(true);
-        }, 1500);
+        // Trigger win effects for auto-cashout win
+        triggerWinEffects();
+
+        // 3 seconds delay for modal display
+        resetGameAfterModal();
         
         return;
       }
@@ -300,8 +442,6 @@ export default function FortuneMouse() {
       const oldMultiplier = parseFloat(game.current_multiplier);
       const newMultiplier = parseFloat(res.data.current_multiplier);
       const multiplierChange = newMultiplier - oldMultiplier;
-      
-      // REMOVED: Bonus tile toasts ("safe" and "carrot_bonus")
       
       if (resultType === "small_win") {
         toast(`${resultInfo.label} +${multiplierChange.toFixed(2)}x`, {
@@ -341,7 +481,7 @@ export default function FortuneMouse() {
     } finally {
       tapLock.current = false;
     }
-  }, [activeSessionId, game, tiles, refreshWallet, resetGame, resultConfig]);
+  }, [activeSessionId, game, tiles, refreshWallet, resetGame, resetGameAfterModal, resultConfig, triggerWinEffects]);
 
   const cashout = useCallback(async () => {
     if (!activeSessionId) {
@@ -378,16 +518,16 @@ export default function FortuneMouse() {
       }));
 
       fortuneSound.playCashoutSound();
-      fortuneSound.stopBackgroundMusic();
       refreshWallet();
       
       toast.dismiss("cashout");
       toast.success(`Cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
 
-      setTimeout(() => {
-        resetGame();
-        setStakeOpen(true);
-      }, 1500);
+      // Trigger win effects for manual cashout win
+      triggerWinEffects();
+
+      // 3 seconds delay for modal display
+      resetGameAfterModal();
       
     } catch (e) {
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
@@ -404,7 +544,7 @@ export default function FortuneMouse() {
     } finally {
       tapLock.current = false;
     }
-  }, [activeSessionId, game.status, refreshWallet, resetGame]);
+  }, [activeSessionId, game.status, refreshWallet, resetGame, resetGameAfterModal, triggerWinEffects]);
 
   /* =========================
      EFFECTS
@@ -426,7 +566,6 @@ export default function FortuneMouse() {
               session_id: savedSessionId,
             });
             setStakeOpen(false);
-            fortuneSound.playBackgroundMusic();
             toast.success("Recovered previous game session", {
               icon: "🎮"
             });
@@ -442,8 +581,9 @@ export default function FortuneMouse() {
     // Cleanup on unmount
     return () => {
       fortuneSound.cleanup();
+      cleanupEffects();
     };
-  }, []);
+  }, [cleanupEffects]);
 
   useEffect(() => {
     if (activeSessionId && game.status === "active") {
@@ -472,6 +612,147 @@ export default function FortuneMouse() {
 
   return (
     <div className="fortune-stage">
+      {/* WINNING VISUAL EFFECTS LAYER */}
+      {(showConfetti || showFlowers) && (
+        <div className="winning-effects-layer">
+          {/* ENHANCED CONFETTI */}
+          {showConfetti && (
+            <>
+              <Confetti
+                key={`confetti-${confettiKey}-1`}
+                width={windowSize.width}
+                height={windowSize.height}
+                recycle={true}
+                numberOfPieces={400}
+                gravity={0.15}
+                initialVelocityY={20}
+                initialVelocityX={8}
+                wind={0.05}
+                colors={[
+                  '#FFD700', // Gold
+                  '#FF6B6B', // Red
+                  '#4ECDC4', // Teal
+                  '#FF9FF3', // Pink
+                  '#F368E0', // Magenta
+                  '#A29BFE', // Purple
+                  '#81ECEC', // Cyan
+                  '#55EFC4', // Mint
+                  '#FFEAA7', // Light Yellow
+                  '#00D2D3', // Turquoise
+                ]}
+                confettiSource={{
+                  x: windowSize.width / 2,
+                  y: windowSize.height / 2,
+                  w: windowSize.width * 0.3,
+                  h: 10,
+                }}
+                drawShape={ctx => {
+                  const shapeType = Math.random();
+                  if (shapeType < 0.25) {
+                    // Circle
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+                    ctx.fill();
+                  } else if (shapeType < 0.5) {
+                    // Square
+                    ctx.fillRect(-5, -5, 10, 10);
+                  } else if (shapeType < 0.75) {
+                    // Triangle
+                    ctx.beginPath();
+                    ctx.moveTo(0, -7);
+                    ctx.lineTo(-6, 5);
+                    ctx.lineTo(6, 5);
+                    ctx.closePath();
+                    ctx.fill();
+                  } else {
+                    // Star
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                      const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+                      const x = 5 * Math.cos(angle);
+                      const y = 5 * Math.sin(angle);
+                      if (i === 0) ctx.moveTo(x, y);
+                      else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                  }
+                }}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  pointerEvents: 'none',
+                  zIndex: 9997,
+                }}
+              />
+              
+              {/* Additional confetti layer for depth */}
+              <Confetti
+                key={`confetti-${confettiKey}-2`}
+                width={windowSize.width}
+                height={windowSize.height}
+                recycle={true}
+                numberOfPieces={200}
+                gravity={0.08}
+                initialVelocityY={15}
+                initialVelocityX={5}
+                wind={0.02}
+                colors={[
+                  '#FFFFFF', // White
+                  '#FFD700', // Gold
+                  '#FF6B6B', // Red
+                  '#4ECDC4', // Teal
+                ]}
+                confettiSource={{
+                  x: windowSize.width / 2,
+                  y: windowSize.height,
+                  w: windowSize.width * 0.5,
+                  h: 0,
+                }}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  pointerEvents: 'none',
+                  zIndex: 9996,
+                }}
+              />
+            </>
+          )}
+          
+          {/* COLORFUL FLOWERS */}
+          {showFlowers && generateFlowers.map(flower => (
+            <Flower
+              key={flower.id}
+              x={flower.x}
+              y={flower.y}
+              size={flower.size}
+              color={flower.color}
+              rotation={flower.rotation}
+              delay={flower.delay}
+            />
+          ))}
+          
+          {/* GLOWING BACKGROUND EFFECT */}
+          <div className="winning-glow" style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'radial-gradient(circle at center, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.05) 50%, transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 9995,
+            animation: 'winning-pulse-glow 2s ease-in-out infinite',
+          }} />
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="fortune-header">
         <div className="fortune-brand">
@@ -494,7 +775,6 @@ export default function FortuneMouse() {
             <div className="hud-label">STEPS</div>
             <div className="hud-value">{game.step_index}</div>
           </div>
-          
 
           <button
             className={`hud-cashout ${!activeSessionId || game.status !== "active" ? "disabled" : ""}`}
@@ -548,7 +828,7 @@ export default function FortuneMouse() {
           })}
         </div>
         
-        {/* Game status overlay */}
+        {/* Game status overlay - FIXED POSITIONING */}
         {game.status === "lost" && (
           <div className="game-overlay lost">
             <div className="overlay-content">

@@ -1,6 +1,6 @@
 asgiref==3.11.0
 channels==4.0.0
-Django==5.2.8
+Django
 django-cors-headers==4.9.0
 djangorestframework==3.16.1
 dotenv==0.9.9
@@ -11,5 +11,5 @@ channels-redis==4.2.0
 redis==5.0.8
 djangorestframework-simplejwt==5.3.1
 psycopg2-binary==2.9.9
-gunicorn==22.0.0
-whitenoise==6.7.0
+gunicorn
+whitenoise

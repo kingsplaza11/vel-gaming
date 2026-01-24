@@ -1,160 +1,14 @@
-/* MinesweeperGame.css - MOBILE FIRST, FULLY RESPONSIVE */
+/* MinesweeperGame.css - SIMPLIFIED FIXED VERSION */
 
 /* ===== CSS RESET & BASE ===== */
 .minesweeper-game {
   min-height: 100vh;
-  background: 
-    radial-gradient(circle at 50% 0%, #0a0e1a 0%, #050813 45%, #000 100%),
-    repeating-linear-gradient(0deg, transparent 0px, rgba(0, 40, 255, 0.03) 1px, transparent 2px);
+  background: radial-gradient(circle at 50% 0%, #0a0e1a 0%, #050813 45%, #000 100%);
   color: #f9fafb;
   font-family: 'Press Start 2P', 'Courier New', monospace;
   position: relative;
   overflow-x: hidden;
   padding: 12px;
-}
-
-/* CRT scanlines effect */
-.minesweeper-game::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  background-size: 100% 4px, 3px 100%;
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.7;
-}
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
-
-.minesweeper-game::after {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.4), transparent);
-  animation: scanline 8s linear infinite;
-  pointer-events: none;
-  z-index: 9998;
-  opacity: 0.15;
-}
-
-/* Ambient animation */
-.ambient-animation {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(100, 100, 255, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 100, 100, 0.03) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: -1;
-  animation: ambientFloat 20s infinite ease-in-out;
-}
-
-@keyframes ambientFloat {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(-10px, -10px); }
-  50% { transform: translate(5px, 10px); }
-  75% { transform: translate(10px, -5px); }
-}
-
-/* ===== ANIMATION BASE CLASSES ===== */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-@keyframes pulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(0, 229, 255, 0.9);
-  }
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
-
-@keyframes revealCell {
-  0% { transform: scale(0.8) rotate(-10deg); opacity: 0; }
-  100% { transform: scale(1) rotate(0); opacity: 1; }
-}
-
-@keyframes mineExplode {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-  100% { transform: scale(1); }
-}
-
-@keyframes cashoutGlow {
-  0%, 100% { 
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.6),
-                0 0 30px rgba(0, 255, 136, 0.3); 
-  }
-  50% { 
-    box-shadow: 0 0 25px rgba(0, 255, 136, 0.9),
-                0 0 40px rgba(0, 255, 136, 0.5); 
-  }
-}
-
-@keyframes multiplierPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-/* Animation classes */
-.animated-fadeIn {
-  animation: fadeIn 0.5s ease;
-}
-
-.animated-slideUp {
-  animation: slideUp 0.5s ease;
-}
-
-.animated-pulse {
-  animation: pulse 2s infinite;
-}
-
-.animated-pulse-glow {
-  animation: pulseGlow 2s infinite;
-}
-
-.animated-shake {
-  animation: shake 0.5s ease;
 }
 
 /* ===== HEADER ===== */
@@ -169,9 +23,7 @@
     rgba(30, 0, 60, 0.9) 100%);
   border-radius: 16px;
   border: 3px solid #00e5ff;
-  box-shadow: 
-    0 0 20px rgba(0, 229, 255, 0.4),
-    inset 0 0 20px rgba(0, 100, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
   margin-bottom: 20px;
 }
 
@@ -182,13 +34,9 @@
   padding: 10px 16px;
   border-radius: 12px;
   font-size: 12px;
-  font-family: 'Press Start 2P', monospace;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 4px 0 #8b0000;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   min-height: 44px;
 }
 
@@ -207,9 +55,6 @@
   font-size: 16px;
   font-weight: bold;
   color: #ffd700;
-  text-shadow: 
-    0 0 8px #ffd700,
-    0 0 15px #ff4500;
 }
 
 .balance-breakdown {
@@ -225,7 +70,6 @@
 
 .balance-spot {
   color: #4CAF50;
-  font-weight: 500;
 }
 
 .balance-loading {
@@ -254,61 +98,32 @@
 .stake-modal-overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(
-    circle at center,
-    rgba(10, 14, 20, 0.95),
-    rgba(0, 0, 0, 0.98)
-  );
-  backdrop-filter: blur(8px);
-  z-index: 1000;
+  background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
   padding: 20px;
-  overflow-y: auto;
 }
 
 .stake-modal {
   width: 100%;
   max-width: 480px;
-  background: linear-gradient(
-    180deg,
-    rgba(18, 24, 37, 0.95) 0%,
-    rgba(11, 15, 24, 0.95) 100%
-  );
+  background: linear-gradient(180deg, rgba(18, 24, 37, 0.95), rgba(11, 15, 24, 0.95));
   border-radius: 20px;
   padding: 24px;
   color: #ffffff;
-  box-shadow:
-    0 25px 70px rgba(0, 0, 0, 0.8),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 0 0 3px #00e5ff;
+  border: 3px solid #00e5ff;
   position: relative;
-  overflow: hidden;
-}
-
-.stake-modal::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, 
-    #ff0000, #ffd700, #00ff00, #00ffff, #0000ff, #ff00ff);
-  z-index: 1;
+  overflow-y: auto;
+  max-height: 90vh;
 }
 
 .stake-modal h3 {
   font-size: 20px;
   text-align: center;
   margin: 0 0 16px;
-  background: linear-gradient(45deg, #00e5ff, #00bcd4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-family: 'Bungee', 'Press Start 2P', cursive;
-  letter-spacing: 0.5px;
+  color: #00e5ff;
 }
 
 .game-description {
@@ -341,15 +156,6 @@
   color: #ffd700;
 }
 
-.balance-loading-inline {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #87ceeb;
-}
-
 /* Game Settings */
 .game-settings {
   display: grid;
@@ -366,7 +172,6 @@
 .setting-group label {
   font-size: 12px;
   color: #87ceeb;
-  font-weight: 600;
 }
 
 .option-buttons {
@@ -376,33 +181,21 @@
 }
 
 .option-buttons button {
-  background: linear-gradient(135deg, #1b2236, #121a2c);
+  background: rgba(27, 34, 54, 0.8);
   border: 2px solid rgba(148, 163, 184, 0.3);
   color: #cfd8ff;
   padding: 10px;
   border-radius: 10px;
   font-size: 11px;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   min-height: 44px;
-}
-
-.option-buttons button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
 }
 
 .option-buttons button.active {
   background: linear-gradient(135deg, #ff4500, #ff8c00);
   border-color: #ffd700;
   color: #fff;
-  box-shadow: 0 0 15px rgba(255, 69, 0, 0.6);
-}
-
-.option-buttons button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .risk-indicator {
@@ -410,6 +203,31 @@
   color: #ffd700;
   text-align: center;
   margin-top: 4px;
+}
+
+/* Quick Stakes */
+.quick-stakes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.quick-stakes button {
+  background: rgba(0, 102, 204, 0.8);
+  border: 2px solid #00ffff;
+  color: #fff;
+  padding: 12px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.quick-stakes button.active {
+  background: linear-gradient(135deg, #ff8c00, #ff4500);
+  border-color: #ffd700;
 }
 
 /* Stake Input */
@@ -432,64 +250,13 @@
   background: rgba(0, 0, 30, 0.8);
   color: #ffffff;
   font-size: 20px;
-  font-weight: 600;
   outline: none;
   text-align: center;
-  font-family: 'Press Start 2P', monospace;
-  transition: all 0.2s ease;
-}
-
-.stake-input-group input:focus {
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
-}
-
-.stake-input-group input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Quick Stakes */
-.quick-stakes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.quick-stakes button {
-  background: linear-gradient(135deg, #0066cc, #0044aa);
-  border: 2px solid #00ffff;
-  color: #fff;
-  padding: 12px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 44px;
-}
-
-.quick-stakes button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 255, 255, 0.4);
-}
-
-.quick-stakes button.active {
-  background: linear-gradient(135deg, #ff8c00, #ff4500);
-  border-color: #ffd700;
-  box-shadow: 0 0 15px rgba(255, 69, 0, 0.6);
-}
-
-.quick-stakes button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Cost Summary */
 .cost-summary {
-  background: linear-gradient(135deg, 
-    rgba(0, 0, 30, 0.9),
-    rgba(0, 20, 60, 0.9));
+  background: rgba(0, 0, 30, 0.9);
   border-radius: 12px;
   padding: 16px;
   border: 2px solid #ff4500;
@@ -506,13 +273,11 @@
 
 .cost-item:last-child {
   border-bottom: none;
-  padding-top: 12px;
 }
 
 .cost-value {
   font-size: 14px;
   color: #fff;
-  font-weight: 600;
 }
 
 .cost-value.highlight {
@@ -523,47 +288,22 @@
 /* Start Button */
 .start-btn {
   width: 100%;
-  background: linear-gradient(135deg, 
-    #ff4500 0%,
-    #ff8c00 25%,
-    #ffd700 50%,
-    #ff8c00 75%,
-    #ff4500 100%);
+  background: linear-gradient(135deg, #ff4500, #ff8c00, #ffd700, #ff8c00, #ff4500);
   color: #000;
   border: none;
   padding: 18px;
   border-radius: 16px;
   font-size: 16px;
   font-weight: bold;
-  font-family: 'Bungee', 'Press Start 2P', cursive;
-  text-transform: uppercase;
-  letter-spacing: 1px;
   cursor: pointer;
   box-shadow: 0 6px 0 #8b0000;
   transition: all 0.2s ease;
   min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.start-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 0 #8b0000;
-}
-
-.start-btn:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 #8b0000;
 }
 
 .start-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background: linear-gradient(135deg, #666, #888);
-  color: #aaa;
-  box-shadow: none;
 }
 
 /* ===== GAME BOARD ===== */
@@ -587,7 +327,6 @@
   border-radius: 16px;
   padding: 16px;
   border: 3px solid #00e5ff;
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
 }
 
 .info-item {
@@ -611,46 +350,44 @@
   font-size: 24px;
   color: #00ff00;
   font-weight: bold;
-  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-  animation: multiplierPulse 1s infinite;
 }
 
-/* Grid Container */
+/* Grid Container - FIXED */
 .grid-container {
+  width: 100%;
+  max-width: 500px;
   padding: 20px;
   background: rgba(0, 0, 30, 0.7);
   border-radius: 20px;
   border: 4px solid #ffd700;
-  box-shadow: 
-    0 0 30px rgba(255, 215, 0, 0.3),
-    inset 0 0 20px rgba(0, 0, 0, 0.5);
+  margin: 0 auto;
 }
 
 .grid {
-  display: inline-block;
-  border: 3px solid #d4af37;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  box-shadow: 
-    inset 0 0 20px rgba(0, 0, 0, 0.9),
-    0 0 20px rgba(212, 175, 55, 0.3);
+  display: grid !important;
+  gap: 4px !important;
+  width: fit-content !important;
+  margin: 0 auto !important;
 }
 
-.row {
-  display: flex;
-}
-
+/* Cell Styles - FIXED */
 .cell {
-  width: 40px;
-  height: 40px;
+  width: 45px !important;
+  height: 45px !important;
+  min-width: 45px !important;
+  min-height: 45px !important;
   border: 2px solid #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   font-size: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
   user-select: none;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 4px;
+  transition: all 0.3s ease;
 }
 
 .cell.hidden {
@@ -666,13 +403,11 @@
 .cell.safe {
   background: linear-gradient(135deg, #48bb78, #38a169);
   border-color: #2f855a;
-  animation: revealCell 0.3s ease-out;
 }
 
 .cell.mine {
   background: linear-gradient(135deg, #f56565, #e53e3e);
   border-color: #c53030;
-  animation: mineExplode 0.5s ease-out;
 }
 
 /* Action Buttons */
@@ -684,12 +419,7 @@
 }
 
 .cashout-btn {
-  background: linear-gradient(135deg, 
-    #00C853 0%,
-    #64DD17 25%,
-    #00E676 50%,
-    #64DD17 75%,
-    #00C853 100%);
+  background: linear-gradient(135deg, #00C853, #64DD17, #00E676, #64DD17, #00C853);
   color: #000;
   border: none;
   padding: 16px 24px;
@@ -700,34 +430,12 @@
   box-shadow: 0 6px 0 #1b5e20;
   transition: all 0.2s ease;
   min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
   width: 100%;
-  animation: cashoutGlow 2s infinite;
-}
-
-.cashout-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 0 #1b5e20;
-}
-
-.cashout-btn:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 #1b5e20;
 }
 
 .cashout-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.cashout-amount {
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* Result Section */
@@ -737,9 +445,7 @@
   align-items: center;
   gap: 20px;
   padding: 24px;
-  background: linear-gradient(135deg, 
-    rgba(30, 30, 80, 0.9) 0%,
-    rgba(15, 15, 45, 0.9) 100%);
+  background: rgba(30, 30, 80, 0.9);
   border-radius: 20px;
   border: 3px solid #ffd700;
   max-width: 400px;
@@ -753,7 +459,6 @@
 .result-icon {
   font-size: 48px;
   margin-bottom: 12px;
-  animation: pulse 2s infinite;
 }
 
 .result-message h3 {
@@ -792,7 +497,6 @@
   font-weight: bold;
   color: #ffd700;
   margin-bottom: 6px;
-  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
 .win-ratio {
@@ -802,12 +506,7 @@
 
 .restart-btn {
   width: 100%;
-  background: linear-gradient(135deg, 
-    #2979FF 0%,
-    #2962FF 25%,
-    #448AFF 50%,
-    #2962FF 75%,
-    #2979FF 100%);
+  background: linear-gradient(135deg, #2979FF, #2962FF, #448AFF, #2962FF, #2979FF);
   color: #fff;
   border: none;
   padding: 16px;
@@ -816,22 +515,7 @@
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 6px 0 #0d47a1;
-  transition: all 0.2s ease;
   min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.restart-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 0 #0d47a1;
-}
-
-.restart-btn:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 #0d47a1;
 }
 
 /* ===== WIN MODAL ===== */
@@ -849,20 +533,11 @@
   padding: 20px;
 }
 
-.win-modal-overlay {
-  background: rgba(0, 0, 0, 0.98);
-}
-
 .win-modal-content {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #667eea, #764ba2);
   border-radius: 24px;
   padding: 30px;
   color: white;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 
-    0 30px 80px rgba(0, 0, 0, 0.7),
-    0 0 0 4px gold;
   width: 100%;
   max-width: 500px;
 }
@@ -875,13 +550,11 @@
 .win-icon {
   font-size: 60px;
   margin-bottom: 16px;
-  animation: pulse 2s infinite;
 }
 
 .win-modal-header h2 {
   font-size: 28px;
   margin-bottom: 8px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .win-subtitle {
@@ -889,40 +562,8 @@
   opacity: 0.9;
 }
 
-.win-amount-display {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  padding: 24px;
-  text-align: center;
-  margin: 24px 0;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
-}
-
-.win-amount-label {
-  display: block;
-  font-size: 16px;
-  margin-bottom: 12px;
-  opacity: 0.9;
-}
-
-.win-amount {
-  display: block;
-  font-size: 36px;
-  font-weight: bold;
-  margin: 12px 0;
-  color: #FFD700;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
-}
-
-.win-note {
-  font-size: 14px;
-  opacity: 0.8;
-  margin-top: 12px;
-}
-
 .win-stats {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 16px;
   padding: 20px;
   margin: 24px 0;
@@ -941,6 +582,36 @@
   border-bottom: none;
 }
 
+.win-amount-display {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  margin: 24px 0;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.win-amount-label {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+
+.win-amount {
+  display: block;
+  font-size: 36px;
+  font-weight: bold;
+  margin: 12px 0;
+  color: #FFD700;
+}
+
+.win-note {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-top: 12px;
+}
+
 .continue-button {
   width: 100%;
   background: linear-gradient(45deg, #FFD700, #FFA500);
@@ -951,34 +622,15 @@
   font-weight: bold;
   border-radius: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
   margin-top: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.continue-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(255, 215, 0, 0.5);
 }
 
 /* ===== LOSS MODAL ===== */
-.loss-modal-overlay {
-  background: rgba(0, 0, 0, 0.98);
-}
-
 .loss-modal-content {
-  background: linear-gradient(135deg, #434343 0%, #000000 100%);
+  background: linear-gradient(135deg, #434343, #000000);
   border-radius: 24px;
   padding: 30px;
   color: white;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 
-    0 30px 80px rgba(0, 0, 0, 0.7),
-    0 0 0 4px #f44336;
   width: 100%;
   max-width: 500px;
 }
@@ -991,7 +643,6 @@
 .loss-icon {
   font-size: 60px;
   margin-bottom: 16px;
-  animation: shake 0.5s ease 3;
 }
 
 .loss-modal-header h2 {
@@ -1041,380 +692,7 @@
   font-weight: bold;
   border-radius: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
   margin-top: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.try-again-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(244, 67, 54, 0.5);
-}
-
-/* ===== RESPONSIVE BREAKPOINTS ===== */
-
-/* Small tablets and large phones (≥ 480px) */
-@media (min-width: 480px) {
-  .minesweeper-game {
-    padding: 16px;
-  }
-  
-  .game-header {
-    padding: 16px 20px;
-  }
-  
-  .balance-total {
-    font-size: 18px;
-  }
-  
-  .balance-breakdown {
-    font-size: 11px;
-  }
-  
-  .cell {
-    width: 45px;
-    height: 45px;
-    font-size: 18px;
-  }
-  
-  .stake-modal {
-    padding: 28px;
-  }
-  
-  .stake-modal h3 {
-    font-size: 24px;
-  }
-  
-  .game-description {
-    font-size: 13px;
-  }
-  
-  .balance-amount {
-    font-size: 24px;
-  }
-  
-  .option-buttons {
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  }
-  
-  .multiplier-display {
-    font-size: 28px;
-  }
-  
-  .win-modal-content,
-  .loss-modal-content {
-    padding: 40px;
-  }
-  
-  .win-icon,
-  .loss-icon {
-    font-size: 72px;
-  }
-  
-  .win-amount {
-    font-size: 42px;
-  }
-}
-
-/* Tablets (≥ 640px) */
-@media (min-width: 640px) {
-  .game-info-bar {
-    max-width: 700px;
-    padding: 20px;
-  }
-  
-  .info-item span {
-    font-size: 12px;
-  }
-  
-  .info-item strong {
-    font-size: 22px;
-  }
-  
-  .multiplier-display {
-    font-size: 32px;
-  }
-  
-  .cell {
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-  }
-  
-  .grid-container {
-    padding: 30px;
-  }
-  
-  .quick-stakes {
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  }
-  
-  .stake-input-group input {
-    font-size: 24px;
-    padding: 18px;
-  }
-}
-
-/* Large tablets and small desktops (≥ 768px) */
-@media (min-width: 768px) {
-  .minesweeper-container {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 24px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  .board-section {
-    align-items: flex-start;
-  }
-  
-  .grid-container {
-    align-self: center;
-  }
-  
-  .action-buttons {
-    max-width: 500px;
-  }
-  
-  .result-section {
-    max-width: 500px;
-  }
-  
-  .stake-modal {
-    max-width: 540px;
-    padding: 32px;
-  }
-}
-
-/* Desktop (≥ 1024px) */
-@media (min-width: 1024px) {
-  .minesweeper-game {
-    padding: 24px;
-  }
-  
-  .game-header {
-    padding: 20px 24px;
-    margin-bottom: 30px;
-  }
-  
-  .balance-total {
-    font-size: 20px;
-  }
-  
-  .balance-breakdown {
-    font-size: 12px;
-  }
-  
-  .cell {
-    width: 55px;
-    height: 55px;
-    font-size: 22px;
-  }
-  
-  .stake-modal {
-    max-width: 580px;
-  }
-  
-  .stake-modal h3 {
-    font-size: 28px;
-  }
-  
-  .game-description {
-    font-size: 14px;
-  }
-}
-
-/* Large desktop (≥ 1280px) */
-@media (min-width: 1280px) {
-  .minesweeper-container {
-    gap: 32px;
-  }
-  
-  .cell {
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
-  }
-  
-  .grid-container {
-    padding: 40px;
-  }
-}
-
-/* Extra large screens (≥ 1536px) */
-@media (min-width: 1536px) {
-  .minesweeper-game {
-    padding: 32px;
-    max-width: 1600px;
-    margin: 0 auto;
-  }
-  
-  .game-header {
-    padding: 24px 32px;
-    margin-bottom: 40px;
-  }
-  
-  .minesweeper-container {
-    max-width: 1400px;
-  }
-  
-  .cell {
-    width: 65px;
-    height: 65px;
-    font-size: 26px;
-  }
-}
-
-/* ===== TOUCH DEVICE OPTIMIZATIONS ===== */
-@media (hover: none) and (pointer: coarse) {
-  .cell,
-  .option-buttons button,
-  .quick-stakes button,
-  .start-btn,
-  .cashout-btn,
-  .restart-btn,
-  .continue-button,
-  .try-again-button,
-  .game-header button {
-    min-height: 48px;
-  }
-  
-  .cell {
-    width: 50px;
-    height: 50px;
-  }
-  
-  .stake-input-group input {
-    font-size: 24px;
-    padding: 20px;
-  }
-  
-  /* Increase tap targets */
-  .quick-stakes button,
-  .option-buttons button {
-    padding: 14px;
-  }
-  
-  /* Reduce animations for performance */
-  .ambient-animation {
-    animation-duration: 30s;
-  }
-}
-
-/* ===== LANDSCAPE MODE ===== */
-@media (max-height: 600px) and (orientation: landscape) {
-  .minesweeper-game {
-    padding: 12px;
-  }
-  
-  .minesweeper-container {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .cell {
-    width: 35px;
-    height: 35px;
-    font-size: 14px;
-  }
-  
-  .modal-overlay {
-    padding: 10px;
-    align-items: flex-start;
-  }
-  
-  .stake-modal,
-  .win-modal-content,
-  .loss-modal-content {
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-}
-
-/* ===== REDUCED MOTION ===== */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-  
-  .win-icon,
-  .loss-icon,
-  .result-icon,
-  .ambient-animation,
-  .multiplier-display {
-    animation: none !important;
-  }
-  
-  .animated-fadeIn,
-  .animated-slideUp,
-  .animated-pulse,
-  .animated-pulse-glow,
-  .animated-shake {
-    animation: fadeIn 0.3s ease !important;
-  }
-}
-
-/* ===== IMPORT FONTS ===== */
-@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Press+Start+2P&display=swap');
-
-/* Ensure content doesn't overflow horizontally */
-.minesweeper-game {
-  overflow-x: hidden;
-}
-
-* {
-  max-width: 100%;
-}
-
-/* Accessibility: focus outlines */
-button:focus-visible,
-input:focus-visible {
-  outline: 3px solid #00ffff;
-  outline-offset: 2px;
-}
-
-/* Utility classes for spacing */
-.mt-1 { margin-top: 8px; }
-.mt-2 { margin-top: 16px; }
-.mb-1 { margin-bottom: 8px; }
-.mb-2 { margin-bottom: 16px; }
-.p-1 { padding: 8px; }
-.p-2 { padding: 16px; }
-
-/* Hide scrollbars but keep functionality */
-.modal-overlay::-webkit-scrollbar {
-  width: 6px;
-}
-
-.modal-overlay::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-.modal-overlay::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #00e5ff, #00bcd4);
-  border-radius: 3px;
-}
-
-/* Add these to your MinesweeperGame.css */
-
-/* Loss Modal Enhancements */
-.loss-amount {
-  color: #f44336;
-  font-weight: bold;
-}
-
-.spot-balance {
-  color: #4CAF50;
-  font-weight: bold;
 }
 
 .loss-footer-note {
@@ -1425,28 +703,157 @@ input:focus-visible {
   font-style: italic;
 }
 
-/* Processing state */
-.start-btn:disabled,
-.cashout-btn:disabled,
-.restart-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  animation: none !important;
-}
-
-.cell[style*="cursor: wait"] {
-  opacity: 0.7;
-}
-
-/* Risk indicator colors */
-.risk-indicator[style*="High"] {
+.loss-amount {
   color: #f44336;
+  font-weight: bold;
 }
 
-.risk-indicator[style*="Medium"] {
-  color: #ff9800;
-}
-
-.risk-indicator[style*="Low"] {
+.spot-balance {
   color: #4CAF50;
+  font-weight: bold;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animated-fadeIn {
+  animation: fadeIn 0.5s ease;
+}
+
+.animated-slideUp {
+  animation: slideUp 0.5s ease;
+}
+
+.animated-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animated-shake {
+  animation: shake 0.5s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .cell {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cell {
+    width: 35px !important;
+    height: 35px !important;
+    min-width: 35px !important;
+    min-height: 35px !important;
+    font-size: 12px;
+  }
+  
+  .grid-container {
+    padding: 15px;
+  }
+  
+  .game-info-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .info-item {
+    flex: 1 1 calc(50% - 10px);
+  }
+}
+/* Risk Indicators */
+.risk-indicator {
+  font-size: 10px;
+  color: #ff0000;
+  text-align: center;
+  margin-top: 4px;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+}
+
+/* Game Info Bar with Risk Warning */
+.game-info-bar {
+  position: relative;
+}
+
+.game-info-bar::before {
+  content: '⚠️ 75% MINE CHANCE';
+  position: absolute;
+  top: -25px;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #ff0000, #ff4500);
+  color: white;
+  font-size: 10px;
+  padding: 4px;
+  text-align: center;
+  border-radius: 5px;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+/* Enhanced loss modal for high risk */
+.loss-modal-overlay .loss-modal-content {
+  border: 4px solid #ff0000;
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+}
+
+.loss-modal-content h2 {
+  color: #ff0000;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+/* Win modal for high risk */
+.win-modal-overlay .win-modal-content {
+  border: 4px solid #ffd700;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+/* Cash out button with risk warning */
+.cashout-btn {
+  position: relative;
+}
+
+.cashout-btn::before {
+  content: '⚠️ HIGH RISK';
+  position: absolute;
+  top: -25px;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #ff4500, #ff0000);
+  color: white;
+  font-size: 10px;
+  padding: 4px;
+  border-radius: 5px;
+  font-weight: bold;
 }

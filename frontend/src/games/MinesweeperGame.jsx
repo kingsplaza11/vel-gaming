@@ -1,12 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../contexts/WalletContext";
 import { minesweeperService } from "../services/api";
+import { minesweeperSound } from "../utils/MinesweeperSoundManager";
 import "./MinesweeperGame.css";
 
 const MinesweeperGame = ({ user }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+
+  /* -------------------- SOUND MANAGER -------------------- */
+  const soundManager = minesweeperSound;
+  
+  // Initialize sound on first user interaction
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      soundManager.init();
+      window.removeEventListener('click', handleFirstInteraction);
+    };
+    
+    window.addEventListener('click', handleFirstInteraction);
+    return () => window.removeEventListener('click', handleFirstInteraction);
+  }, []);
 
   /* -------------------- HELPER FUNCTIONS -------------------- */
   const getCombinedBalance = () => {
@@ -45,6 +60,12 @@ const MinesweeperGame = ({ user }) => {
   const [gameInfo, setGameInfo] = useState(null);
   const [safeCellsLeft, setSafeCellsLeft] = useState(0);
   const [revealedCells, setRevealedCells] = useState([]);
+  const [clickedMine, setClickedMine] = useState(null);
+  const [currentMultiplier, setCurrentMultiplier] = useState(1.0);
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
+  
+  // Refs
+  const soundInitRef = useRef(false);
 
   const initializeGrid = (size) =>
     Array.from({ length: size }, () =>
@@ -64,11 +85,64 @@ const MinesweeperGame = ({ user }) => {
     }
   };
 
+  /* -------------------- SOUND FUNCTIONS -------------------- */
+  const playButtonClick = () => {
+    if (!soundInitRef.current) {
+      soundManager.init();
+      soundInitRef.current = true;
+    }
+    soundManager.playButtonClick();
+  };
+
+  const playGameStart = () => {
+    soundManager.playGameStart();
+  };
+
+  const playSafeReveal = () => {
+    soundManager.playSafeReveal();
+  };
+
+  const playMineHit = () => {
+    soundManager.playMineHit();
+  };
+
+  const playCashOut = () => {
+    soundManager.playCashOut();
+  };
+
+  const playWinCelebration = () => {
+    soundManager.playWinCelebration();
+  };
+
+  const playLossSound = () => {
+    soundManager.playLossSound();
+  };
+
+  const playGridSelect = () => {
+    soundManager.playGridSelect();
+  };
+
+  const playMineSelect = () => {
+    soundManager.playMineSelect();
+  };
+
+  const toggleSoundMute = () => {
+    const newMuteState = soundManager.toggleMute();
+    setIsSoundMuted(newMuteState);
+  };
+
   /* -------------------- EFFECTS -------------------- */
   useEffect(() => {
     fetchGameInfo();
-    setSafeCellsLeft(gridSize * gridSize - minesCount);
+    const totalCells = gridSize * gridSize;
+    const safeCells = totalCells - minesCount;
+    setSafeCellsLeft(safeCells);
   }, [gridSize, minesCount]);
+
+  // Initialize sound mute state
+  useEffect(() => {
+    setIsSoundMuted(soundManager.getMuteState().gameSoundsMuted);
+  }, []);
 
   /* -------------------- DEEP REFRESH -------------------- */
   const deepRefresh = async () => {
@@ -79,6 +153,8 @@ const MinesweeperGame = ({ user }) => {
     setLastWin(null);
     setMinesPositions([]);
     setRevealedCells([]);
+    setClickedMine(null);
+    setCurrentMultiplier(1.0);
     setShowWinModal(false);
     setShowLossModal(false);
     setIsProcessing(false);
@@ -91,6 +167,8 @@ const MinesweeperGame = ({ user }) => {
   /* -------------------- START GAME -------------------- */
   const startGame = async () => {
     if (isProcessing) return;
+    
+    playButtonClick();
     
     if (betAmount < 100) {
       alert("Minimum stake is ₦100");
@@ -107,6 +185,11 @@ const MinesweeperGame = ({ user }) => {
       return;
     }
 
+    if (minesCount >= gridSize * gridSize) {
+      alert("Too many mines! Mines count must be less than total cells.");
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const res = await minesweeperService.start({
@@ -116,13 +199,23 @@ const MinesweeperGame = ({ user }) => {
       });
 
       setGameId(res.data.game_id);
-      setGrid(initializeGrid(gridSize));
+      
+      // Initialize empty grid with correct structure
+      const initialGrid = initializeGrid(gridSize);
+      console.log("Initial grid created:", initialGrid);
+      setGrid(initialGrid);
+      
       setGameState("playing");
       setShowStakeModal(false);
       setMinesPositions([]);
       setRevealedCells([]);
+      setClickedMine(null);
+      setCurrentMultiplier(1.0);
       const safeCells = gridSize * gridSize - minesCount;
       setSafeCellsLeft(safeCells);
+
+      // Play game start sound
+      playGameStart();
 
       if (refreshWallet) {
         await refreshWallet();
@@ -142,12 +235,27 @@ const MinesweeperGame = ({ user }) => {
 
   /* -------------------- REVEAL CELL -------------------- */
   const revealCell = async (row, col) => {
-    if (gameState !== "playing" || isProcessing) return;
+    console.log("revealCell called with:", { row, col, gameState, isProcessing });
+    
+    if (gameState !== "playing") {
+      console.log("Cannot reveal: gameState is", gameState);
+      return;
+    }
+    
+    if (isProcessing) {
+      console.log("Cannot reveal: isProcessing is true");
+      return;
+    }
     
     // Don't reveal already revealed cells
-    if (grid[row][col].revealed) return;
+    if (grid[row] && grid[row][col] && grid[row][col].revealed) {
+      console.log("Cell already revealed at", row, col);
+      return;
+    }
     
+    console.log("Proceeding with reveal...");
     setIsProcessing(true);
+    
     try {
       const res = await minesweeperService.reveal({
         game_id: gameId,
@@ -155,17 +263,21 @@ const MinesweeperGame = ({ user }) => {
         col,
       });
 
+      console.log("Reveal API response:", res.data);
+
       if (res.data.hit_mine) {
+        console.log("Mine hit!");
         setGameState("lost");
+        setClickedMine([row, col]);
         
-        // Get all mines positions
         const mines = res.data.mines_positions || [];
+        console.log("Mines positions:", mines);
         setMinesPositions(mines);
         
-        // Update grid to show mines and revealed cells
-        const newGrid = [...grid];
+        // Create a new grid to update
+        const newGrid = initializeGrid(gridSize);
         
-        // First mark all mines
+        // Mark all mines
         mines.forEach(([r, c]) => {
           if (newGrid[r] && newGrid[r][c]) {
             newGrid[r][c].isMine = true;
@@ -173,9 +285,9 @@ const MinesweeperGame = ({ user }) => {
           }
         });
         
-        // Then mark revealed safe cells from backend
-        const backendRevealed = res.data.revealed_cells || [];
-        backendRevealed.forEach(([r, c]) => {
+        // Mark revealed safe cells
+        const revealed = res.data.revealed_cells || [];
+        revealed.forEach(([r, c]) => {
           if (newGrid[r] && newGrid[r][c] && !newGrid[r][c].isMine) {
             newGrid[r][c].revealed = true;
           }
@@ -183,34 +295,62 @@ const MinesweeperGame = ({ user }) => {
         
         setGrid(newGrid);
         
+        // Play mine hit sound
+        playMineHit();
+        
         // Show loss modal after a short delay
         setTimeout(() => {
           setShowLossModal(true);
+          playLossSound();
         }, 800);
         
         return;
       }
 
       // Cell is safe
-      setSafeCellsLeft(res.data.safe_cells_left || 0);
-
-      // Update revealed cells from backend
-      const backendRevealed = res.data.revealed_cells || [];
-      const newRevealedCells = [...revealedCells];
+      const safeCellsLeft = res.data.safe_cells_left || 0;
+      const currentMultiplier = res.data.current_multiplier || 1.0;
+      const allRevealed = res.data.all_revealed_cells || res.data.revealed_cells || [];
       
+      console.log("Cell is safe. Data:", { safeCellsLeft, currentMultiplier, allRevealed });
+      
+      setSafeCellsLeft(safeCellsLeft);
+      setCurrentMultiplier(currentMultiplier);
+      setRevealedCells(allRevealed);
+
+      // Update grid with all revealed cells
       const newGrid = [...grid];
-      backendRevealed.forEach(([r, c]) => {
+      
+      // Initialize grid if empty
+      if (!newGrid.length) {
+        console.log("Grid is empty, reinitializing");
+        const reinitializedGrid = initializeGrid(gridSize);
+        setGrid(reinitializedGrid);
+        setIsProcessing(false);
+        return;
+      }
+      
+      allRevealed.forEach(([r, c]) => {
         if (newGrid[r] && newGrid[r][c] && !newGrid[r][c].revealed) {
           newGrid[r][c].revealed = true;
           newGrid[r][c].isMine = false;
-          if (!newRevealedCells.some(cell => cell[0] === r && cell[1] === c)) {
-            newRevealedCells.push([r, c]);
-          }
         }
       });
       
+      console.log("Setting new grid:", newGrid);
       setGrid(newGrid);
-      setRevealedCells(newRevealedCells);
+      
+      // Play safe reveal sound
+      playSafeReveal();
+      
+      // Check for win
+      if (safeCellsLeft === 0) {
+        console.log("All safe cells revealed! Auto-cashing out...");
+        setGameState("won");
+        setTimeout(() => {
+          cashOut();
+        }, 500);
+      }
       
     } catch (err) {
       console.error("Reveal error:", err);
@@ -226,14 +366,23 @@ const MinesweeperGame = ({ user }) => {
 
   /* -------------------- CASH OUT -------------------- */
   const cashOut = async () => {
-    if (gameState !== "playing" || isProcessing) return;
+    console.log("cashOut called with state:", { gameState, isProcessing });
+    
+    if ((gameState !== "playing" && gameState !== "won") || isProcessing) {
+      console.log("Cannot cash out:", { gameState, isProcessing });
+      return;
+    }
 
+    playButtonClick();
+    
     setIsProcessing(true);
     try {
       const res = await minesweeperService.cashout({
         game_id: gameId,
       });
 
+      console.log("Cashout response:", res.data);
+      
       setGameState("cashed_out");
       setLastWin({
         win_amount: res.data.win_amount,
@@ -241,15 +390,27 @@ const MinesweeperGame = ({ user }) => {
       });
 
       // Reveal all cells on cash out
-      const newGrid = [...grid];
-      for (let r = 0; r < gridSize; r++) {
-        for (let c = 0; c < gridSize; c++) {
-          if (!newGrid[r][c].revealed) {
+      const newGrid = grid.map(row => 
+        row.map(cell => ({
+          ...cell,
+          revealed: true
+        }))
+      );
+      
+      // Also ensure mines are shown if we haven't hit one yet
+      if (minesPositions.length > 0) {
+        minesPositions.forEach(([r, c]) => {
+          if (newGrid[r] && newGrid[r][c]) {
+            newGrid[r][c].isMine = true;
             newGrid[r][c].revealed = true;
           }
-        }
+        });
       }
+      
       setGrid(newGrid);
+
+      // Play cash out sound
+      playCashOut();
 
       if (refreshWallet) {
         await refreshWallet();
@@ -258,6 +419,9 @@ const MinesweeperGame = ({ user }) => {
       // Show win modal after a short delay
       setTimeout(() => {
         setShowWinModal(true);
+        if (res.data.win_amount > 0) {
+          playWinCelebration();
+        }
       }, 500);
 
     } catch (err) {
@@ -273,10 +437,48 @@ const MinesweeperGame = ({ user }) => {
   };
 
   /* -------------------- RENDER CELL CONTENT -------------------- */
-  const renderCellContent = (cell) => {
+  const renderCellContent = (cell, row, col) => {
     if (!cell.revealed) return null;
-    if (cell.isMine) return "💣";
-    return "✅";
+    
+    if (cell.isMine) {
+      const isClickedMine = clickedMine && 
+                           clickedMine[0] === row && 
+                           clickedMine[1] === col;
+      
+      return isClickedMine ? (
+        <span className="mine-explosion" style={{ fontSize: '18px' }}>💥</span>
+      ) : (
+        <span className="mine-icon" style={{ fontSize: '16px' }}>💣</span>
+      );
+    }
+    
+    return (
+      <span className="safe-icon" style={{ fontSize: '14px' }}>✅</span>
+    );
+  };
+
+  /* -------------------- HANDLE SETTINGS CHANGES -------------------- */
+  const handleGridSizeChange = (size) => {
+    setGridSize(size);
+    playGridSelect();
+    if (minesCount >= size * size) {
+      setMinesCount(Math.max(3, size * size - 5));
+    }
+  };
+
+  const handleMinesCountChange = (count) => {
+    setMinesCount(count);
+    playMineSelect();
+  };
+
+  const handleBetAmountChange = (e) => {
+    const value = Math.max(100, Number(e.target.value));
+    setBetAmount(value);
+  };
+
+  const handleQuickStake = (amount) => {
+    setBetAmount(amount);
+    playButtonClick();
   };
 
   /* -------------------- RENDER -------------------- */
@@ -284,20 +486,57 @@ const MinesweeperGame = ({ user }) => {
     <div className="minesweeper-game">
       {/* HEADER */}
       <header className="game-header">
-        <button onClick={() => navigate("/")} disabled={isProcessing}>
+        <button 
+          onClick={() => {
+            playButtonClick();
+            navigate("/");
+          }} 
+          disabled={isProcessing}
+        >
           ← Back
         </button>
+        
+        <div className="balance-details">
+          {walletLoading ? (
+            <div className="balance-loading">
+              <div className="loading-spinner-small"></div>
+              <span>Loading...</span>
+            </div>
+          ) : (
+            <>
+              <div className="balance-total">{formatNGN(combinedBalance)}</div>
+              <div className="balance-breakdown">
+                <span className="balance-main">Main: {formatNGN(wallet?.balance || 0)}</span>
+                <span className="balance-spot">Spot: {formatNGN(spotBalance)}</span>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       {/* STAKE MODAL */}
       {showStakeModal && (
         <div className="stake-modal-overlay">
-          <div className="stake-modal">
+          <div className="stake-modal animated-slideUp">
             <h3>💣 Minesweeper</h3>
             <p className="game-description">
               {gameInfo ? gameInfo.game_info.description : 
                "Reveal safe cells and avoid mines to win!"}
             </p>
+
+            <div className="balance-summary">
+              {walletLoading ? (
+                <div className="balance-loading-inline">
+                  <div className="loading-spinner-small"></div>
+                  Loading balance...
+                </div>
+              ) : (
+                <>
+                  <span className="balance-label">Available Balance</span>
+                  <div className="balance-amount">{formatNGN(combinedBalance)}</div>
+                </>
+              )}
+            </div>
 
             <div className="game-settings">
               <div className="setting-group">
@@ -307,12 +546,7 @@ const MinesweeperGame = ({ user }) => {
                     <button
                       key={size}
                       className={gridSize === size ? "active" : ""}
-                      onClick={() => {
-                        setGridSize(size);
-                        if (minesCount >= size * size) {
-                          setMinesCount(Math.max(3, size * size - 5));
-                        }
-                      }}
+                      onClick={() => handleGridSizeChange(size)}
                       disabled={walletLoading || isProcessing}
                     >
                       {size}x{size}
@@ -328,7 +562,7 @@ const MinesweeperGame = ({ user }) => {
                     <button
                       key={count}
                       className={minesCount === count ? "active" : ""}
-                      onClick={() => setMinesCount(count)}
+                      onClick={() => handleMinesCountChange(count)}
                       disabled={walletLoading || isProcessing || count >= gridSize * gridSize}
                     >
                       {count} Mines
@@ -345,13 +579,13 @@ const MinesweeperGame = ({ user }) => {
                 value={betAmount}
                 min={100}
                 step={100}
-                onChange={(e) => setBetAmount(Number(e.target.value))}
+                onChange={handleBetAmountChange}
                 disabled={walletLoading || isProcessing}
               />
             </div>
             
             <button
-              className="start-btn"
+              className="start-btn animated-pulse"
               disabled={betAmount > combinedBalance || walletLoading || isProcessing || minesCount >= gridSize * gridSize}
               onClick={startGame}
             >
@@ -361,107 +595,168 @@ const MinesweeperGame = ({ user }) => {
         </div>
       )}
 
-      {/* GAME BOARD */}
-      {!showStakeModal && (
-        <div className="board-section">
-          <div className="game-info-bar">
-            <div className="info-item">
-              <span>Safe Cells Left</span>
-              <strong>{safeCellsLeft}</strong>
-            </div>
-            <div className="info-item">
-              <span>Mines</span>
-              <strong>{minesCount}</strong>
-            </div>
-            <div className="info-item">
-              <span>Grid</span>
-              <strong>{gridSize}x{gridSize}</strong>
-            </div>
-          </div>
-
-          <div className="grid-container">
-            <div className="grid">
-              {grid.map((row, r) => (
-                <div key={r} className="row">
-                  {row.map((cell, c) => (
-                    <div
-                      key={`${r}-${c}`}
-                      className={`cell ${
-                        cell.revealed ? (cell.isMine ? "mine" : "safe") : "hidden"
-                      }`}
-                      onClick={() => !isProcessing && revealCell(r, c)}
-                      style={{
-                        cursor: isProcessing || cell.revealed ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      {renderCellContent(cell)}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {gameState === "playing" && (
-            <div className="action-buttons">
-              <button 
-                className="cashout-btn" 
-                onClick={cashOut}
-                disabled={isProcessing}
+      {/* GAME BOARD - FIXED VERSION */}
+{!showStakeModal && (
+  <div className="board-section animated-fadeIn">
+    
+    {/* DEBUG TEST GRID - FIXED CLICK HANDLER */}
+    <div className="grid-container">
+      <div className="grid" style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${gridSize}, 45px)`,
+        gap: '4px',
+        backgroundColor: 'rgba(0, 0, 30, 0.7)',
+        padding: '10px',
+        borderRadius: '10px',
+        border: '4px solid #ffd700'
+      }}>
+        {grid.map((row, r) => (
+          row.map((cell, c) => {
+            const cellKey = `${r}-${c}`;
+            const isRevealed = cell.revealed;
+            const isMine = cell.isMine;
+            
+            return (
+              <div
+                key={cellKey}
+                onClick={async () => {
+                  console.log(`=== CLICK EVENT START ===`);
+                  console.log(`Cell [${r}, ${c}] clicked`);
+                  console.log(`Game State: ${gameState}`);
+                  console.log(`Is Processing: ${isProcessing}`);
+                  console.log(`Cell Revealed: ${isRevealed}`);
+                  console.log(`Game ID: ${gameId}`);
+                  
+                  // Check conditions
+                  if (gameState !== "playing") {
+                    console.log(`❌ Cannot click: Game state is ${gameState}, needs to be "playing"`);
+                    return;
+                  }
+                  
+                  if (isProcessing) {
+                    console.log(`❌ Cannot click: Already processing`);
+                    return;
+                  }
+                  
+                  if (isRevealed) {
+                    console.log(`❌ Cannot click: Cell already revealed`);
+                    return;
+                  }
+                  
+                  if (!gameId) {
+                    console.log(`❌ Cannot click: No game ID`);
+                    alert("No game ID found. Please start a new game.");
+                    return;
+                  }
+                  
+                  console.log(`✅ All conditions met, calling revealCell...`);
+                  
+                  // Call the reveal function
+                  try {
+                    await revealCell(r, c);
+                  } catch (error) {
+                    console.error(`❌ Error in revealCell:`, error);
+                  }
+                  
+                  console.log(`=== CLICK EVENT END ===`);
+                }}
+                style={{
+                  width: '45px',
+                  height: '45px',
+                  backgroundColor: isRevealed 
+                    ? (isMine ? '#f56565' : '#48bb78') 
+                    : '#2d3748',
+                  border: isRevealed 
+                    ? (isMine ? '2px solid #c53030' : '2px solid #2f855a') 
+                    : '2px solid #4a5568',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  cursor: (gameState === "playing" && !isProcessing && !isRevealed) 
+                    ? 'pointer' 
+                    : 'not-allowed',
+                  userSelect: 'none',
+                  borderRadius: '4px',
+                  fontSize: '16px',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  if (gameState === "playing" && !isProcessing && !isRevealed) {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(255,255,255,0.3)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               >
-                {isProcessing ? "PROCESSING..." : "💰 CASH OUT"}
-              </button>
-            </div>
-          )}
-
-          {(gameState === "lost" || gameState === "cashed_out") && (
-            <div className="result-section">
-              <div className="result-message">
-                {gameState === "lost" ? (
-                  <>
-                    <div className="result-icon">💥</div>
-                    <h3>Mine Hit!</h3>
-                  </>
+                {isRevealed ? (
+                  isMine ? (
+                    <span style={{ animation: 'pulse 0.5s' }}>💣</span>
+                  ) : (
+                    <span style={{ animation: 'fadeIn 0.3s' }}>✅</span>
+                  )
                 ) : (
-                  <>
-                    <div className="result-icon">💰</div>
-                    <h3>Cashed Out!</h3>
-                  </>
+                  <span style={{ 
+                    opacity: 0.3, 
+                    fontSize: '10px',
+                    color: '#87ceeb'
+                  }}>
+                    {r},{c}
+                  </span>
+                )}
+                
+                {/* Debug overlay - shows if cell is clickable */}
+                {!isRevealed && gameState === "playing" && !isProcessing && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 255, 0, 0.1)',
+                    borderRadius: '4px',
+                    pointerEvents: 'none'
+                  }} />
                 )}
               </div>
-              
-              {gameState === "cashed_out" && lastWin && (
-                <div className="win-details">
-                  <div className="win-amount-display">
-                    <span className="win-label">You Won</span>
-                    <span className="win-amount">{formatNGN(lastWin.win_amount)}</span>
-                  </div>
-                </div>
-              )}
+            );
+          })
+        ))}
+      </div>
+    </div>
 
-              <button
-                className="restart-btn"
-                onClick={deepRefresh}
-                disabled={isProcessing}
-              >
-                {isProcessing ? "RESETTING..." : "🔁 PLAY AGAIN"}
-              </button>
-            </div>
-          )}
+      {/* CASH OUT BUTTON */}
+      {gameState === "playing" && (
+        <div className="action-buttons">
+          <button 
+            className="cashout-btn animated-pulse-glow" 
+            onClick={() => {
+              console.log("💰 Cashout button clicked");
+              cashOut();
+            }}
+            disabled={isProcessing}
+          >
+            {isProcessing ? "PROCESSING..." : "💰 CASH OUT"}
+          </button>
         </div>
       )}
+    </div>
+    )}
 
       {/* WIN MODAL */}
       {showWinModal && lastWin && (
         <div className="modal-overlay win-modal-overlay">
-          <div className="win-modal-content">
+          <div className="win-modal-content animated-slideUp">
             <div className="win-modal-header">
-              <div className="win-icon">🏆</div>
-              <h2>Cashed Out!</h2>
-              <p className="win-subtitle">Safe cells revealed successfully!</p>
+              <div className="win-icon animated-pulse">🏆</div>
+              <h2>Cashed Out Successfully!</h2>
             </div>
             
-            <div className="win-amount-display">
+            <div className="win-amount-display animated-pulse">
               <span className="win-amount-label">You won</span>
               <span className="win-amount">
                 {formatNGN(lastWin.win_amount)}
@@ -471,6 +766,7 @@ const MinesweeperGame = ({ user }) => {
             <button
               className="continue-button"
               onClick={() => {
+                playButtonClick();
                 setShowWinModal(false);
                 deepRefresh();
               }}
@@ -484,29 +780,17 @@ const MinesweeperGame = ({ user }) => {
       {/* LOSS MODAL */}
       {showLossModal && (
         <div className="modal-overlay loss-modal-overlay">
-          <div className="loss-modal-content">
+          <div className="loss-modal-content animated-slideUp">
             <div className="loss-modal-header">
-              <div className="loss-icon">💥</div>
+              <div className="loss-icon animated-shake">💥</div>
               <h2>Game Over</h2>
               <p className="loss-subtitle">You hit a mine</p>
-            </div>
-            
-            <div className="loss-message">
-              <p className="loss-encouragement">
-                Oops! That was a mine.
-              </p>
-            </div>
-            
-            <div className="loss-stats">
-              <div className="stat-item">
-                <span>Stake Lost:</span>
-                <span className="loss-amount">{formatNGN(betAmount)}</span>
-              </div>
             </div>
             
             <button
               className="try-again-button"
               onClick={() => {
+                playButtonClick();
                 setShowLossModal(false);
                 deepRefresh();
               }}

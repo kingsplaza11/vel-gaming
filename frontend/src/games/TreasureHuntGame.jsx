@@ -60,13 +60,11 @@ const TreasureHuntGame = ({ user }) => {
 
   /* ---------------- AUDIO CONTROLS ---------------- */
   const toggleMute = () => {
-    const { bgMuted, gameMuted } = treasureSound.toggleMute();
-    setMuteState({ backgroundMusicMuted: bgMuted, gameSoundsMuted: gameMuted });
+    const isMuted = treasureSound.toggleMute();
+    setMuteState({ gameSoundsMuted: isMuted });
   };
 
-  const allMuted = muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
-  const bgMutedOnly = muteState.backgroundMusicMuted && !muteState.gameSoundsMuted;
-  const gameMutedOnly = !muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
+  const isMuted = muteState.gameSoundsMuted;
 
   /* ---------------- DEEP REFRESH FUNCTION ---------------- */
   const deepRefresh = useCallback(async () => {
@@ -97,14 +95,9 @@ const TreasureHuntGame = ({ user }) => {
         setShowStartModal(true);
         setPhase("idle");
         setHunting(false);
-        
-        // Start background music if not muted
-        if (!muteState.backgroundMusicMuted) {
-          treasureSound.playBackgroundMusic();
-        }
       }
     }
-  }, [refreshWallet, muteState.backgroundMusicMuted]);
+  }, [refreshWallet]);
 
   /* ---------------- TREASURE REVEAL ANIMATION ---------------- */
   const revealTreasuresProgressively = (treasures) => {
@@ -209,11 +202,6 @@ const TreasureHuntGame = ({ user }) => {
       treasureSound.init();
       document.removeEventListener('click', initAudioOnInteraction);
       document.removeEventListener('touchstart', initAudioOnInteraction);
-      
-      // Start background music if not muted
-      if (!muteState.backgroundMusicMuted) {
-        treasureSound.playBackgroundMusic();
-      }
     };
     
     // Add event listeners for audio context initialization
@@ -318,7 +306,7 @@ const TreasureHuntGame = ({ user }) => {
   /* ---------------- MODAL HANDLERS ---------------- */
   const handleContinue = async () => {
     // Play button click sound
-    if (!muteState.gameSoundsMuted) {
+    if (!isMuted) {
       treasureSound.playCoinSound();
     }
     
@@ -425,9 +413,9 @@ const TreasureHuntGame = ({ user }) => {
         <button 
           className="audio-control-btn"
           onClick={toggleMute}
-          aria-label={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+          aria-label={isMuted ? "Unmute game sounds" : "Mute game sounds"}
         >
-          {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🧭"}
+          {isMuted ? "🔇" : "🔊"}
         </button>
       </header>
 
@@ -720,9 +708,9 @@ const TreasureHuntGame = ({ user }) => {
       <button 
         className="floating-audio-control" 
         onClick={toggleMute}
-        aria-label={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+        aria-label={isMuted ? "Unmute game sounds" : "Mute game sounds"}
       >
-        {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🧭"}
+        {isMuted ? "🔇" : "🔊"}
       </button>
     </div>
   );

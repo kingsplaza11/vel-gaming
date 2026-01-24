@@ -10,10 +10,19 @@ import { useWallet } from "../../contexts/WalletContext";
 import { fortuneService } from "../../services/api";
 import { tigerSound } from "../../utils/TigerSoundManager";
 import toast from "react-hot-toast";
+import Confetti from "react-confetti";
 import "./fortunetiger.css";
 
 const GRID_SIZE = 16;
 const MINIMUM_STAKE = 100;
+
+// Sound durations for proper timing
+const SOUND_DURATIONS = {
+  GAME_OVER: 4000, // Defeated whimper + mocking hyena + final growl
+  CASHOUT: 4000, // Victory fanfare + celebration
+  ROAR: 1000, // Tiger roar
+  TILE_REVEAL: 500, // Generic tile reveal
+};
 
 export default function FortuneTiger() {
   const navigate = useNavigate();
@@ -26,7 +35,9 @@ export default function FortuneTiger() {
   const [bet, setBet] = useState("");
   const [starting, setStarting] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
-  const [muteState, setMuteState] = useState(tigerSound.getMuteState());
+  const [muteState, setMuteState] = useState({ gameSoundsMuted: tigerSound.isMuted });
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [confettiKey, setConfettiKey] = useState(0);
   const [gameConfig, setGameConfig] = useState({
     title: "Fortune Tiger",
     icon: "🐯",
@@ -39,6 +50,10 @@ export default function FortuneTiger() {
   const [shake, setShake] = useState(false);
   const [tigerRoar, setTigerRoar] = useState(false);
   const [highlightTile, setHighlightTile] = useState(null);
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
 
   const [game, setGame] = useState({
     status: "idle",
@@ -63,28 +78,72 @@ export default function FortuneTiger() {
   ========================= */
   const tapLock = useRef(false);
   const lastTileRef = useRef(null);
-  const unlockTimeoutRef = useRef(null);
+  const confettiTimeoutRef = useRef(null);
+  const resetTimeoutRef = useRef(null);
+
+  /* =========================
+     WINDOW SIZE TRACKING
+  ========================= */
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   /* =========================
      AUDIO CONTROLS
   ========================= */
   const toggleMute = () => {
-    const { bgMuted, gameMuted } = tigerSound.toggleMute();
-    setMuteState({ backgroundMusicMuted: bgMuted, gameSoundsMuted: gameMuted });
-    
-    const bgText = bgMuted ? "Background music muted" : "Background music unmuted";
-    const gameText = gameMuted ? "Game sounds muted" : "Game sounds active";
+    const muted = tigerSound.toggleMute();
+    setMuteState({ gameSoundsMuted: muted });
     
     toast(
-      <div>
-        <div>{bgText}</div>
-        <div>{gameText}</div>
-      </div>,
+      muted ? "Game sounds muted 🔇" : "Game sounds active 🐯",
       {
-        icon: bgMuted && gameMuted ? "🔇" : bgMuted ? "🎵" : gameMuted ? "🔊" : "🐯"
+        icon: muted ? "🔇" : "🐯",
+        duration: 1500
       }
     );
   };
+
+  /* =========================
+     VISUAL EFFECTS FUNCTIONS
+  ========================= */
+  const triggerWinEffects = useCallback(() => {
+    // Clear any existing timeout
+    if (confettiTimeoutRef.current) {
+      clearTimeout(confettiTimeoutRef.current);
+    }
+
+    // Reset confetti key to ensure new instance
+    setConfettiKey(prev => prev + 1);
+    
+    // Show confetti immediately
+    setShowConfetti(true);
+    console.log("🎉 Confetti triggered - should be visible!");
+
+    // Hide confetti after 6 seconds
+    confettiTimeoutRef.current = setTimeout(() => {
+      setShowConfetti(false);
+      console.log("🎉 Confetti hidden");
+    }, 6000);
+  }, []);
+
+  const cleanupEffects = useCallback(() => {
+    if (confettiTimeoutRef.current) {
+      clearTimeout(confettiTimeoutRef.current);
+    }
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    setShowConfetti(false);
+  }, []);
 
   /* =========================
      GAME RESULTS CONFIGURATION
@@ -159,13 +218,26 @@ export default function FortuneTiger() {
     setActiveSessionId(null);
     setHighlightTile(null);
     
-    tigerSound.stopBackgroundMusic();
-    
-    if (unlockTimeoutRef.current) {
-      clearTimeout(unlockTimeoutRef.current);
-      unlockTimeoutRef.current = null;
+    // Cleanup effects
+    cleanupEffects();
+  }, [cleanupEffects]);
+
+  /* =========================
+     DELAYED RESET FUNCTIONS
+  ========================= */
+  const resetToStakeModal = useCallback(() => {
+    resetGame();
+    setStakeOpen(true);
+  }, [resetGame]);
+
+  const delayedResetToStakeModal = useCallback((delay = 1000) => {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
     }
-  }, []);
+    resetTimeoutRef.current = setTimeout(() => {
+      resetToStakeModal();
+    }, delay);
+  }, [resetToStakeModal]);
 
   /* =========================
      GAME ACTIONS
@@ -193,7 +265,10 @@ export default function FortuneTiger() {
     console.log("[FortuneTiger] Starting game with bet:", betAmount);
     setStarting(true);
     
-    // Play stake sound (game sound, not background music)
+    // Cleanup any existing effects
+    cleanupEffects();
+    
+    // Play stake sound
     tigerSound.playStake();
     
     try {
@@ -228,14 +303,9 @@ export default function FortuneTiger() {
         }))
       );
       
-      // Start tiger background music if not muted
-      if (!muteState.backgroundMusicMuted) {
-        tigerSound.playBackgroundMusic();
-      }
-      
       refreshWallet();
       
-      // Tiger roar effect (game sound)
+      // Tiger roar effect
       tigerSound.playRoar();
       setTigerRoar(true);
       setTimeout(() => setTigerRoar(false), 1000);
@@ -286,7 +356,7 @@ export default function FortuneTiger() {
 
     console.log("[FortuneTiger] Taking step for tile:", id);
     
-    // Play tiger tap sound (game sound)
+    // Play tiger tap sound
     tigerSound.playTap();
     
     try {
@@ -313,14 +383,14 @@ export default function FortuneTiger() {
         )
       );
 
-      // Play tile reveal sound (game sound)
+      // Play tile reveal sound
       tigerSound.playTileSound(resultType);
 
       // Apply visual effect based on result
       setStageEffect(resultInfo.effect || "");
       setTimeout(() => setStageEffect(""), 500);
 
-      // Handle game over (trap)
+      // Handle game over (trap) - WITH SOUND DELAY
       if (resultType === "trap") {
         setGame((g) => ({
           ...g,
@@ -333,24 +403,27 @@ export default function FortuneTiger() {
         setShake(true);
         setTigerRoar(true);
         
-        // Play game over sound (game sound)
+        // Play game over sound (includes mocking hyena laughter)
         tigerSound.playGameOverSound();
-        tigerSound.stopBackgroundMusic();
 
         toast.error(`${resultInfo.label}! Game Over!`, {
           icon: resultInfo.icon,
-          duration: 3000,
+          duration: SOUND_DURATIONS.GAME_OVER - 1000,
         });
 
+        // Wait for sound to finish before resetting (plus extra time for visuals)
         setTimeout(() => {
-          resetGame();
-          setStakeOpen(true);
-        }, 1400);
+          setShake(false);
+          setTigerRoar(false);
+        }, 800);
+
+        // Reset to stake modal after sound finishes
+        delayedResetToStakeModal(SOUND_DURATIONS.GAME_OVER);
         
         return;
       }
       
-      // Handle auto-cashout
+      // Handle auto-cashout - WITH SOUND DELAY AND CONFETTI
       if (resultType === "auto_cashout") {
         setGame((g) => ({
           ...g,
@@ -361,18 +434,20 @@ export default function FortuneTiger() {
         }));
 
         setStageEffect("effect-cashout");
+        
+        // Play cashout sound (includes victory fanfare and jungle celebration)
         tigerSound.playCashoutSound();
-        tigerSound.stopBackgroundMusic();
         refreshWallet();
 
+        // Trigger confetti for auto-cashout win - DO THIS IMMEDIATELY
+        triggerWinEffects();
+
         toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
-          duration: 3000,
+          duration: SOUND_DURATIONS.CASHOUT,
         });
 
-        setTimeout(() => {
-          resetGame();
-          setStakeOpen(true);
-        }, 1500);
+        // Reset to stake modal after sound finishes and confetti displays
+        delayedResetToStakeModal(Math.max(SOUND_DURATIONS.CASHOUT, 3000));
         
         return;
       }
@@ -432,7 +507,7 @@ export default function FortuneTiger() {
     } finally {
       tapLock.current = false;
     }
-  }, [activeSessionId, game, tiles, refreshWallet, resetGame, resultConfig]);
+  }, [activeSessionId, game, tiles, refreshWallet, resetGame, resultConfig, triggerWinEffects, delayedResetToStakeModal]);
 
   const cashout = useCallback(async () => {
     if (!activeSessionId) {
@@ -452,7 +527,7 @@ export default function FortuneTiger() {
 
     tapLock.current = true;
     
-    // Play tiger tap sound (game sound)
+    // Play tiger tap sound
     tigerSound.playTap();
     
     toast.loading("Processing cashout...", { id: "cashout" });
@@ -471,8 +546,9 @@ export default function FortuneTiger() {
       }));
 
       setStageEffect("effect-cashout");
+      
+      // Play cashout sound (victory fanfare and celebration)
       tigerSound.playCashoutSound();
-      tigerSound.stopBackgroundMusic();
       refreshWallet();
       
       toast.dismiss("cashout");
@@ -483,14 +559,15 @@ export default function FortuneTiger() {
         `Tiger victory! Won ₦${winAmount} (${finalMultiplier}x)`,
         { 
           icon: '👑',
-          duration: 3000
+          duration: SOUND_DURATIONS.CASHOUT,
         }
       );
 
-      setTimeout(() => {
-        resetGame();
-        setStakeOpen(true);
-      }, 1500);
+      // Trigger confetti for manual cashout win - DO THIS IMMEDIATELY
+      triggerWinEffects();
+
+      // Reset to stake modal after sound finishes and confetti displays
+      delayedResetToStakeModal(Math.max(SOUND_DURATIONS.CASHOUT, 3000));
       
     } catch (e) {
       console.error("[FortuneTiger] Failed to cashout:", e);
@@ -508,7 +585,7 @@ export default function FortuneTiger() {
     } finally {
       tapLock.current = false;
     }
-  }, [activeSessionId, game.status, refreshWallet, resetGame]);
+  }, [activeSessionId, game.status, refreshWallet, resetGame, triggerWinEffects, delayedResetToStakeModal]);
 
   /* =========================
      SESSION RECOVERY
@@ -532,11 +609,6 @@ export default function FortuneTiger() {
           });
           setStakeOpen(false);
           
-          // Start tiger background music if not muted
-          if (!muteState.backgroundMusicMuted) {
-            tigerSound.playBackgroundMusic();
-          }
-          
           try {
             const configRes = await fortuneService.getGameConfig("fortune_tiger");
             setGameConfig(prev => ({ ...prev, ...configRes.data }));
@@ -554,7 +626,7 @@ export default function FortuneTiger() {
         localStorage.removeItem('fortune_tiger_active_session');
       }
     }
-  }, [muteState.backgroundMusicMuted]);
+  }, []);
 
   /* =========================
      EFFECTS
@@ -565,9 +637,9 @@ export default function FortuneTiger() {
     
     return () => {
       tigerSound.cleanup();
-      resetGame();
+      cleanupEffects();
     };
-  }, [checkExistingSession, resetGame]);
+  }, [checkExistingSession, cleanupEffects]);
 
   useEffect(() => {
     if (activeSessionId && game.status === "active") {
@@ -594,16 +666,156 @@ export default function FortuneTiger() {
   const currentResult = tiles.find(t => t.revealed && t.id === lastTileRef.current);
   const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
 
-  const allMuted = muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
-  const bgMutedOnly = muteState.backgroundMusicMuted && !muteState.gameSoundsMuted;
-  const gameMutedOnly = !muteState.backgroundMusicMuted && muteState.gameSoundsMuted;
-
   return (
     <div
       className={`fortune-stage tiger-stage ${game.status} ${stageEffect} ${
         shake ? "shake" : ""
       } ${tigerRoar ? "tiger-roar" : ""}`}
     >
+      {/* CONFETTI OVERLAY - MUST BE HIGHEST Z-INDEX */}
+      {showConfetti && (
+        <div className="confetti-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: 10000,
+        }}>
+          <Confetti
+            key={`confetti-${confettiKey}-1`}
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={true}
+            numberOfPieces={400}
+            gravity={0.15}
+            initialVelocityY={30}
+            initialVelocityX={12}
+            wind={0.05}
+            colors={[
+              '#fbbf24', // Tiger Gold
+              '#f97316', // Tiger Orange
+              '#dc2626', // Tiger Red
+              '#8b5cf6', // Tiger Purple
+              '#10b981', // Tiger Green
+              '#3b82f6', // Tiger Blue
+              '#ffffff', // White
+            ]}
+            confettiSource={{
+              x: windowSize.width / 2,
+              y: windowSize.height / 2,
+              w: windowSize.width * 0.5,
+              h: 10,
+            }}
+            drawShape={ctx => {
+              const shapeType = Math.random();
+              if (shapeType < 0.3) {
+                // Circle
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, 2 * Math.PI);
+                ctx.fill();
+              } else if (shapeType < 0.6) {
+                // Square
+                ctx.fillRect(-7, -7, 14, 14);
+              } else if (shapeType < 0.8) {
+                // Triangle
+                ctx.beginPath();
+                ctx.moveTo(0, -10);
+                ctx.lineTo(-8, 8);
+                ctx.lineTo(8, 8);
+                ctx.closePath();
+                ctx.fill();
+              } else {
+                // Star
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                  const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+                  const x = 8 * Math.cos(angle);
+                  const y = 8 * Math.sin(angle);
+                  if (i === 0) ctx.moveTo(x, y);
+                  else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+              }
+            }}
+          />
+          
+          {/* Additional confetti layer for depth */}
+          <Confetti
+            key={`confetti-${confettiKey}-2`}
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={true}
+            numberOfPieces={200}
+            gravity={0.08}
+            initialVelocityY={20}
+            initialVelocityX={8}
+            wind={0.02}
+            colors={[
+              '#fbbf24', // Tiger Gold
+              '#f97316', // Tiger Orange
+              '#ffffff', // White
+            ]}
+            confettiSource={{
+              x: windowSize.width / 2,
+              y: windowSize.height,
+              w: windowSize.width * 0.8,
+              h: 0,
+            }}
+          />
+          
+          {/* Third layer for more celebration */}
+          <Confetti
+            key={`confetti-${confettiKey}-3`}
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={true}
+            numberOfPieces={150}
+            gravity={0.25}
+            initialVelocityY={35}
+            initialVelocityX={15}
+            wind={0.1}
+            colors={[
+              '#dc2626', // Tiger Red
+              '#8b5cf6', // Tiger Purple
+              '#3b82f6', // Tiger Blue
+            ]}
+            confettiSource={{
+              x: 0,
+              y: windowSize.height / 2,
+              w: windowSize.width,
+              h: 5,
+            }}
+          />
+          
+          {/* Glowing background effect */}
+          <div className="winning-glow" style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'radial-gradient(circle at center, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.15) 40%, transparent 70%)',
+            pointerEvents: 'none',
+            animation: 'pulse 2s ease-in-out infinite',
+          }} />
+          
+          {/* Sparkle overlay */}
+          <div className="sparkle-overlay" style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%)',
+            pointerEvents: 'none',
+            animation: 'sparkle 3s ease-in-out infinite',
+          }} />
+        </div>
+      )}
+
       {/* HEADER - Single Row on Desktop */}
       <div className="fortune-header tiger-header">
         <div className="fortune-brand">
@@ -653,7 +865,7 @@ export default function FortuneTiger() {
           
           {/* Audio Control Button */}
           <button className="audio-control tiger-audio" onClick={toggleMute}>
-            {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🐯"}
+            {muteState.gameSoundsMuted ? "🔇" : "🐯"}
           </button>
         </div>
       </div>
@@ -699,7 +911,7 @@ export default function FortuneTiger() {
           })}
         </div>
         
-        {/* Game status overlays */}
+        {/* Game status overlays - These will now stay visible until sounds finish */}
         {game.status === "lost" && (
           <div className="game-overlay tiger-lost">
             <div className="overlay-content">
@@ -708,6 +920,9 @@ export default function FortuneTiger() {
               <div className="overlay-subtitle">Game Over</div>
               <div className="overlay-multiplier">
                 Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
+              </div>
+              <div className="overlay-countdown">
+                Returning to stake screen...
               </div>
             </div>
           </div>
@@ -721,6 +936,10 @@ export default function FortuneTiger() {
               <div className="overlay-subtitle">Won ₦{parseFloat(game.payout_amount).toLocaleString("en-NG")}</div>
               <div className="overlay-multiplier">
                 Final multiplier: {parseFloat(game.current_multiplier).toFixed(2)}x
+              </div>
+              <div className="overlay-countdown">
+                <div className="countdown-spinner"></div>
+                Returning to stake screen...
               </div>
             </div>
           </div>
@@ -826,10 +1045,10 @@ export default function FortuneTiger() {
       <button 
         className="floating-audio-control tiger-floating" 
         onClick={toggleMute}
-        aria-label={allMuted ? "Unmute all sounds" : "Mute all sounds"}
-        title={allMuted ? "Unmute all sounds" : "Mute all sounds"}
+        aria-label={muteState.gameSoundsMuted ? "Unmute game sounds" : "Mute game sounds"}
+        title={muteState.gameSoundsMuted ? "Unmute game sounds" : "Mute game sounds"}
       >
-        {allMuted ? "🔇" : bgMutedOnly ? "🎵" : gameMutedOnly ? "🔊" : "🐯"}
+        {muteState.gameSoundsMuted ? "🔇" : "🐯"}
       </button>
     </div>
   );

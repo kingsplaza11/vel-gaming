@@ -4,10 +4,7 @@ class TreasureSoundManager {
     this.audioContext = null;
     this.oscillators = new Map();
     this.isMuted = localStorage.getItem('treasure_muted') === 'true';
-    this.backgroundMusicMuted = localStorage.getItem('treasure_bg_muted') === 'true';
-    this.backgroundAudio = null;
-    this.masterVolume = 0.7;
-    this.ambientInterval = null;
+    this.masterVolume = 0.5; // Reduced from 0.7 for more subtle sounds
     this.activeSounds = new Set();
     this.isInitialized = false;
   }
@@ -52,195 +49,10 @@ class TreasureSoundManager {
   }
 
   /* =========================
-     BACKGROUND MUSIC & AMBIENCE
+     CALM & SUBTLE GAME SOUNDS
   ========================= */
   
-  // Play treasure hunt background music
-  playBackgroundMusic() {
-    if (this.backgroundMusicMuted || this.backgroundAudio) return;
-    
-    try {
-      this.backgroundAudio = new Audio('/sounds/Dust_in_the_Gold.mp3');
-      this.backgroundAudio.loop = true;
-      this.backgroundAudio.volume = 0.12 * this.masterVolume;
-      
-      // Handle autoplay restrictions
-      const playPromise = this.backgroundAudio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(e => {
-          console.log('Treasure background music play failed:', e);
-          this.backgroundAudio = null;
-          // Fallback to generated adventure sounds
-          this.playGeneratedAdventureAmbience();
-        });
-      }
-    } catch (error) {
-      console.warn('Failed to load treasure background music:', error);
-      // Fallback to generated adventure sounds
-      this.playGeneratedAdventureAmbience();
-    }
-  }
-
-  // Generate adventure ambiance sounds
-  playGeneratedAdventureAmbience() {
-    if (this.backgroundMusicMuted || this.ambientInterval) return;
-    
-    // Initialize audio context if needed
-    if (!this.init()) return;
-    
-    // Mysterious wind sounds
-    const playWindSound = () => {
-      if (this.backgroundMusicMuted) return;
-      
-      this.safePlay(() => {
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(120, this.audioContext.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(90, this.audioContext.currentTime + 3);
-        
-        gainNode.gain.setValueAtTime(0.04 * this.masterVolume, this.audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 3);
-        
-        oscillator.start();
-        oscillator.stop(this.audioContext.currentTime + 3);
-        
-        const soundId = Date.now();
-        this.oscillators.set(soundId, { oscillator, gainNode });
-        
-        setTimeout(() => {
-          this.cleanupOscillator(soundId);
-        }, 3000);
-      });
-    };
-    
-    // Play wind sounds periodically
-    playWindSound();
-    this.ambientInterval = setInterval(playWindSound, 5000 + Math.random() * 3000);
-    
-    // Start occasional mysterious sounds
-    this.startMysteriousSounds();
-  }
-
-  // Play occasional mysterious adventure sounds
-  startMysteriousSounds() {
-    if (this.backgroundMusicMuted) return;
-    
-    const playMysterySound = () => {
-      setTimeout(() => {
-        if (this.backgroundMusicMuted) return;
-        
-        this.safePlay(() => {
-          // Choose random mystery sound type
-          const soundTypes = [
-            { type: 'sawtooth', freq: 200, duration: 0.8 }, // Creaking
-            { type: 'triangle', freq: 400, duration: 0.4 }, // Chime
-            { type: 'square', freq: 150, duration: 1.2 }, // Rumble
-          ];
-          
-          const sound = soundTypes[Math.floor(Math.random() * soundTypes.length)];
-          const oscillator = this.audioContext.createOscillator();
-          const gainNode = this.audioContext.createGain();
-          
-          oscillator.connect(gainNode);
-          gainNode.connect(this.audioContext.destination);
-          
-          oscillator.type = sound.type;
-          oscillator.frequency.setValueAtTime(sound.freq, this.audioContext.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(sound.freq * 0.7, this.audioContext.currentTime + sound.duration);
-          
-          gainNode.gain.setValueAtTime(0.03 * this.masterVolume, this.audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + sound.duration);
-          
-          oscillator.start();
-          oscillator.stop(this.audioContext.currentTime + sound.duration);
-          
-          const id = Date.now();
-          this.oscillators.set(id, { oscillator, gainNode });
-          
-          setTimeout(() => this.cleanupOscillator(id), sound.duration * 1000);
-        });
-      }, Math.random() * 15000 + 10000); // Every 10-25 seconds
-    };
-    
-    // Start immediately and set interval
-    playMysterySound();
-    setInterval(playMysterySound, 25000 + Math.random() * 15000);
-  }
-
-  // Stop all background sounds
-  stopBackgroundMusic() {
-    if (this.backgroundAudio) {
-      this.backgroundAudio.pause();
-      this.backgroundAudio.currentTime = 0;
-      this.backgroundAudio = null;
-    }
-    
-    if (this.ambientInterval) {
-      clearInterval(this.ambientInterval);
-      this.ambientInterval = null;
-    }
-  }
-
-  /* =========================
-     SOUND CONTROL METHODS
-  ========================= */
-  
-  // Toggle only background music
-  toggleBackgroundMusic() {
-    this.backgroundMusicMuted = !this.backgroundMusicMuted;
-    localStorage.setItem('treasure_bg_muted', this.backgroundMusicMuted);
-    
-    if (this.backgroundMusicMuted) {
-      this.stopBackgroundMusic();
-    } else {
-      this.playBackgroundMusic();
-    }
-    
-    return this.backgroundMusicMuted;
-  }
-
-  // Toggle all game sounds (not background music)
-  toggleGameSounds() {
-    this.isMuted = !this.isMuted;
-    localStorage.setItem('treasure_muted', this.isMuted);
-    
-    if (this.isMuted) {
-      // Cleanup all oscillators (game sounds)
-      this.oscillators.forEach((sound, id) => {
-        this.cleanupOscillator(id);
-      });
-    }
-    
-    return this.isMuted;
-  }
-
-  // Toggle both background music and game sounds
-  toggleMute() {
-    const bgMuted = this.toggleBackgroundMusic();
-    const gameMuted = this.toggleGameSounds();
-    
-    return { bgMuted, gameMuted };
-  }
-
-  // Get current mute states
-  getMuteState() {
-    return {
-      backgroundMusicMuted: this.backgroundMusicMuted,
-      gameSoundsMuted: this.isMuted
-    };
-  }
-
-  /* =========================
-     GAME SOUND EFFECTS
-     These only check this.isMuted (not backgroundMusicMuted)
-  ========================= */
-  
-  // Map selection sound
+  // Map selection sound (gentle click with soft tone)
   playMapSelectSound() {
     this.safePlay(() => {
       const oscillator = this.audioContext.createOscillator();
@@ -250,36 +62,10 @@ class TreasureSoundManager {
       gainNode.connect(this.audioContext.destination);
       
       oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(500, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.15);
+      oscillator.frequency.setValueAtTime(440, this.audioContext.currentTime); // A4
+      oscillator.frequency.exponentialRampToValueAtTime(523.25, this.audioContext.currentTime + 0.1); // C5
       
-      gainNode.gain.setValueAtTime(0.1 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.15);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.15);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode });
-      
-      setTimeout(() => this.cleanupOscillator(id), 150);
-    });
-  }
-
-  // Stake placement sound
-  playStakeSound() {
-    this.safePlay(() => {
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.1);
-      
-      gainNode.gain.setValueAtTime(0.12 * this.masterVolume, this.audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.08 * this.masterVolume, this.audioContext.currentTime); // Reduced volume
       gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
       
       oscillator.start();
@@ -292,72 +78,9 @@ class TreasureSoundManager {
     });
   }
 
-  // Expedition start sound (rocket launch)
-  playExpeditionStartSound() {
+  // Stake placement sound (soft chime)
+  playStakeSound() {
     this.safePlay(() => {
-      // Rocket launch effect
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sawtooth';
-      oscillator.frequency.setValueAtTime(100, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.8);
-      
-      gainNode.gain.setValueAtTime(0.15 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.8);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.8);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode });
-      
-      setTimeout(() => this.cleanupOscillator(id), 800);
-    });
-  }
-
-  // Sailing phase sound
-  playSailingSound() {
-    this.safePlay(() => {
-      // Boat creaking and waves
-      const frequencies = [80, 120, 200];
-      
-      frequencies.forEach((freq, index) => {
-        setTimeout(() => {
-          this.safePlay(() => {
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
-            
-            oscillator.type = index % 2 === 0 ? 'sine' : 'square';
-            oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(freq * 0.8, this.audioContext.currentTime + 0.5);
-            
-            gainNode.gain.setValueAtTime((0.08 - index * 0.02) * this.masterVolume, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.5);
-            
-            oscillator.start();
-            oscillator.stop(this.audioContext.currentTime + 0.5);
-            
-            const id = Date.now() + freq + index;
-            this.oscillators.set(id, { oscillator, gainNode });
-            
-            setTimeout(() => this.cleanupOscillator(id), 500);
-          });
-        }, index * 200);
-      });
-    });
-  }
-
-  // Scanning phase sound (radar ping)
-  playScanningSound() {
-    this.safePlay(() => {
-      // Radar ping effect
       const oscillator = this.audioContext.createOscillator();
       const gainNode = this.audioContext.createGain();
       
@@ -365,189 +88,10 @@ class TreasureSoundManager {
       gainNode.connect(this.audioContext.destination);
       
       oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.1);
-      oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.2);
+      oscillator.frequency.setValueAtTime(392.00, this.audioContext.currentTime); // G4
+      oscillator.frequency.exponentialRampToValueAtTime(523.25, this.audioContext.currentTime + 0.15); // C5
       
       gainNode.gain.setValueAtTime(0.1 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.15, this.audioContext.currentTime + 0.1);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.2);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.2);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode });
-      
-      setTimeout(() => this.cleanupOscillator(id), 200);
-      
-      // Play every 0.8 seconds for radar effect
-      this.scanInterval = setInterval(() => {
-        if (!this.isMuted) this.playScanningSound();
-      }, 800);
-    });
-  }
-
-  // Stop scanning sound
-  stopScanningSound() {
-    if (this.scanInterval) {
-      clearInterval(this.scanInterval);
-      this.scanInterval = null;
-    }
-  }
-
-  // Digging phase sound
-  playDiggingSound() {
-    this.safePlay(() => {
-      // Shovel digging and dirt sounds
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
-      oscillator.frequency.setValueAtTime(180, this.audioContext.currentTime + 0.1);
-      oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime + 0.2);
-      
-      gainNode.gain.setValueAtTime(0.12 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.3);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.3);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode });
-      
-      setTimeout(() => this.cleanupOscillator(id), 300);
-      
-      // Play digging sound every 0.4 seconds
-      this.digInterval = setInterval(() => {
-        if (!this.isMuted) this.playDiggingSound();
-      }, 400);
-    });
-  }
-
-  // Stop digging sound
-  stopDiggingSound() {
-    if (this.digInterval) {
-      clearInterval(this.digInterval);
-      this.digInterval = null;
-    }
-  }
-
-  // Treasure reveal sound (chest opening)
-  playTreasureRevealSound(tier) {
-    this.safePlay(() => {
-      const frequencies = {
-        small: [523.25, 587.33, 659.25], // C, D, E
-        low: [659.25, 783.99, 880.00],   // E, G, A
-        normal: [783.99, 987.77, 1174.66], // G, B, D
-        high: [1046.50, 1318.51, 1567.98], // C6, E6, G6
-        great: [1567.98, 1975.53, 2637.02], // G6, B6, E7
-        loss: [110, 104, 98] // Low, descending tones for loss
-      };
-      
-      const currentFreqs = frequencies[tier] || frequencies.small;
-      const durations = tier === 'loss' ? [0.3, 0.3, 0.5] : [0.15, 0.15, 0.3];
-      
-      // Chest creak opening
-      const chestOscillator = this.audioContext.createOscillator();
-      const chestGain = this.audioContext.createGain();
-      
-      chestOscillator.connect(chestGain);
-      chestGain.connect(this.audioContext.destination);
-      
-      chestOscillator.type = 'sawtooth';
-      chestOscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
-      chestOscillator.frequency.exponentialRampToValueAtTime(120, this.audioContext.currentTime + 0.4);
-      
-      chestGain.gain.setValueAtTime(0.1 * this.masterVolume, this.audioContext.currentTime);
-      chestGain.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.4);
-      
-      chestOscillator.start();
-      chestOscillator.stop(this.audioContext.currentTime + 0.4);
-      
-      const chestId = Date.now();
-      this.oscillators.set(chestId, { oscillator: chestOscillator, gainNode: chestGain });
-      
-      setTimeout(() => this.cleanupOscillator(chestId), 400);
-      
-      // Treasure reveal chimes
-      setTimeout(() => {
-        currentFreqs.forEach((freq, index) => {
-          setTimeout(() => {
-            this.safePlay(() => {
-              const oscillator = this.audioContext.createOscillator();
-              const gainNode = this.audioContext.createGain();
-              
-              oscillator.connect(gainNode);
-              gainNode.connect(this.audioContext.destination);
-              
-              oscillator.type = tier === 'loss' ? 'square' : 'triangle';
-              oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
-              
-              gainNode.gain.setValueAtTime(0.15 * this.masterVolume, this.audioContext.currentTime);
-              gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + durations[index]);
-              
-              oscillator.start();
-              oscillator.stop(this.audioContext.currentTime + durations[index]);
-              
-              const id = Date.now() + freq + index;
-              this.oscillators.set(id, { oscillator, gainNode });
-              
-              setTimeout(() => this.cleanupOscillator(id), durations[index] * 1000);
-            });
-          }, index * (tier === 'loss' ? 200 : 100));
-        });
-      }, 200);
-    });
-  }
-
-  // Individual treasure found sound
-  playTreasureFoundSound(valueMultiplier) {
-    this.safePlay(() => {
-      const baseFreq = 400;
-      const multiplierFreq = baseFreq * (1 + (valueMultiplier * 0.1));
-      
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(baseFreq, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(multiplierFreq, this.audioContext.currentTime + 0.2);
-      
-      gainNode.gain.setValueAtTime(0.12 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.2);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.2);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode });
-      
-      setTimeout(() => this.cleanupOscillator(id), 200);
-    });
-  }
-
-  // Gold/coin collection sound
-  playCoinSound() {
-    this.safePlay(() => {
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(1200, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.15);
-      
-      gainNode.gain.setValueAtTime(0.14 * this.masterVolume, this.audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.15);
       
       oscillator.start();
@@ -560,12 +104,38 @@ class TreasureSoundManager {
     });
   }
 
-  // Big win celebration sound
-  playBigWinCelebration() {
+  // Expedition start sound (gentle launch)
+  playExpeditionStartSound() {
     this.safePlay(() => {
-      // Victory fanfare
-      const frequencies = [523.25, 659.25, 783.99, 987.77, 1174.66, 1318.51];
-      const durations = [0.12, 0.12, 0.12, 0.15, 0.2, 0.3];
+      // Gentle rising tone
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.type = 'sine'; // Changed from sawtooth for softer sound
+      oscillator.frequency.setValueAtTime(220, this.audioContext.currentTime); // A3
+      oscillator.frequency.exponentialRampToValueAtTime(440, this.audioContext.currentTime + 0.6); // A4
+      
+      gainNode.gain.setValueAtTime(0.12 * this.masterVolume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.6);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 0.6);
+      
+      const id = Date.now();
+      this.oscillators.set(id, { oscillator, gainNode });
+      
+      setTimeout(() => this.cleanupOscillator(id), 600);
+    });
+  }
+
+  // Sailing phase sound (gentle waves)
+  playSailingSound() {
+    this.safePlay(() => {
+      // Soft wave-like sounds
+      const frequencies = [120, 180, 220];
       
       frequencies.forEach((freq, index) => {
         setTimeout(() => {
@@ -576,10 +146,275 @@ class TreasureSoundManager {
             oscillator.connect(gainNode);
             gainNode.connect(this.audioContext.destination);
             
-            oscillator.type = 'triangle';
+            oscillator.type = 'sine'; // Always sine for calmness
+            oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(freq * 0.9, this.audioContext.currentTime + 0.8);
+            
+            gainNode.gain.setValueAtTime((0.06 - index * 0.015) * this.masterVolume, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.8);
+            
+            oscillator.start();
+            oscillator.stop(this.audioContext.currentTime + 0.8);
+            
+            const id = Date.now() + freq + index;
+            this.oscillators.set(id, { oscillator, gainNode });
+            
+            setTimeout(() => this.cleanupOscillator(id), 800);
+          });
+        }, index * 250);
+      });
+    });
+  }
+
+  // Scanning phase sound (soft radar ping)
+  playScanningSound() {
+    this.safePlay(() => {
+      // Gentle radar ping
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(660, this.audioContext.currentTime); // E5
+      oscillator.frequency.exponentialRampToValueAtTime(880, this.audioContext.currentTime + 0.08); // A5
+      oscillator.frequency.exponentialRampToValueAtTime(523.25, this.audioContext.currentTime + 0.16); // C5
+      
+      gainNode.gain.setValueAtTime(0.09 * this.masterVolume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.12, this.audioContext.currentTime + 0.08);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.16);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 0.16);
+      
+      const id = Date.now();
+      this.oscillators.set(id, { oscillator, gainNode });
+      
+      setTimeout(() => this.cleanupOscillator(id), 160);
+      
+      // Play every 1.2 seconds for gentle radar effect
+      this.scanInterval = setInterval(() => {
+        if (!this.isMuted) this.playScanningSound();
+      }, 1200);
+    });
+  }
+
+  // Stop scanning sound
+  stopScanningSound() {
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval);
+      this.scanInterval = null;
+    }
+  }
+
+  // Digging phase sound (gentle digging)
+  playDiggingSound() {
+    this.safePlay(() => {
+      // Soft digging sound
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.type = 'sine'; // Changed from square for softer sound
+      oscillator.frequency.setValueAtTime(180, this.audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(160, this.audioContext.currentTime + 0.12);
+      oscillator.frequency.setValueAtTime(180, this.audioContext.currentTime + 0.24);
+      
+      gainNode.gain.setValueAtTime(0.1 * this.masterVolume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.36);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 0.36);
+      
+      const id = Date.now();
+      this.oscillators.set(id, { oscillator, gainNode });
+      
+      setTimeout(() => this.cleanupOscillator(id), 360);
+      
+      // Play digging sound every 0.6 seconds (slower, gentler)
+      this.digInterval = setInterval(() => {
+        if (!this.isMuted) this.playDiggingSound();
+      }, 600);
+    });
+  }
+
+  // Stop digging sound
+  stopDiggingSound() {
+    if (this.digInterval) {
+      clearInterval(this.digInterval);
+      this.digInterval = null;
+    }
+  }
+
+  // Treasure reveal sound (calm chimes based on tier)
+  playTreasureRevealSound(tier) {
+    this.safePlay(() => {
+      const frequencies = {
+        small: [523.25, 659.25, 783.99], // C5, E5, G5
+        low: [659.25, 783.99, 880.00],   // E5, G5, A5
+        normal: [783.99, 987.77, 1174.66], // G5, B5, D6
+        high: [1046.50, 1318.51, 1567.98], // C6, E6, G6
+        great: [1567.98, 1975.53, 2637.02], // G6, B6, E7
+        loss: [174.61, 155.56, 138.59] // F3, D#3, C#3 - soft descending
+      };
+      
+      const currentFreqs = frequencies[tier] || frequencies.small;
+      const durations = tier === 'loss' ? [0.4, 0.4, 0.6] : [0.2, 0.2, 0.4];
+      
+      // Soft chest opening sound for wins
+      if (tier !== 'loss') {
+        const chestOscillator = this.audioContext.createOscillator();
+        const chestGain = this.audioContext.createGain();
+        
+        chestOscillator.connect(chestGain);
+        chestGain.connect(this.audioContext.destination);
+        
+        chestOscillator.type = 'sine'; // Softer than sawtooth
+        chestOscillator.frequency.setValueAtTime(130.81, this.audioContext.currentTime); // C3
+        chestOscillator.frequency.exponentialRampToValueAtTime(110, this.audioContext.currentTime + 0.5);
+        
+        chestGain.gain.setValueAtTime(0.08 * this.masterVolume, this.audioContext.currentTime);
+        chestGain.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.5);
+        
+        chestOscillator.start();
+        chestOscillator.stop(this.audioContext.currentTime + 0.5);
+        
+        const chestId = Date.now();
+        this.oscillators.set(chestId, { oscillator: chestOscillator, gainNode: chestGain });
+        
+        setTimeout(() => this.cleanupOscillator(chestId), 500);
+      }
+      
+      // Calm chimes with delays
+      setTimeout(() => {
+        currentFreqs.forEach((freq, index) => {
+          setTimeout(() => {
+            this.safePlay(() => {
+              const oscillator = this.audioContext.createOscillator();
+              const gainNode = this.audioContext.createGain();
+              
+              oscillator.connect(gainNode);
+              gainNode.connect(this.audioContext.destination);
+              
+              oscillator.type = 'triangle'; // Always triangle for calm chimes
+              oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+              
+              gainNode.gain.setValueAtTime(0.12 * this.masterVolume, this.audioContext.currentTime);
+              gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + durations[index]);
+              
+              oscillator.start();
+              oscillator.stop(this.audioContext.currentTime + durations[index]);
+              
+              const id = Date.now() + freq + index;
+              this.oscillators.set(id, { oscillator, gainNode });
+              
+              setTimeout(() => this.cleanupOscillator(id), durations[index] * 1000);
+            });
+          }, index * (tier === 'loss' ? 300 : 150)); // Slower pacing
+        });
+      }, tier === 'loss' ? 100 : 200);
+    });
+  }
+
+  // Individual treasure found sound (soft bell)
+  playTreasureFoundSound(valueMultiplier) {
+    this.safePlay(() => {
+      const baseFreq = 440; // A4
+      const multiplierFreq = baseFreq * (1 + (valueMultiplier * 0.08)); // Less dramatic variation
+      
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(baseFreq, this.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(multiplierFreq, this.audioContext.currentTime + 0.25);
+      
+      gainNode.gain.setValueAtTime(0.1 * this.masterVolume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.25);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 0.25);
+      
+      const id = Date.now();
+      this.oscillators.set(id, { oscillator, gainNode });
+      
+      setTimeout(() => this.cleanupOscillator(id), 250);
+    });
+  }
+
+  // Gold/coin collection sound (soft tinkle)
+  playCoinSound() {
+    this.safePlay(() => {
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(1046.50, this.audioContext.currentTime); // C6
+      oscillator.frequency.exponentialRampToValueAtTime(783.99, this.audioContext.currentTime + 0.2); // G5
+      
+      gainNode.gain.setValueAtTime(0.11 * this.masterVolume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.2);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 0.2);
+      
+      const id = Date.now();
+      this.oscillators.set(id, { oscillator, gainNode });
+      
+      setTimeout(() => this.cleanupOscillator(id), 200);
+    });
+  }
+
+  // Win celebration (gentle fanfare)
+  playBigWinCelebration() {
+    this.safePlay(() => {
+      // Gentle ascending arpeggio
+      const frequencies = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99]; // C4, E4, G4, C5, E5, G5
+      const durations = [0.15, 0.15, 0.15, 0.2, 0.25, 0.3];
+      
+      frequencies.forEach((freq, index) => {
+        setTimeout(() => {
+          this.safePlay(() => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.type = 'sine'; // Changed to sine for softer sound
             oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
             
-            gainNode.gain.setValueAtTime(0.2 * this.masterVolume, this.audioContext.currentTime);
+            // Add subtle vibrato for musical quality
+            if (durations[index] > 0.2) {
+              const vibrato = this.audioContext.createOscillator();
+              const vibratoGain = this.audioContext.createGain();
+              
+              vibrato.connect(vibratoGain);
+              vibratoGain.connect(oscillator.frequency);
+              
+              vibrato.type = 'sine';
+              vibrato.frequency.setValueAtTime(6, this.audioContext.currentTime);
+              vibratoGain.gain.setValueAtTime(freq * 0.01, this.audioContext.currentTime);
+              
+              vibrato.start();
+              vibrato.stop(this.audioContext.currentTime + durations[index]);
+              
+              setTimeout(() => {
+                vibrato.disconnect();
+                vibratoGain.disconnect();
+              }, durations[index] * 1000);
+            }
+            
+            gainNode.gain.setValueAtTime(0.15 * this.masterVolume, this.audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + durations[index]);
             
             oscillator.start();
@@ -590,12 +425,12 @@ class TreasureSoundManager {
             
             setTimeout(() => this.cleanupOscillator(id), durations[index] * 1000);
           });
-        }, index * 80);
+        }, index * 100); // Slower pacing
       });
       
-      // Confetti pop sounds
+      // Gentle sparkle sounds
       setTimeout(() => {
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 4; i++) {
           setTimeout(() => {
             this.safePlay(() => {
               const oscillator = this.audioContext.createOscillator();
@@ -604,25 +439,85 @@ class TreasureSoundManager {
               oscillator.connect(gainNode);
               gainNode.connect(this.audioContext.destination);
               
-              oscillator.type = 'square';
-              oscillator.frequency.setValueAtTime(600 + (i * 100), this.audioContext.currentTime);
-              oscillator.frequency.exponentialRampToValueAtTime(300, this.audioContext.currentTime + 0.1);
+              oscillator.type = 'sine';
+              oscillator.frequency.setValueAtTime(1567.98 + (i * 100), this.audioContext.currentTime); // G6 and up
+              oscillator.frequency.exponentialRampToValueAtTime(1046.50, this.audioContext.currentTime + 0.15); // Down to C6
               
-              gainNode.gain.setValueAtTime(0.08 * this.masterVolume, this.audioContext.currentTime);
-              gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
+              gainNode.gain.setValueAtTime(0.07 * this.masterVolume, this.audioContext.currentTime);
+              gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.15);
               
               oscillator.start();
-              oscillator.stop(this.audioContext.currentTime + 0.1);
+              oscillator.stop(this.audioContext.currentTime + 0.15);
               
               const id = Date.now() + i;
               this.oscillators.set(id, { oscillator, gainNode });
               
-              setTimeout(() => this.cleanupOscillator(id), 100);
+              setTimeout(() => this.cleanupOscillator(id), 150);
             });
-          }, i * 50);
+          }, i * 80);
         }
-      }, 500);
+      }, 600);
     });
+  }
+
+  // Ambient wind sound (optional, can be called separately)
+  playAmbientWind() {
+    this.safePlay(() => {
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      const filter = this.audioContext.createBiquadFilter();
+      
+      oscillator.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(80, this.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(120, this.audioContext.currentTime + 4);
+      
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(200, this.audioContext.currentTime);
+      filter.Q.setValueAtTime(1, this.audioContext.currentTime);
+      
+      gainNode.gain.setValueAtTime(0.04 * this.masterVolume, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 4);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 4);
+      
+      const id = Date.now();
+      this.oscillators.set(id, { oscillator, gainNode, filter });
+      
+      setTimeout(() => this.cleanupOscillator(id), 4000);
+    });
+  }
+
+  /* =========================
+     SOUND CONTROL METHODS
+  ========================= */
+  
+  // Toggle mute for game sounds
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    localStorage.setItem('treasure_muted', this.isMuted);
+    
+    if (this.isMuted) {
+      // Stop all active sounds when muted
+      this.stopScanningSound();
+      this.stopDiggingSound();
+      this.oscillators.forEach((sound, id) => {
+        this.cleanupOscillator(id);
+      });
+    }
+    
+    return this.isMuted;
+  }
+
+  // Get current mute state
+  getMuteState() {
+    return {
+      gameSoundsMuted: this.isMuted
+    };
   }
 
   /* =========================
@@ -641,6 +536,9 @@ class TreasureSoundManager {
         if (sound.gainNode) {
           sound.gainNode.disconnect();
         }
+        if (sound.filter) {
+          sound.filter.disconnect();
+        }
       } catch (e) {
         // Sound already stopped
       }
@@ -648,17 +546,13 @@ class TreasureSoundManager {
     }
   }
 
-  // Set master volume (affects both background music and game sounds)
+  // Set master volume (reduced range for subtlety)
   setVolume(volume) {
-    this.masterVolume = Math.max(0, Math.min(1, volume));
-    if (this.backgroundAudio) {
-      this.backgroundAudio.volume = 0.12 * this.masterVolume;
-    }
+    this.masterVolume = Math.max(0.1, Math.min(0.7, volume)); // Cap at 0.7 for subtlety
   }
 
   // Cleanup everything
   cleanup() {
-    this.stopBackgroundMusic();
     this.stopScanningSound();
     this.stopDiggingSound();
     
