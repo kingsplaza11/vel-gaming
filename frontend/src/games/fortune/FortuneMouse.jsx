@@ -84,6 +84,7 @@ export default function FortuneMouse() {
   const confettiTimeoutRef = useRef(null);
   const flowersTimeoutRef = useRef(null);
   const modalTimeoutRef = useRef(null);
+  const resizeTimeoutRef = useRef(null);
 
   /* =========================
      GAME RESULTS CONFIGURATION
@@ -122,18 +123,61 @@ export default function FortuneMouse() {
   }), []);
 
   /* =========================
-     WINDOW SIZE TRACKING
+     WINDOW SIZE TRACKING WITH DEBOUNCE
   ========================= */
   useEffect(() => {
     const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      
+      resizeTimeoutRef.current = setTimeout(() => {
+        setWindowSize({
+          width: window.innerWidth,
+          height: window.innerHeight,
+        });
+      }, 100);
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  /* =========================
+     AUDIO CONTEXT RESUME HANDLING
+  ========================= */
+  useEffect(() => {
+    // Auto-resume audio context on any user interaction
+    const resumeAudioOnInteraction = () => {
+      if (fortuneSound.audioContext && fortuneSound.audioContext.state === 'suspended') {
+        fortuneSound.audioContext.resume().then(() => {
+          console.log('Audio context resumed');
+        }).catch(error => {
+          console.error('Failed to resume audio context:', error);
+        });
+      }
+    };
+
+    // Add listeners for multiple interaction types
+    const events = ['click', 'touchstart', 'keydown', 'mousedown'];
+    events.forEach(event => {
+      document.addEventListener(event, resumeAudioOnInteraction, { 
+        once: true,
+        passive: true 
+      });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, resumeAudioOnInteraction);
+      });
+    };
   }, []);
 
   /* =========================
@@ -143,7 +187,8 @@ export default function FortuneMouse() {
     const muted = fortuneSound.toggleMute();
     setIsMuted(muted);
     toast(muted ? "Sound muted" : "Sound unmuted", {
-      icon: muted ? "🔇" : "🔊"
+      icon: muted ? "🔇" : "🔊",
+      duration: 1500
     });
   };
 
@@ -166,14 +211,14 @@ export default function FortuneMouse() {
     setShowConfetti(true);
     setShowFlowers(true);
 
-    // Hide effects after 6 seconds
+    // Hide effects after 5 seconds (reduced from 6)
     confettiTimeoutRef.current = setTimeout(() => {
       setShowConfetti(false);
-    }, 6000);
+    }, 5000);
 
     flowersTimeoutRef.current = setTimeout(() => {
       setShowFlowers(false);
-    }, 6000);
+    }, 5000);
   }, []);
 
   const cleanupEffects = useCallback(() => {
@@ -191,7 +236,7 @@ export default function FortuneMouse() {
   }, []);
 
   /* =========================
-     GENERATE FLOWERS
+     GENERATE FLOWERS (MEMOIZED)
   ========================= */
   const generateFlowers = useMemo(() => {
     if (!showFlowers) return [];
@@ -202,23 +247,17 @@ export default function FortuneMouse() {
       '#4ECDC4', // Teal
       '#FFD700', // Gold
       '#A29BFE', // Purple
-      '#81ECEC', // Cyan
-      '#FFEAA7', // Light Yellow
-      '#55EFC4', // Mint
-      '#FF9FF3', // Pink
-      '#F368E0', // Magenta
-      '#00D2D3', // Turquoise
     ];
     
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 10; i++) { // Reduced from 15
       flowers.push({
         id: i,
-        x: Math.random() * 80 + 10, // 10-90% to avoid edges
+        x: Math.random() * 80 + 10,
         y: Math.random() * 80 + 10,
-        size: Math.random() * 40 + 30, // 30-70px
+        size: Math.random() * 30 + 20, // Reduced size
         color: colors[Math.floor(Math.random() * colors.length)],
         rotation: Math.random() * 360,
-        delay: Math.random() * 1.5,
+        delay: Math.random() * 1,
       });
     }
     
@@ -264,8 +303,24 @@ export default function FortuneMouse() {
     modalTimeoutRef.current = setTimeout(() => {
       resetGame();
       setStakeOpen(true);
-    }, 3000); // 3 seconds delay for modal display
+    }, 3000);
   }, [resetGame]);
+
+  /* =========================
+     TILE STYLES (MEMOIZED)
+  ========================= */
+  const tileStyles = useMemo(() => {
+    return tiles.map(tile => {
+      const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
+      if (tileResultInfo && tile.revealed) {
+        return {
+          borderColor: tileResultInfo.color,
+          backgroundColor: `${tileResultInfo.color}15`
+        };
+      }
+      return {};
+    });
+  }, [tiles, resultConfig]);
 
   /* =========================
      GAME ACTIONS
@@ -328,7 +383,7 @@ export default function FortuneMouse() {
         duration: 2000
       });
     } catch (e) {
-      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message || "Network error";
       toast.error(`Failed to start game: ${errorMsg}`);
     } finally {
       setStarting(false);
@@ -409,6 +464,7 @@ export default function FortuneMouse() {
         // 3 seconds delay for modal display
         resetGameAfterModal();
         
+        tapLock.current = false;
         return;
       }
       
@@ -435,6 +491,7 @@ export default function FortuneMouse() {
         // 3 seconds delay for modal display
         resetGameAfterModal();
         
+        tapLock.current = false;
         return;
       }
 
@@ -468,7 +525,7 @@ export default function FortuneMouse() {
       }));
       
     } catch (e) {
-      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message || "Network error";
       toast.error(`Failed to reveal tile: ${errorMsg}`);
       
       if (e.response?.status === 404) {
@@ -530,7 +587,7 @@ export default function FortuneMouse() {
       resetGameAfterModal();
       
     } catch (e) {
-      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
+      const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message || "Network error";
       toast.dismiss("cashout");
       toast.error(`Failed to cashout: ${errorMsg}`);
       
@@ -567,7 +624,8 @@ export default function FortuneMouse() {
             });
             setStakeOpen(false);
             toast.success("Recovered previous game session", {
-              icon: "🎮"
+              icon: "🎮",
+              duration: 2000
             });
           } else {
             localStorage.removeItem('fortune_active_session');
@@ -582,6 +640,9 @@ export default function FortuneMouse() {
     return () => {
       fortuneSound.cleanup();
       cleanupEffects();
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
     };
   }, [cleanupEffects]);
 
@@ -594,7 +655,7 @@ export default function FortuneMouse() {
   }, [activeSessionId, game.status]);
 
   /* =========================
-     RENDER
+     PERFORMANCE OPTIMIZATION
   ========================= */
   const totalBalance = Number(availableBalance || 0);
   const betAmount = Number(bet);
@@ -615,114 +676,27 @@ export default function FortuneMouse() {
       {/* WINNING VISUAL EFFECTS LAYER */}
       {(showConfetti || showFlowers) && (
         <div className="winning-effects-layer">
-          {/* ENHANCED CONFETTI */}
+          {/* OPTIMIZED CONFETTI */}
           {showConfetti && (
-            <>
-              <Confetti
-                key={`confetti-${confettiKey}-1`}
-                width={windowSize.width}
-                height={windowSize.height}
-                recycle={true}
-                numberOfPieces={400}
-                gravity={0.15}
-                initialVelocityY={20}
-                initialVelocityX={8}
-                wind={0.05}
-                colors={[
-                  '#FFD700', // Gold
-                  '#FF6B6B', // Red
-                  '#4ECDC4', // Teal
-                  '#FF9FF3', // Pink
-                  '#F368E0', // Magenta
-                  '#A29BFE', // Purple
-                  '#81ECEC', // Cyan
-                  '#55EFC4', // Mint
-                  '#FFEAA7', // Light Yellow
-                  '#00D2D3', // Turquoise
-                ]}
-                confettiSource={{
-                  x: windowSize.width / 2,
-                  y: windowSize.height / 2,
-                  w: windowSize.width * 0.3,
-                  h: 10,
-                }}
-                drawShape={ctx => {
-                  const shapeType = Math.random();
-                  if (shapeType < 0.25) {
-                    // Circle
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
-                    ctx.fill();
-                  } else if (shapeType < 0.5) {
-                    // Square
-                    ctx.fillRect(-5, -5, 10, 10);
-                  } else if (shapeType < 0.75) {
-                    // Triangle
-                    ctx.beginPath();
-                    ctx.moveTo(0, -7);
-                    ctx.lineTo(-6, 5);
-                    ctx.lineTo(6, 5);
-                    ctx.closePath();
-                    ctx.fill();
-                  } else {
-                    // Star
-                    ctx.beginPath();
-                    for (let i = 0; i < 5; i++) {
-                      const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-                      const x = 5 * Math.cos(angle);
-                      const y = 5 * Math.sin(angle);
-                      if (i === 0) ctx.moveTo(x, y);
-                      else ctx.lineTo(x, y);
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                  }
-                }}
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  pointerEvents: 'none',
-                  zIndex: 9997,
-                }}
-              />
-              
-              {/* Additional confetti layer for depth */}
-              <Confetti
-                key={`confetti-${confettiKey}-2`}
-                width={windowSize.width}
-                height={windowSize.height}
-                recycle={true}
-                numberOfPieces={200}
-                gravity={0.08}
-                initialVelocityY={15}
-                initialVelocityX={5}
-                wind={0.02}
-                colors={[
-                  '#FFFFFF', // White
-                  '#FFD700', // Gold
-                  '#FF6B6B', // Red
-                  '#4ECDC4', // Teal
-                ]}
-                confettiSource={{
-                  x: windowSize.width / 2,
-                  y: windowSize.height,
-                  w: windowSize.width * 0.5,
-                  h: 0,
-                }}
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  pointerEvents: 'none',
-                  zIndex: 9996,
-                }}
-              />
-            </>
+            <Confetti
+              key={`confetti-${confettiKey}`}
+              width={windowSize.width}
+              height={windowSize.height}
+              recycle={false}
+              numberOfPieces={150} // Reduced for performance
+              gravity={0.12}
+              opacity={0.8}
+              colors={['#FFD700', '#FF6B6B', '#4ECDC4', '#A29BFE']}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 9997,
+              }}
+            />
           )}
           
           {/* COLORFUL FLOWERS */}
@@ -745,7 +719,7 @@ export default function FortuneMouse() {
             left: 0,
             width: '100%',
             height: '100%',
-            background: 'radial-gradient(circle at center, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.05) 50%, transparent 70%)',
+            background: 'radial-gradient(circle at center, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.03) 50%, transparent 70%)',
             pointerEvents: 'none',
             zIndex: 9995,
             animation: 'winning-pulse-glow 2s ease-in-out infinite',
@@ -780,15 +754,16 @@ export default function FortuneMouse() {
             className={`hud-cashout ${!activeSessionId || game.status !== "active" ? "disabled" : ""}`}
             onClick={cashout}
             disabled={!activeSessionId || game.status !== "active" || tapLock.current}
+            aria-label="Cash out"
           >
             CASH OUT
           </button>
 
-          <button className="hud-exit" onClick={() => navigate("/")}>
+          <button className="hud-exit" onClick={() => navigate("/")} aria-label="Exit game">
             EXIT
           </button>
           
-          <button className="audio-control" onClick={toggleMute}>
+          <button className="audio-control" onClick={toggleMute} aria-label={isMuted ? "Unmute sound" : "Mute sound"}>
             {isMuted ? "🔇" : "🔊"}
           </button>
         </div>
@@ -797,7 +772,7 @@ export default function FortuneMouse() {
       {/* BOARD */}
       <div className="fortune-board">
         <div className="fortune-grid">
-          {tiles.map((tile) => {
+          {tiles.map((tile, index) => {
             const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
             return (
               <button
@@ -807,10 +782,8 @@ export default function FortuneMouse() {
                 } ${game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""}`}
                 disabled={tile.revealed || game.status !== "active" || tapLock.current}
                 onClick={() => pickTile(tile.id)}
-                style={tileResultInfo && tile.revealed ? {
-                  borderColor: tileResultInfo.color,
-                  backgroundColor: `${tileResultInfo.color}15`
-                } : {}}
+                style={tileStyles[index]}
+                aria-label={tile.revealed ? `Revealed tile: ${tileResultInfo?.label || 'Unknown'}` : 'Hidden tile'}
               >
                 <div className="tile-face">
                   {!tile.revealed ? (
@@ -828,7 +801,7 @@ export default function FortuneMouse() {
           })}
         </div>
         
-        {/* Game status overlay - FIXED POSITIONING */}
+        {/* Game status overlay */}
         {game.status === "lost" && (
           <div className="game-overlay lost">
             <div className="overlay-content">
@@ -897,6 +870,7 @@ export default function FortuneMouse() {
                 type="text"
                 inputMode="decimal"
                 autoFocus
+                aria-label="Enter stake amount"
               />
             </div>
 
@@ -912,6 +886,7 @@ export default function FortuneMouse() {
                   key={amount}
                   className="quick-bet-btn"
                   onClick={() => setBet(Math.min(amount, totalBalance).toString())}
+                  aria-label={`Set stake to ₦${amount}`}
                 >
                   ₦{amount.toLocaleString()}
                 </button>
@@ -925,6 +900,7 @@ export default function FortuneMouse() {
                 }`}
                 disabled={!isStakeValid || starting || walletLoading}
                 onClick={startGame}
+                aria-label="Start game"
               >
                 {starting ? (
                   <>
@@ -938,6 +914,7 @@ export default function FortuneMouse() {
               <button
                 className="stake-btn secondary"
                 onClick={() => navigate("/")}
+                aria-label="Cancel and exit"
               >
                 Cancel
               </button>
