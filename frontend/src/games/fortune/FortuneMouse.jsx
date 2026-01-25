@@ -153,11 +153,17 @@ export default function FortuneMouse() {
      AUDIO CONTEXT RESUME HANDLING
   ========================= */
   useEffect(() => {
+    console.log('Setting up audio context resume');
+    
+    // Force audio context creation on component mount
+    fortuneSound.init();
+    
     // Auto-resume audio context on any user interaction
     const resumeAudioOnInteraction = () => {
+      console.log('User interaction for audio resume');
       if (fortuneSound.audioContext && fortuneSound.audioContext.state === 'suspended') {
         fortuneSound.audioContext.resume().then(() => {
-          console.log('Audio context resumed');
+          console.log('Audio context resumed from component');
         }).catch(error => {
           console.error('Failed to resume audio context:', error);
         });
@@ -323,7 +329,7 @@ export default function FortuneMouse() {
   }, [tiles, resultConfig]);
 
   /* =========================
-     GAME ACTIONS
+     GAME ACTIONS - SIMPLIFIED FOR TESTING
   ========================= */
   
   const startGame = async () => {
@@ -350,7 +356,8 @@ export default function FortuneMouse() {
     // Cleanup any existing effects
     cleanupEffects();
     
-    // Play stake sound
+    // Play stake sound - keep this to test
+    console.log('Playing stake sound');
     fortuneSound.playStake();
     
     try {
@@ -391,12 +398,15 @@ export default function FortuneMouse() {
   };
 
   const pickTile = useCallback(async (id) => {
+    console.log('pickTile called for id:', id);
+    
     if (!activeSessionId) {
       toast.error("No active game session");
       return;
     }
     
     if (tapLock.current) {
+      console.log('Tap lock active, blocking click');
       toast.error("Please wait for previous action to complete");
       return;
     }
@@ -415,7 +425,8 @@ export default function FortuneMouse() {
     tapLock.current = true;
     lastTileRef.current = id;
 
-    // Play click sound
+    // Play click sound - keep this to test
+    console.log('Playing click sound');
     fortuneSound.playClick();
     
     try {
@@ -441,7 +452,8 @@ export default function FortuneMouse() {
         )
       );
 
-      // Play tile reveal sound
+      // Play tile reveal sound - keep this to test
+      console.log('Playing tile sound for result:', resultType);
       fortuneSound.playTileSound(resultType);
 
       // Handle game over (trap)
@@ -526,6 +538,7 @@ export default function FortuneMouse() {
       
     } catch (e) {
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message || "Network error";
+      console.error('Error in pickTile:', errorMsg);
       toast.error(`Failed to reveal tile: ${errorMsg}`);
       
       if (e.response?.status === 404) {
@@ -537,10 +550,13 @@ export default function FortuneMouse() {
       }
     } finally {
       tapLock.current = false;
+      console.log('pickTile completed, tap lock released');
     }
   }, [activeSessionId, game, tiles, refreshWallet, resetGame, resetGameAfterModal, resultConfig, triggerWinEffects]);
 
   const cashout = useCallback(async () => {
+    console.log('cashout called');
+    
     if (!activeSessionId) {
       toast.error("No active game session");
       return;
@@ -552,13 +568,15 @@ export default function FortuneMouse() {
     }
 
     if (tapLock.current) {
+      console.log('Tap lock active, blocking cashout');
       toast.error("Please wait for previous action to complete");
       return;
     }
 
     tapLock.current = true;
     
-    // Play click sound
+    // Play click sound - keep this to test
+    console.log('Playing click sound for cashout');
     fortuneSound.playClick();
     
     toast.loading("Processing cashout...", { id: "cashout" });
@@ -588,6 +606,7 @@ export default function FortuneMouse() {
       
     } catch (e) {
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message || "Network error";
+      console.error('Error in cashout:', errorMsg);
       toast.dismiss("cashout");
       toast.error(`Failed to cashout: ${errorMsg}`);
       
@@ -600,6 +619,7 @@ export default function FortuneMouse() {
       }
     } finally {
       tapLock.current = false;
+      console.log('cashout completed, tap lock released');
     }
   }, [activeSessionId, game.status, refreshWallet, resetGame, resetGameAfterModal, triggerWinEffects]);
 
@@ -638,7 +658,7 @@ export default function FortuneMouse() {
     
     // Cleanup on unmount
     return () => {
-      fortuneSound.cleanup();
+      // Don't cleanup sound manager to keep it alive
       cleanupEffects();
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current);

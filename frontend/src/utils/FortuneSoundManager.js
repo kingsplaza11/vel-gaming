@@ -3,13 +3,7 @@ class FortuneSoundManager {
   constructor() {
     this.audioContext = null;
     this.oscillators = new Map();
-    
-    // Check if production environment
-    const isProduction = window.location.hostname !== 'localhost' && 
-                        window.location.hostname !== '127.0.0.1';
-    
-    // Mute by default in production to prevent issues
-    this.isMuted = isProduction || localStorage.getItem('fortune_muted') === 'true';
+    this.isMuted = localStorage.getItem('fortune_muted') === 'true';
     this.masterVolume = 0.7;
     this.MAX_OSCILLATORS = 50;
     this.clickPool = [];
@@ -18,13 +12,14 @@ class FortuneSoundManager {
     this.isResumed = false;
   }
 
-  // Initialize Web Audio API with resume capability
+  // Initialize Web Audio API
   init() {
     if (!this.audioContext) {
       try {
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('Audio context created, state:', this.audioContext.state);
         
-        // Auto-resume on user interaction
+        // Set up auto-resume
         this.setupAutoResume();
         
         // Pre-create click sounds for performance
@@ -34,11 +29,11 @@ class FortuneSoundManager {
         }
       } catch (error) {
         console.error('Failed to initialize audio context:', error);
-        this.isMuted = true;
+        // Don't mute on error, just log it
       }
     }
     
-    // Ensure context is resumed
+    // Ensure context is resumed if suspended
     if (this.audioContext && this.audioContext.state === 'suspended') {
       this.resumeAudioContext();
     }
@@ -47,6 +42,7 @@ class FortuneSoundManager {
   // Setup auto-resume on user interaction
   setupAutoResume() {
     const resumeAudio = () => {
+      console.log('User interaction detected, resuming audio context');
       if (!this.isResumed && this.audioContext && this.audioContext.state === 'suspended') {
         this.resumeAudioContext();
       }
@@ -75,7 +71,6 @@ class FortuneSoundManager {
         this.isResumed = true;
       }).catch(error => {
         console.error('Failed to resume audio context:', error);
-        this.isMuted = true;
       });
     }
   }
@@ -84,24 +79,29 @@ class FortuneSoundManager {
   precreateClickSounds() {
     if (!this.audioContext) return;
     
+    console.log('Pre-creating click sounds');
     for (let i = 0; i < this.CLICK_POOL_SIZE; i++) {
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sine';
-      gainNode.gain.value = 0;
-      
-      oscillator.start();
-      
-      this.clickPool.push({
-        oscillator,
-        gainNode,
-        isPlaying: false,
-        id: `click-${i}`
-      });
+      try {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.type = 'sine';
+        gainNode.gain.value = 0;
+        
+        oscillator.start();
+        
+        this.clickPool.push({
+          oscillator,
+          gainNode,
+          isPlaying: false,
+          id: `click-${i}`
+        });
+      } catch (error) {
+        console.error('Failed to create click sound:', error);
+      }
     }
   }
 
@@ -131,7 +131,7 @@ class FortuneSoundManager {
 
   // Generate click sound using pooling
   playClick() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     
     this.init();
     this.enforceOscillatorLimit();
@@ -172,7 +172,10 @@ class FortuneSoundManager {
 
   // Fallback click sound
   playClickFallback() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
+    
+    this.init();
+    if (!this.audioContext) return;
     
     const oscillator = this.audioContext.createOscillator();
     const gainNode = this.audioContext.createGain();
@@ -206,8 +209,10 @@ class FortuneSoundManager {
 
   // Generate stake sound
   playStake() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
+    
     this.enforceOscillatorLimit();
     
     const oscillator = this.audioContext.createOscillator();
@@ -242,7 +247,7 @@ class FortuneSoundManager {
 
   // Generate tile reveal sound based on result
   playTileSound(resultType) {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     
     switch (resultType) {
       case 'safe':
@@ -272,8 +277,10 @@ class FortuneSoundManager {
 
   // Win sound
   playWinSound() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
+    
     this.enforceOscillatorLimit();
     
     const oscillator = this.audioContext.createOscillator();
@@ -308,8 +315,10 @@ class FortuneSoundManager {
 
   // Small win sound
   playSmallWinSound() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
+    
     this.enforceOscillatorLimit();
     
     const oscillator = this.audioContext.createOscillator();
@@ -344,8 +353,10 @@ class FortuneSoundManager {
 
   // Penalty sound
   playPenaltySound() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
+    
     this.enforceOscillatorLimit();
     
     const oscillator = this.audioContext.createOscillator();
@@ -380,8 +391,10 @@ class FortuneSoundManager {
 
   // Reset sound
   playResetSound() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
+    
     this.enforceOscillatorLimit();
     
     const oscillator = this.audioContext.createOscillator();
@@ -416,8 +429,10 @@ class FortuneSoundManager {
 
   // Trap sound
   playTrapSound() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
+    
     this.enforceOscillatorLimit();
     
     const oscillator = this.audioContext.createOscillator();
@@ -452,10 +467,11 @@ class FortuneSoundManager {
 
   // Cashout sound
   playCashoutSound() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
     
-    // Play simplified victory sound
+    // Play simple victory sound
     this.playVictoryFanfare();
   }
 
@@ -464,9 +480,9 @@ class FortuneSoundManager {
     if (this.isMuted || !this.audioContext) return;
     
     const notes = [
-      { freq: 523.25, duration: 0.3 }, // C5
-      { freq: 659.25, duration: 0.3 }, // E5
-      { freq: 1046.50, duration: 0.5 }, // C6
+      { freq: 523.25, duration: 0.3 },
+      { freq: 659.25, duration: 0.3 },
+      { freq: 1046.50, duration: 0.5 },
     ];
     
     let cumulativeTime = 0;
@@ -511,8 +527,9 @@ class FortuneSoundManager {
 
   // Game over sound
   playGameOverSound() {
-    if (this.isMuted || !this.audioContext) return;
+    if (this.isMuted) return;
     this.init();
+    if (!this.audioContext) return;
     
     this.playMockingLaughter();
   }

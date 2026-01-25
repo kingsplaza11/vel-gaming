@@ -32,10 +32,10 @@ const BaseLayout = ({ user, onLogout }) => {
     { id: 1, name: "Ambient Gaming", file: "backroads_loading_screen.mp3" },
     { id: 2, name: "Chill Beats", file: "DustontheControllerw.mp3" },
     { id: 3, name: "Epic Adventure", file: "Dust_on_the_Controller.mp3" },
-    { id: 4, name: "Focus Mode", file: "PixelDustWeddingRings.mp3" },
-    { id: 5, name: "Space Journey", file: "Pixel_Dust_Wedding_Rings.mp3" },
-    { id: 6, name: "Velvet Odds", file: "velvetodds.mp3" },
-    { id: 7, name: "Velvet Odds 2", file: "Velvet_Odds.mp3" },
+    { id: 4, name: "Focus Mode", file: "Cyber_Regular_Tuesday.mp3" },
+    { id: 5, name: "Space Journey", file: "Hop_Cute_Little_Bunny_Hop.mp3" },
+    { id: 6, name: "Velvet Odds", file: "Old_Witch_Road.mp3" },
+    { id: 7, name: "Velvet Odds 2", file: "Sea_Sick.mp3" },
   ];
 
   // Function to get the full URL for an audio file
