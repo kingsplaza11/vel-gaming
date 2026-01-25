@@ -668,17 +668,6 @@ const BaseLayout = ({ user, onLogout }) => {
                     <span className="footer-label">Wallet</span>
                 </button>
                 
-                {/* Music Control Button in Mobile Footer */}
-                <button
-                    className={`footer-nav-item music-footer-btn ${currentSong ? 'has-music' : ''}`}
-                    onClick={togglePlayPause}
-                >
-                    <div className="footer-icon-wrapper">
-                        <Icon icon={isMusicPlaying ? "mdi:pause" : "mdi:play"} />
-                    </div>
-                    <span className="footer-label">Music</span>
-                </button>
-                
                 <button
                     className={`footer-nav-item ${activeNavItem === "profile" ? "active" : ""}`}
                     onClick={() => {
