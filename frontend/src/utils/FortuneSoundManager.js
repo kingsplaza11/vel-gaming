@@ -2,14 +2,35 @@
 class FortuneSoundManager {
   constructor() {
     this.audioContext = null;
-    this.oscillators = new Map();
+    this.sounds = new Map();
     this.isMuted = localStorage.getItem('fortune_muted') === 'true';
     this.masterVolume = 0.7;
-    this.MAX_OSCILLATORS = 50;
-    this.clickPool = [];
-    this.CLICK_POOL_SIZE = 5;
+    this.MAX_SIMULTANEOUS_SOUNDS = 8;
     this.isInitialized = false;
     this.isResumed = false;
+    
+    // Sound file paths (update these to match your actual file paths)
+    this.soundFiles = {
+      // Losing sounds
+      'laugh1': '/sounds/mixkit-evil-dwarf-laugh-421.wav',
+      'laugh2': '/sounds/mixkit-dwarf-creature-laugh-420.wav',
+      
+      // Winning sounds
+      'applause': '/sounds/mixkit-conference-audience-clapping-strongly-476.wav',
+      'bonus': '/sounds/mixkit-game-bonus-reached-2065.wav',
+      'levelComplete': '/sounds/mixkit-completion-of-a-level-2063.wav',
+      
+      // Tapping sounds
+      'goodTap': '/sounds/mixkit-arcade-bonus-alert-767.wav',
+      'resetTap': '/sounds/mixkit-police-short-whistle-615.wav',
+      'badTap': '/sounds/mixkit-sci-fi-error-alert-898.wav',
+      'electricBuzz': '/sounds/mixkit-electric-low-buzzer-2961.wav',
+      'wrongAnswer': '/sounds/mixkit-wrong-answer-bass-buzzer-948.wav',
+      
+      // Click sound (fallback)
+      'click': '/sounds/mixkit-arcade-bonus-alert-767.wav',
+      'stake': '/sounds/mixkit-game-bonus-reached-2065.wav'
+    };
   }
 
   // Initialize Web Audio API
@@ -22,14 +43,10 @@ class FortuneSoundManager {
         // Set up auto-resume
         this.setupAutoResume();
         
-        // Pre-create click sounds for performance
-        if (!this.isInitialized) {
-          this.precreateClickSounds();
-          this.isInitialized = true;
-        }
+        // Preload important sounds
+        this.preloadSounds();
       } catch (error) {
         console.error('Failed to initialize audio context:', error);
-        // Don't mute on error, just log it
       }
     }
     
@@ -75,174 +92,120 @@ class FortuneSoundManager {
     }
   }
 
-  // Pre-create click sounds for pooling
-  precreateClickSounds() {
-    if (!this.audioContext) return;
+  // Preload important sounds
+  async preloadSounds() {
+    if (this.isInitialized) return;
     
-    console.log('Pre-creating click sounds');
-    for (let i = 0; i < this.CLICK_POOL_SIZE; i++) {
-      try {
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        oscillator.type = 'sine';
-        gainNode.gain.value = 0;
-        
-        oscillator.start();
-        
-        this.clickPool.push({
-          oscillator,
-          gainNode,
-          isPlaying: false,
-          id: `click-${i}`
-        });
-      } catch (error) {
-        console.error('Failed to create click sound:', error);
-      }
+    console.log('Preloading sounds...');
+    const soundsToPreload = ['click', 'goodTap', 'badTap', 'wrongAnswer'];
+    
+    for (const soundKey of soundsToPreload) {
+      await this.loadSound(soundKey);
     }
+    
+    this.isInitialized = true;
+    console.log('Sounds preloaded');
   }
 
-  // Get available pooled sound
-  getAvailableClickSound() {
-    const now = Date.now();
-    return this.clickPool.find(sound => {
-      if (!sound.isPlaying) return true;
+  // Load a sound file
+  async loadSound(soundKey) {
+    if (this.sounds.has(soundKey)) return this.sounds.get(soundKey);
+    
+    const url = this.soundFiles[soundKey];
+    if (!url) {
+      console.error('Sound URL not found for:', soundKey);
+      return null;
+    }
+    
+    try {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
       
-      // Cleanup stuck sounds (older than 1 second)
-      if (sound.lastPlayed && (now - sound.lastPlayed) > 1000) {
-        sound.isPlaying = false;
-        return true;
-      }
-      return false;
-    });
-  }
-
-  // Enforce oscillator limit
-  enforceOscillatorLimit() {
-    if (this.oscillators.size > this.MAX_OSCILLATORS) {
-      const keys = Array.from(this.oscillators.keys());
-      const toRemove = keys.slice(0, this.oscillators.size - this.MAX_OSCILLATORS);
-      toRemove.forEach(id => this.cleanupOscillator(id));
+      this.sounds.set(soundKey, audioBuffer);
+      console.log('Loaded sound:', soundKey);
+      return audioBuffer;
+    } catch (error) {
+      console.error('Failed to load sound:', soundKey, error);
+      return null;
     }
   }
 
-  // Generate click sound using pooling
+  // Play a sound by key
+  async playSound(soundKey, options = {}) {
+    if (this.isMuted || !this.audioContext) return null;
+    
+    this.init();
+    
+    // Check sound count limit
+    if (this.getActiveSoundCount() >= this.MAX_SIMULTANEOUS_SOUNDS) {
+      console.log('Too many sounds playing, skipping:', soundKey);
+      return null;
+    }
+    
+    const {
+      volume = this.masterVolume,
+      loop = false,
+      playbackRate = 1.0,
+      delay = 0,
+      onEnded = null
+    } = options;
+    
+    try {
+      // Load sound if not already loaded
+      let audioBuffer = this.sounds.get(soundKey);
+      if (!audioBuffer) {
+        audioBuffer = await this.loadSound(soundKey);
+        if (!audioBuffer) return null;
+      }
+      
+      // Create source node
+      const source = this.audioContext.createBufferSource();
+      const gainNode = this.audioContext.createGain();
+      
+      source.buffer = audioBuffer;
+      source.loop = loop;
+      source.playbackRate.value = playbackRate;
+      
+      source.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      // Set volume
+      gainNode.gain.value = volume;
+      
+      // Play with optional delay
+      const startTime = this.audioContext.currentTime + delay;
+      source.start(startTime);
+      
+      // Set up cleanup
+      const soundId = Date.now() + Math.random();
+      const soundEntry = { source, gainNode, isPlaying: true };
+      
+      source.onended = () => {
+        soundEntry.isPlaying = false;
+        this.cleanupSound(soundId);
+        if (onEnded) onEnded();
+      };
+      
+      this.sounds.set(soundId, soundEntry);
+      
+      return { soundId, source, gainNode };
+    } catch (error) {
+      console.error('Failed to play sound:', soundKey, error);
+      return null;
+    }
+  }
+
+  // Play click sound
   playClick() {
     if (this.isMuted) return;
-    
-    this.init();
-    this.enforceOscillatorLimit();
-    
-    const sound = this.getAvailableClickSound();
-    if (sound && this.audioContext) {
-      sound.isPlaying = true;
-      sound.lastPlayed = Date.now();
-      
-      const now = this.audioContext.currentTime;
-      
-      try {
-        // Cancel any scheduled values
-        sound.oscillator.frequency.cancelScheduledValues(now);
-        sound.gainNode.gain.cancelScheduledValues(now);
-        
-        // Set new values
-        sound.oscillator.frequency.setValueAtTime(800, now);
-        sound.oscillator.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-        
-        sound.gainNode.gain.setValueAtTime(0.15 * this.masterVolume, now);
-        sound.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-        
-        // Auto-reset after play
-        setTimeout(() => {
-          sound.isPlaying = false;
-        }, 100);
-        
-        return;
-      } catch (error) {
-        console.debug('Pooled sound failed, falling back');
-      }
-    }
-    
-    // Fallback to original method
-    this.playClickFallback();
+    this.playSound('click', { volume: 0.5 * this.masterVolume });
   }
 
-  // Fallback click sound
-  playClickFallback() {
-    if (this.isMuted) return;
-    
-    this.init();
-    if (!this.audioContext) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    try {
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.1);
-      
-      gainNode.gain.setValueAtTime(0.15 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.1);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-      
-      const timeout = setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, 100);
-      
-      this.oscillators.get(id).timeout = timeout;
-    } catch (error) {
-      console.debug('Sound creation failed');
-    }
-  }
-
-  // Generate stake sound
+  // Play stake sound
   playStake() {
     if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
-    
-    this.enforceOscillatorLimit();
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    try {
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sawtooth';
-      oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.3);
-      
-      gainNode.gain.setValueAtTime(0.2 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.3);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.3);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-      
-      const timeout = setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, 300);
-      
-      this.oscillators.get(id).timeout = timeout;
-    } catch (error) {
-      console.debug('Stake sound failed');
-    }
+    this.playSound('stake', { volume: 0.6 * this.masterVolume });
   }
 
   // Generate tile reveal sound based on result
@@ -252,20 +215,22 @@ class FortuneSoundManager {
     switch (resultType) {
       case 'safe':
       case 'carrot_bonus':
-        this.playWinSound();
+        this.playGoodTap();
         break;
       case 'small_win':
-        this.playSmallWinSound();
+        this.playGoodTap();
         break;
       case 'penalty':
+        this.playBadTap();
+        break;
       case 'major_penalty':
-        this.playPenaltySound();
+        this.playVeryBadTap();
         break;
       case 'reset':
-        this.playResetSound();
+        this.playResetTap();
         break;
       case 'trap':
-        this.playTrapSound();
+        this.playGameOverSound();
         break;
       case 'auto_cashout':
         this.playCashoutSound();
@@ -275,365 +240,125 @@ class FortuneSoundManager {
     }
   }
 
-  // Win sound
-  playWinSound() {
+  // Good tap sound
+  playGoodTap() {
     if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
-    
-    this.enforceOscillatorLimit();
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    try {
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'triangle';
-      oscillator.frequency.setValueAtTime(523.25, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(1046.50, this.audioContext.currentTime + 0.5);
-      
-      gainNode.gain.setValueAtTime(0.25 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.5);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.5);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-      
-      const timeout = setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, 500);
-      
-      this.oscillators.get(id).timeout = timeout;
-    } catch (error) {
-      console.debug('Win sound failed');
-    }
+    this.playSound('goodTap', { volume: 0.6 * this.masterVolume });
   }
 
-  // Small win sound
-  playSmallWinSound() {
+  // Reset tap sound
+  playResetTap() {
     if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
-    
-    this.enforceOscillatorLimit();
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    try {
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(392.00, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(523.25, this.audioContext.currentTime + 0.3);
-      
-      gainNode.gain.setValueAtTime(0.2 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.3);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.3);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-      
-      const timeout = setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, 300);
-      
-      this.oscillators.get(id).timeout = timeout;
-    } catch (error) {
-      console.debug('Small win sound failed');
-    }
+    this.playSound('resetTap', { volume: 0.5 * this.masterVolume });
   }
 
-  // Penalty sound
-  playPenaltySound() {
+  // Bad tap sound
+  playBadTap() {
     if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
-    
-    this.enforceOscillatorLimit();
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    try {
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(349.23, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(261.63, this.audioContext.currentTime + 0.4);
-      
-      gainNode.gain.setValueAtTime(0.2 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.4);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.4);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-      
-      const timeout = setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, 400);
-      
-      this.oscillators.get(id).timeout = timeout;
-    } catch (error) {
-      console.debug('Penalty sound failed');
-    }
+    // Play both bad tap sounds with slight delay
+    this.playSound('badTap', { volume: 0.5 * this.masterVolume });
+    this.playSound('electricBuzz', { 
+      volume: 0.4 * this.masterVolume,
+      delay: 0.1 
+    });
   }
 
-  // Reset sound
-  playResetSound() {
+  // Very bad tap sound
+  playVeryBadTap() {
     if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
-    
-    this.enforceOscillatorLimit();
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    try {
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(440, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(220, this.audioContext.currentTime + 0.3);
-      
-      gainNode.gain.setValueAtTime(0.15 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.3);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.3);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-      
-      const timeout = setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, 300);
-      
-      this.oscillators.get(id).timeout = timeout;
-    } catch (error) {
-      console.debug('Reset sound failed');
-    }
+    this.playSound('wrongAnswer', { volume: 0.6 * this.masterVolume });
   }
 
-  // Trap sound
-  playTrapSound() {
-    if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
-    
-    this.enforceOscillatorLimit();
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    try {
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sawtooth';
-      oscillator.frequency.setValueAtTime(100, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.5);
-      
-      gainNode.gain.setValueAtTime(0.3 * this.masterVolume, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.5);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.5);
-      
-      const id = Date.now();
-      this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-      
-      const timeout = setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, 500);
-      
-      this.oscillators.get(id).timeout = timeout;
-    } catch (error) {
-      console.debug('Trap sound failed');
-    }
-  }
-
-  // Cashout sound
+  // Cashout sound - plays winning sounds together
   playCashoutSound() {
     if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
     
-    // Play simple victory sound
-    this.playVictoryFanfare();
-  }
-
-  // Victory fanfare for winning
-  playVictoryFanfare() {
-    if (this.isMuted || !this.audioContext) return;
-    
-    const notes = [
-      { freq: 523.25, duration: 0.3 },
-      { freq: 659.25, duration: 0.3 },
-      { freq: 1046.50, duration: 0.5 },
-    ];
-    
-    let cumulativeTime = 0;
-    
-    notes.forEach((note, i) => {
-      setTimeout(() => {
-        if (this.isMuted || !this.audioContext) return;
-        
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        try {
-          oscillator.connect(gainNode);
-          gainNode.connect(this.audioContext.destination);
-          
-          oscillator.type = 'triangle';
-          oscillator.frequency.setValueAtTime(note.freq, this.audioContext.currentTime);
-          
-          gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-          gainNode.gain.linearRampToValueAtTime(0.35 * this.masterVolume, this.audioContext.currentTime + 0.05);
-          gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + note.duration);
-          
-          oscillator.start();
-          oscillator.stop(this.audioContext.currentTime + note.duration);
-          
-          const id = Date.now() + i;
-          this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-          
-          const timeout = setTimeout(() => {
-            this.cleanupOscillator(id);
-          }, cumulativeTime * 1000 + note.duration * 1000);
-          
-          this.oscillators.get(id).timeout = timeout;
-        } catch (error) {
-          console.debug('Victory sound failed');
-        }
-      }, cumulativeTime * 1000);
-      
-      cumulativeTime += note.duration;
+    // Play applause for longer duration
+    this.playSound('applause', { 
+      volume: 0.7 * this.masterVolume,
+      loop: false 
     });
+    
+    // Play bonus sound with slight delay
+    setTimeout(() => {
+      if (!this.isMuted) {
+        this.playSound('bonus', { volume: 0.6 * this.masterVolume });
+      }
+    }, 300);
+    
+    // Play level complete sound with more delay
+    setTimeout(() => {
+      if (!this.isMuted) {
+        this.playSound('levelComplete', { volume: 0.5 * this.masterVolume });
+      }
+    }, 600);
   }
 
-  // Game over sound
+  // Game over sound - plays losing sounds together
   playGameOverSound() {
     if (this.isMuted) return;
-    this.init();
-    if (!this.audioContext) return;
     
-    this.playMockingLaughter();
-  }
-
-  // Mocking laughter sound
-  playMockingLaughter() {
-    if (this.isMuted || !this.audioContext) return;
-    
-    const laughterPattern = [
-      { baseFreq: 450, duration: 0.2, count: 2 },
-      { baseFreq: 380, duration: 0.3, count: 1 },
-    ];
-    
-    let cumulativeTime = 0;
-    
-    laughterPattern.forEach((pattern, patternIndex) => {
-      for (let i = 0; i < pattern.count; i++) {
-        setTimeout(() => {
-          if (this.isMuted || !this.audioContext) return;
-          
-          const oscillator = this.audioContext.createOscillator();
-          const gainNode = this.audioContext.createGain();
-          
-          try {
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
-            
-            oscillator.type = 'square';
-            const startFreq = pattern.baseFreq;
-            const endFreq = pattern.baseFreq - 30;
-            
-            oscillator.frequency.setValueAtTime(startFreq, this.audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(endFreq, this.audioContext.currentTime + pattern.duration);
-            
-            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.3 * this.masterVolume, this.audioContext.currentTime + 0.03);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + pattern.duration);
-            
-            oscillator.start();
-            oscillator.stop(this.audioContext.currentTime + pattern.duration);
-            
-            const id = Date.now() + patternIndex * 100 + i;
-            this.oscillators.set(id, { oscillator, gainNode, timeout: null });
-            
-            const timeout = setTimeout(() => {
-              this.cleanupOscillator(id);
-            }, cumulativeTime * 1000 + pattern.duration * 1000);
-            
-            this.oscillators.get(id).timeout = timeout;
-          } catch (error) {
-            console.debug('Laughter sound failed');
-          }
-        }, cumulativeTime * 1000);
-        
-        cumulativeTime += pattern.duration + 0.1;
-      }
-      
-      cumulativeTime += 0.15;
+    // Play first laugh
+    this.playSound('laugh1', { 
+      volume: 0.6 * this.masterVolume,
+      loop: false 
     });
+    
+    // Play second laugh with delay
+    setTimeout(() => {
+      if (!this.isMuted) {
+        this.playSound('laugh2', { 
+          volume: 0.6 * this.masterVolume,
+          loop: false 
+        });
+      }
+    }, 800);
+    
+    // Play very bad tap sound after laughs
+    setTimeout(() => {
+      if (!this.isMuted) {
+        this.playVeryBadTap();
+      }
+    }, 1600);
   }
 
-  // Cleanup individual oscillator
-  cleanupOscillator(id) {
-    const sound = this.oscillators.get(id);
+  // Get count of active sounds
+  getActiveSoundCount() {
+    let count = 0;
+    for (const [key, sound] of this.sounds) {
+      if (typeof key === 'string') continue; // Skip buffer entries
+      if (sound.isPlaying) count++;
+    }
+    return count;
+  }
+
+  // Cleanup individual sound
+  cleanupSound(soundId) {
+    const sound = this.sounds.get(soundId);
     if (sound) {
       try {
-        if (sound.oscillator && sound.oscillator.stop) {
-          sound.oscillator.stop(0);
+        if (sound.source && sound.source.stop) {
+          sound.source.stop(0);
         }
-        if (sound.oscillator && sound.oscillator.disconnect) {
-          sound.oscillator.disconnect();
+        if (sound.source && sound.source.disconnect) {
+          sound.source.disconnect();
         }
         if (sound.gainNode && sound.gainNode.disconnect) {
           sound.gainNode.disconnect();
-        }
-        if (sound.filter && sound.filter.disconnect) {
-          sound.filter.disconnect();
         }
       } catch (e) {
         // Sound already stopped
       }
-      clearTimeout(sound.timeout);
-      this.oscillators.delete(id);
+      this.sounds.delete(soundId);
     }
   }
 
-  // Cleanup pooled sounds
-  cleanupPooledSounds() {
-    this.clickPool.forEach(sound => {
-      try {
-        if (sound.oscillator && sound.oscillator.stop) {
-          sound.oscillator.stop(0);
-        }
-        if (sound.oscillator && sound.oscillator.disconnect) {
-          sound.oscillator.disconnect();
-        }
-        if (sound.gainNode && sound.gainNode.disconnect) {
-          sound.gainNode.disconnect();
-        }
-      } catch (e) {
-        // Ignore errors
-      }
-    });
-    this.clickPool = [];
+  // Cleanup all playing sounds
+  cleanupAllSounds() {
+    for (const [key, sound] of this.sounds) {
+      if (typeof key === 'string') continue; // Skip buffer entries
+      this.cleanupSound(key);
+    }
   }
 
   // Toggle mute
@@ -642,11 +367,8 @@ class FortuneSoundManager {
     localStorage.setItem('fortune_muted', this.isMuted);
     
     if (this.isMuted) {
-      // Cleanup all oscillators when muted
-      this.oscillators.forEach((sound, id) => {
-        this.cleanupOscillator(id);
-      });
-      this.cleanupPooledSounds();
+      // Cleanup all playing sounds when muted
+      this.cleanupAllSounds();
     }
     
     return this.isMuted;
@@ -659,11 +381,16 @@ class FortuneSoundManager {
 
   // Cleanup everything
   cleanup() {
-    this.oscillators.forEach((sound, id) => {
-      this.cleanupOscillator(id);
-    });
-    this.oscillators.clear();
-    this.cleanupPooledSounds();
+    this.cleanupAllSounds();
+    
+    // Clear audio buffers
+    const bufferKeys = [];
+    for (const [key] of this.sounds) {
+      if (typeof key === 'string') {
+        bufferKeys.push(key);
+      }
+    }
+    bufferKeys.forEach(key => this.sounds.delete(key));
     
     if (this.audioContext) {
       try {

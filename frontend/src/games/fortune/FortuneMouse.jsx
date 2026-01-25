@@ -329,7 +329,7 @@ export default function FortuneMouse() {
   }, [tiles, resultConfig]);
 
   /* =========================
-     GAME ACTIONS - SIMPLIFIED FOR TESTING
+     GAME ACTIONS
   ========================= */
   
   const startGame = async () => {
@@ -356,7 +356,7 @@ export default function FortuneMouse() {
     // Cleanup any existing effects
     cleanupEffects();
     
-    // Play stake sound - keep this to test
+    // Play stake sound
     console.log('Playing stake sound');
     fortuneSound.playStake();
     
@@ -425,7 +425,7 @@ export default function FortuneMouse() {
     tapLock.current = true;
     lastTileRef.current = id;
 
-    // Play click sound - keep this to test
+    // Play click sound
     console.log('Playing click sound');
     fortuneSound.playClick();
     
@@ -452,7 +452,7 @@ export default function FortuneMouse() {
         )
       );
 
-      // Play tile reveal sound - keep this to test
+      // Play tile reveal sound
       console.log('Playing tile sound for result:', resultType);
       fortuneSound.playTileSound(resultType);
 
@@ -465,8 +465,6 @@ export default function FortuneMouse() {
           step_index: res.data.step_index,
           current_multiplier: res.data.current_multiplier,
         }));
-
-        fortuneSound.playGameOverSound();
 
         toast.error(`Trap! ${resultInfo.label} - Game Over`, {
           icon: resultInfo.icon,
@@ -575,7 +573,7 @@ export default function FortuneMouse() {
 
     tapLock.current = true;
     
-    // Play click sound - keep this to test
+    // Play click sound
     console.log('Playing click sound for cashout');
     fortuneSound.playClick();
     
@@ -658,7 +656,6 @@ export default function FortuneMouse() {
     
     // Cleanup on unmount
     return () => {
-      // Don't cleanup sound manager to keep it alive
       cleanupEffects();
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current);
