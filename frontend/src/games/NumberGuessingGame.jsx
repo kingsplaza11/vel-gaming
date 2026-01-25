@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../contexts/WalletContext";
 import { guessingService } from "../services/api";
+import { towerSound } from "../utils/TowerSoundManager";
 import "./NumberGuessingGame.css";
 
 const MIN_STAKE = 100;
@@ -9,6 +10,7 @@ const MIN_STAKE = 100;
 const NumberGuessingGame = ({ user }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const soundInitialized = useRef(false);
 
   /* -------------------- HELPER FUNCTIONS -------------------- */
   const getCombinedBalance = () => {
@@ -44,6 +46,9 @@ const NumberGuessingGame = ({ user }) => {
   const [lastWin, setLastWin] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [gameHistory, setGameHistory] = useState([]);
+  const [isSoundMuted, setIsSoundMuted] = useState(
+    localStorage.getItem('tower_sounds_muted') === 'true'
+  );
 
   const difficulties = [
     { label: "Hard", maxNumber: 200, maxAttempts: 8, description: "1-200, 8 attempts" },
@@ -58,6 +63,202 @@ const NumberGuessingGame = ({ user }) => {
     numericStake <= combinedBalance &&
     !walletLoading &&
     !refreshing;
+
+  /* -------------------- SOUND INITIALIZATION -------------------- */
+  useEffect(() => {
+    // Initialize sound manager on component mount
+    if (!soundInitialized.current) {
+      towerSound.init();
+      soundInitialized.current = true;
+    }
+
+    // Cleanup on unmount
+    return () => {
+      towerSound.stopAllSounds();
+    };
+  }, []);
+
+  /* -------------------- SOUND CONTROL FUNCTIONS -------------------- */
+  const toggleSound = () => {
+    const muted = towerSound.toggleMute();
+    setIsSoundMuted(muted);
+  };
+
+  const playButtonClickSound = () => {
+    towerSound.playButtonClick();
+  };
+
+  const playStakeSelectSound = () => {
+    towerSound.playStakeSelect();
+  };
+
+  const playDifficultySelectSound = () => {
+    towerSound.playHeightSelect(); // Reusing height select sound
+  };
+
+  const playGameStartSound = () => {
+    towerSound.safePlay(() => {
+      // Number selection sound - ascending scale
+      const notes = [523.25, 587.33, 659.25, 698.46, 783.99]; // C5, D5, E5, F5, G5
+      
+      notes.forEach((freq, index) => {
+        setTimeout(() => {
+          towerSound.safePlay(() => {
+            const oscillator = towerSound.audioContext.createOscillator();
+            const gainNode = towerSound.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(towerSound.audioContext.destination);
+            
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(freq, towerSound.audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.15 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.1);
+            
+            oscillator.start();
+            oscillator.stop(towerSound.audioContext.currentTime + 0.1);
+            
+            towerSound.registerSound(oscillator, gainNode);
+          });
+        }, index * 80);
+      });
+    });
+  };
+
+  const playGuessSubmitSound = () => {
+    towerSound.safePlay(() => {
+      const oscillator = towerSound.audioContext.createOscillator();
+      const gainNode = towerSound.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(towerSound.audioContext.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(400, towerSound.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(600, towerSound.audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.2 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.1);
+      
+      oscillator.start();
+      oscillator.stop(towerSound.audioContext.currentTime + 0.1);
+      
+      towerSound.registerSound(oscillator, gainNode);
+    });
+  };
+
+  const playCorrectGuessSound = (tier) => {
+    const tierVolumes = {
+      'low': 0.2,
+      'normal': 0.25,
+      'high': 0.3,
+      'jackpot': 0.35,
+      'mega_jackpot': 0.4
+    };
+    
+    const volume = tierVolumes[tier] || 0.25;
+    
+    towerSound.safePlay(() => {
+      // Victory fanfare
+      const notes = [659.25, 783.99, 1046.50, 1318.51]; // E5, G5, C6, E6
+      
+      notes.forEach((freq, index) => {
+        setTimeout(() => {
+          towerSound.safePlay(() => {
+            const oscillator = towerSound.audioContext.createOscillator();
+            const gainNode = towerSound.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(towerSound.audioContext.destination);
+            
+            oscillator.type = ['sine', 'triangle', 'square', 'sawtooth'][index % 4];
+            oscillator.frequency.setValueAtTime(freq, towerSound.audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(volume * towerSound.masterVolume, towerSound.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.3);
+            
+            oscillator.start();
+            oscillator.stop(towerSound.audioContext.currentTime + 0.3);
+            
+            towerSound.registerSound(oscillator, gainNode);
+          });
+        }, index * 200);
+      });
+    });
+  };
+
+  const playWrongGuessSound = (proximity) => {
+    const proximitySounds = {
+      'Very Hot': 700, // High pitch for hot
+      'Hot': 600,
+      'Warm': 500,
+      'Cool': 400,
+      'Cold': 300  // Low pitch for cold
+    };
+    
+    const baseFreq = proximitySounds[proximity] || 400;
+    
+    towerSound.safePlay(() => {
+      const oscillator = towerSound.audioContext.createOscillator();
+      const gainNode = towerSound.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(towerSound.audioContext.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(baseFreq, towerSound.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(baseFreq * 0.8, towerSound.audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.18 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.2);
+      
+      oscillator.start();
+      oscillator.stop(towerSound.audioContext.currentTime + 0.2);
+      
+      towerSound.registerSound(oscillator, gainNode);
+    });
+  };
+
+  const playHintSound = () => {
+    towerSound.safePlay(() => {
+      const oscillator1 = towerSound.audioContext.createOscillator();
+      const gainNode1 = towerSound.audioContext.createGain();
+      const oscillator2 = towerSound.audioContext.createOscillator();
+      const gainNode2 = towerSound.audioContext.createGain();
+      
+      oscillator1.connect(gainNode1);
+      gainNode1.connect(towerSound.audioContext.destination);
+      oscillator2.connect(gainNode2);
+      gainNode2.connect(towerSound.audioContext.destination);
+      
+      oscillator1.type = 'triangle';
+      oscillator1.frequency.setValueAtTime(800, towerSound.audioContext.currentTime);
+      oscillator2.type = 'triangle';
+      oscillator2.frequency.setValueAtTime(1200, towerSound.audioContext.currentTime);
+      
+      gainNode1.gain.setValueAtTime(0.15 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode1.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.3);
+      gainNode2.gain.setValueAtTime(0.15 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode2.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.3);
+      
+      oscillator1.start();
+      oscillator2.start();
+      oscillator1.stop(towerSound.audioContext.currentTime + 0.3);
+      oscillator2.stop(towerSound.audioContext.currentTime + 0.3);
+      
+      towerSound.registerSound(oscillator1, gainNode1);
+      towerSound.registerSound(oscillator2, gainNode2);
+    });
+  };
+
+  const playGameOverSound = () => {
+    towerSound.playTowerCrash();
+  };
+
+  const playErrorSound = () => {
+    towerSound.playWarningSound();
+  };
 
   /* -------------------- DEEP REFRESH -------------------- */
   const deepRefresh = async () => {
@@ -79,6 +280,8 @@ const NumberGuessingGame = ({ user }) => {
 
   /* -------------------- START GAME -------------------- */
   const startGame = async () => {
+    playButtonClickSound();
+
     if (walletLoading) {
       alert("Please wait while your balance loads...");
       return;
@@ -86,11 +289,13 @@ const NumberGuessingGame = ({ user }) => {
 
     if (numericStake < MIN_STAKE) {
       alert(`Minimum stake is ₦${MIN_STAKE.toLocaleString("en-NG")}`);
+      playErrorSound();
       return;
     }
 
     if (numericStake > combinedBalance) {
       alert("Insufficient balance");
+      playErrorSound();
       return;
     }
 
@@ -109,6 +314,9 @@ const NumberGuessingGame = ({ user }) => {
       setShowModal(false);
       setLastWin(null);
 
+      // Play game start sound
+      playGameStartSound();
+
       if (refreshWallet) {
         await refreshWallet();
       }
@@ -125,6 +333,7 @@ const NumberGuessingGame = ({ user }) => {
     } catch (err) {
       console.error("Game start error:", err);
       alert(err.response?.data?.error || "Failed to start game");
+      playErrorSound();
     }
   };
 
@@ -132,9 +341,12 @@ const NumberGuessingGame = ({ user }) => {
   const submitGuess = async () => {
     if (!guess || !game || refreshing) return;
 
+    playGuessSubmitSound();
+
     const guessNum = Number(guess);
     if (isNaN(guessNum) || guessNum < 1 || guessNum > maxNumber) {
       setFeedback(`Please enter a number between 1 and ${maxNumber}`);
+      playErrorSound();
       return;
     }
 
@@ -156,6 +368,9 @@ const NumberGuessingGame = ({ user }) => {
           attempts_used: res.data.attempts_used,
           target_number: res.data.target_number,
         });
+
+        // Play win sound based on tier
+        playCorrectGuessSound(res.data.win_tier);
 
         if (refreshWallet) {
           await refreshWallet();
@@ -180,6 +395,9 @@ const NumberGuessingGame = ({ user }) => {
         }, ...prev.slice(0, 9)]);
 
       } else if (res.data.status === "lost") {
+        // Play game over sound
+        playGameOverSound();
+        
         setTimeout(() => {
           setShowLossModal(true);
         }, 800);
@@ -194,7 +412,12 @@ const NumberGuessingGame = ({ user }) => {
         }, ...prev.slice(0, 9)]);
 
       } else {
-        // Still playing
+        // Still playing - play proximity-based sound
+        const proximity = res.data.proximity_hint || '';
+        if (proximity) {
+          playWrongGuessSound(proximity);
+        }
+        
         setFeedback(`${res.data.hint.toUpperCase()} - ${res.data.proximity_hint}`);
         setProximityHint(res.data.proximity_hint);
       }
@@ -204,12 +427,15 @@ const NumberGuessingGame = ({ user }) => {
     } catch (err) {
       console.error("Guess error:", err);
       setFeedback(err.response?.data?.error || "Guess failed");
+      playErrorSound();
     }
   };
 
   /* -------------------- GET HINT -------------------- */
   const getHint = async () => {
     if (!game || refreshing) return;
+
+    playHintSound();
 
     try {
       const res = await guessingService.getHint({
@@ -225,6 +451,7 @@ const NumberGuessingGame = ({ user }) => {
 
     } catch (err) {
       console.error("Hint error:", err);
+      playErrorSound();
     }
   };
 
@@ -259,9 +486,24 @@ const NumberGuessingGame = ({ user }) => {
 
       {/* HEADER */}
       <div className="game-header">
-        <button onClick={() => navigate("/")} className="back-button">
+        <button 
+          onClick={() => {
+            playButtonClickSound();
+            navigate("/");
+          }} 
+          className="back-button"
+        >
           ← Back
         </button>
+        
+        {/* Sound Toggle Button */}
+        <button 
+          className="sound-toggle"
+          onClick={toggleSound}
+        >
+          {isSoundMuted ? "🔇" : "🔊"}
+        </button>
+        
         <div className="balance-details">
           <div className="balance-total">
             {walletLoading || refreshing ? (
@@ -316,19 +558,18 @@ const NumberGuessingGame = ({ user }) => {
                       key={d.label}
                       className={maxNumber === d.maxNumber ? "active" : ""}
                       onClick={() => {
+                        playDifficultySelectSound();
                         setMaxNumber(d.maxNumber);
                         setMaxAttempts(d.maxAttempts);
                       }}
                       disabled={walletLoading || refreshing}
+                      onMouseEnter={playButtonClickSound}
                     >
                       {d.label}
                       <small>{d.description}</small>
                     </button>
                   ))}
                 </div>
-                <small className="risk-indicator">
-                  Current: 1-{maxNumber}, {maxAttempts} attempts
-                </small>
               </div>
             </div>
 
@@ -339,7 +580,11 @@ const NumberGuessingGame = ({ user }) => {
                 value={stake}
                 min={MIN_STAKE}
                 step={100}
-                onChange={(e) => setStake(e.target.value)}
+                onChange={(e) => {
+                  playStakeSelectSound();
+                  setStake(e.target.value);
+                }}
+                onFocus={playButtonClickSound}
                 disabled={walletLoading || refreshing}
               />
             </div>
@@ -348,6 +593,7 @@ const NumberGuessingGame = ({ user }) => {
               className="start-btn"
               disabled={!canStart}
               onClick={startGame}
+              onMouseEnter={playButtonClickSound}
             >
               {refreshing ? "REFRESHING..." : 
                walletLoading ? "LOADING..." : 
@@ -386,11 +632,13 @@ const NumberGuessingGame = ({ user }) => {
                 max={maxNumber}
                 disabled={refreshing}
                 onKeyPress={(e) => e.key === 'Enter' && submitGuess()}
+                onFocus={playButtonClickSound}
               />
               <button 
                 className="guess-button"
                 onClick={submitGuess}
                 disabled={!guess || refreshing}
+                onMouseEnter={playButtonClickSound}
               >
                 GUESS
               </button>
@@ -400,6 +648,7 @@ const NumberGuessingGame = ({ user }) => {
               className="hint-button"
               onClick={getHint}
               disabled={refreshing}
+              onMouseEnter={playButtonClickSound}
             >
               💡 Get Hint
             </button>
@@ -495,10 +744,12 @@ const NumberGuessingGame = ({ user }) => {
             <button
               className="continue-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowWinModal(false);
                 deepRefresh();
               }}
               disabled={refreshing}
+              onMouseEnter={playButtonClickSound}
             >
               {refreshing ? (
                 <>
@@ -549,10 +800,12 @@ const NumberGuessingGame = ({ user }) => {
             <button
               className="try-again-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowLossModal(false);
                 deepRefresh();
               }}
               disabled={refreshing}
+              onMouseEnter={playButtonClickSound}
             >
               {refreshing ? (
                 <>

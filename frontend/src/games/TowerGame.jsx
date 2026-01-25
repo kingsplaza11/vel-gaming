@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../contexts/WalletContext";
 import { towerService } from "../services/api";
+import { towerSound } from "../utils/TowerSoundManager";
 import "./TowerGame.css";
 
 const TowerGame = ({ user }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const soundInitialized = useRef(false);
 
   /* -------------------- HELPER FUNCTIONS -------------------- */
   const getCombinedBalance = () => {
@@ -38,6 +40,49 @@ const TowerGame = ({ user }) => {
   const [showWinModal, setShowWinModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
   const [lastWin, setLastWin] = useState(null);
+  const [isSoundMuted, setIsSoundMuted] = useState(
+    localStorage.getItem('tower_sounds_muted') === 'true'
+  );
+
+  /* -------------------- SOUND INITIALIZATION -------------------- */
+  useEffect(() => {
+    // Initialize sound manager on component mount
+    if (!soundInitialized.current) {
+      towerSound.init();
+      soundInitialized.current = true;
+    }
+
+    // Start construction ambience when game starts
+    if (game && game.status === "building") {
+      towerSound.playConstructionAmbience();
+    } else {
+      towerSound.stopBackgroundMusic();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      towerSound.stopBackgroundMusic();
+      towerSound.stopAllSounds();
+    };
+  }, [game?.status]); // Only re-run when game.status changes
+
+  /* -------------------- SOUND CONTROL -------------------- */
+  const toggleSound = () => {
+    const muted = towerSound.toggleMute();
+    setIsSoundMuted(muted);
+  };
+
+  const playButtonClickSound = () => {
+    towerSound.playButtonClick();
+  };
+
+  const playStakeSelectSound = () => {
+    towerSound.playStakeSelect();
+  };
+
+  const playHeightSelectSound = () => {
+    towerSound.playHeightSelect();
+  };
 
   /* -------------------- DEEP REFRESH -------------------- */
   const deepRefresh = async () => {
@@ -46,6 +91,7 @@ const TowerGame = ({ user }) => {
     setLastWin(null);
     setShowWinModal(false);
     setShowLossModal(false);
+    towerSound.stopBackgroundMusic();
     
     if (refreshWallet) {
       await refreshWallet();
@@ -54,13 +100,17 @@ const TowerGame = ({ user }) => {
 
   /* -------------------- START GAME -------------------- */
   const startGame = async () => {
+    playButtonClickSound();
+
     if (stake < 100) {
       alert("Minimum stake is ₦100");
+      towerSound.playWarningSound();
       return;
     }
 
     if (stake > combinedBalance) {
       alert("Insufficient balance");
+      towerSound.playWarningSound();
       return;
     }
 
@@ -82,6 +132,9 @@ const TowerGame = ({ user }) => {
         targetHeight: targetHeight,
       });
 
+      // Play game start sound
+      towerSound.playGameStart();
+
       if (refreshWallet) {
         await refreshWallet();
       }
@@ -96,23 +149,32 @@ const TowerGame = ({ user }) => {
                           "Failed to start game";
       
       alert(`Error: ${errorMessage}`);
+      towerSound.playWarningSound();
     }
   };
 
   /* -------------------- BUILD LEVEL -------------------- */
   const buildNext = async () => {
     if (!game || loading || game.status !== "building") return;
+    
+    playButtonClickSound();
     setLoading(true);
 
     try {
       const res = await towerService.buildLevel({ game_id: game.id });
 
       if (res.data.status === "crashed") {
+        // Play crash sound and animation
+        towerSound.playTowerCrash();
         setGame({ ...game, status: "crashed" });
         setTimeout(() => {
           setShowLossModal(true);
         }, 1000);
       } else if (res.data.status === "completed") {
+        // Play victory sound
+        towerSound.stopBackgroundMusic();
+        towerSound.playVictoryCelebration();
+        
         const winData = {
           win_amount: res.data.win_amount,
           win_tier: res.data.win_tier,
@@ -130,6 +192,8 @@ const TowerGame = ({ user }) => {
           setShowWinModal(true);
         }, 800);
       } else {
+        // Play build sound for the floor
+        towerSound.playBuildFloor(game.height + 1);
         setGame({
           ...game,
           height: res.data.current_height,
@@ -138,6 +202,7 @@ const TowerGame = ({ user }) => {
     } catch (err) {
       console.error("Build error:", err);
       alert(err.response?.data?.error || "Build failed");
+      towerSound.playWarningSound();
     } finally {
       setLoading(false);
     }
@@ -146,9 +211,15 @@ const TowerGame = ({ user }) => {
   /* -------------------- CASH OUT -------------------- */
   const cashOut = async () => {
     if (!game || game.height === 0) return;
+    
+    playButtonClickSound();
 
     try {
       const res = await towerService.cashOut({ game_id: game.id });
+      
+      // Play cash out sound
+      towerSound.stopBackgroundMusic();
+      towerSound.playCashOut();
       
       const winData = {
         win_amount: res.data.win_amount,
@@ -169,6 +240,7 @@ const TowerGame = ({ user }) => {
       
     } catch (err) {
       alert(err.response?.data?.error || "Cash out failed");
+      towerSound.playWarningSound();
     }
   };
 
@@ -177,7 +249,22 @@ const TowerGame = ({ user }) => {
     <div className="tower-game">
       {/* HEADER */}
       <header className="game-header">
-        <button onClick={() => navigate("/")}>← Back</button>
+        <button 
+          onClick={() => {
+            playButtonClickSound();
+            navigate("/");
+          }}
+        >
+          ← Back
+        </button>
+        
+        {/* Sound Toggle Button */}
+        <button 
+          className="sound-toggle"
+          onClick={toggleSound}
+        >
+          {isSoundMuted ? "🔇" : "🔊"}
+        </button>
       </header>
 
       {/* STAKE MODAL */}
@@ -195,7 +282,12 @@ const TowerGame = ({ user }) => {
                     <button
                       key={height}
                       className={targetHeight === height ? "active" : ""}
-                      onClick={() => !walletLoading && setTargetHeight(height)}
+                      onClick={() => {
+                        if (!walletLoading) {
+                          playHeightSelectSound();
+                          setTargetHeight(height);
+                        }
+                      }}
                       disabled={walletLoading}
                     >
                       {height} Floors
@@ -212,7 +304,11 @@ const TowerGame = ({ user }) => {
                 value={stake}
                 min={100}
                 step={100}
-                onChange={(e) => setStake(Number(e.target.value))}
+                onChange={(e) => {
+                  playStakeSelectSound();
+                  setStake(Number(e.target.value));
+                }}
+                onFocus={playButtonClickSound}
                 disabled={walletLoading}
               />
             </div>
@@ -220,6 +316,7 @@ const TowerGame = ({ user }) => {
               className="start-btn"
               disabled={walletLoading || stake < 100 || stake > combinedBalance}
               onClick={startGame}
+              onMouseEnter={playButtonClickSound}
             >
               {walletLoading ? "LOADING..." : "🚀 START BUILDING"}
             </button>
@@ -230,18 +327,6 @@ const TowerGame = ({ user }) => {
       {/* GAME BOARD */}
       {game && !showStakeModal && (
         <div className="tower-game-board">
-          <div className="game-info-bar">
-            <div className="info-item">
-              <span>Current Height</span>
-              <strong className="height-display">
-                {game.height} / {targetHeight}
-              </strong>
-            </div>
-            <div className="info-item">
-              <span>Stake</span>
-              <strong>{formatNGN(stake)}</strong>
-            </div>
-          </div>
 
           {/* TOWER VISUALIZATION */}
           <div className="tower-visualization">
@@ -281,6 +366,7 @@ const TowerGame = ({ user }) => {
                 className="build-btn"
                 onClick={buildNext}
                 disabled={loading}
+                onMouseEnter={playButtonClickSound}
               >
                 {loading ? "BUILDING..." : `⬆️ BUILD NEXT FLOOR`}
               </button>
@@ -289,6 +375,7 @@ const TowerGame = ({ user }) => {
                 className="cashout-btn"
                 onClick={cashOut}
                 disabled={game.height === 0}
+                onMouseEnter={playButtonClickSound}
               >
                 💰 CASH OUT
               </button>
@@ -333,7 +420,11 @@ const TowerGame = ({ user }) => {
 
               <button
                 className="restart-btn"
-                onClick={deepRefresh}
+                onClick={() => {
+                  playButtonClickSound();
+                  deepRefresh();
+                }}
+                onMouseEnter={playButtonClickSound}
               >
                 🔁 BUILD NEW TOWER
               </button>
@@ -362,9 +453,11 @@ const TowerGame = ({ user }) => {
             <button
               className="continue-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowWinModal(false);
                 deepRefresh();
               }}
+              onMouseEnter={playButtonClickSound}
             >
               🏗️ Build New Tower
             </button>
@@ -385,9 +478,11 @@ const TowerGame = ({ user }) => {
             <button
               className="try-again-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowLossModal(false);
                 deepRefresh();
               }}
+              onMouseEnter={playButtonClickSound}
             >
               🔁 Try Again
             </button>

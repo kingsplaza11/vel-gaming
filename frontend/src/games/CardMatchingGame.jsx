@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { cardService } from '../services/api';
+import { towerSound } from '../utils/TowerSoundManager'; // Reusing the same sound manager
 import './CardMatchingGame.css';
 
 const MIN_BET = 100;
@@ -9,6 +10,7 @@ const MIN_BET = 100;
 const CardMatchingGame = ({ user }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const soundInitialized = useRef(false);
 
   /* =========================
      HELPER FUNCTIONS
@@ -52,6 +54,9 @@ const CardMatchingGame = ({ user }) => {
   const [showLossModal, setShowLossModal] = useState(false);
   const [lastWin, setLastWin] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState(
+    localStorage.getItem('tower_sounds_muted') === 'true'
+  );
 
   /* =========================
      GAME STATE
@@ -83,6 +88,156 @@ const CardMatchingGame = ({ user }) => {
     !refreshing;
 
   /* =========================
+     SOUND INITIALIZATION
+  ========================== */
+  useEffect(() => {
+    // Initialize sound manager on component mount
+    if (!soundInitialized.current) {
+      towerSound.init();
+      soundInitialized.current = true;
+    }
+
+    // Cleanup on unmount
+    return () => {
+      towerSound.stopAllSounds();
+    };
+  }, []);
+
+  /* =========================
+     SOUND CONTROL FUNCTIONS
+  ========================== */
+  const toggleSound = () => {
+    const muted = towerSound.toggleMute();
+    setIsSoundMuted(muted);
+  };
+
+  const playButtonClickSound = () => {
+    towerSound.playButtonClick();
+  };
+
+  const playCardFlipSound = () => {
+    towerSound.safePlay(() => {
+      const oscillator = towerSound.audioContext.createOscillator();
+      const gainNode = towerSound.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(towerSound.audioContext.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(600, towerSound.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(400, towerSound.audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.2 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.1);
+      
+      oscillator.start();
+      oscillator.stop(towerSound.audioContext.currentTime + 0.1);
+      
+      towerSound.registerSound(oscillator, gainNode);
+    });
+  };
+
+  const playCardMatchSound = () => {
+    towerSound.safePlay(() => {
+      // Play a positive match sound
+      const oscillator1 = towerSound.audioContext.createOscillator();
+      const gainNode1 = towerSound.audioContext.createGain();
+      const oscillator2 = towerSound.audioContext.createOscillator();
+      const gainNode2 = towerSound.audioContext.createGain();
+      
+      oscillator1.connect(gainNode1);
+      gainNode1.connect(towerSound.audioContext.destination);
+      oscillator2.connect(gainNode2);
+      gainNode2.connect(towerSound.audioContext.destination);
+      
+      oscillator1.type = 'triangle';
+      oscillator1.frequency.setValueAtTime(523.25, towerSound.audioContext.currentTime); // C5
+      oscillator2.type = 'triangle';
+      oscillator2.frequency.setValueAtTime(659.25, towerSound.audioContext.currentTime); // E5
+      
+      gainNode1.gain.setValueAtTime(0.2 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode1.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.3);
+      gainNode2.gain.setValueAtTime(0.2 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode2.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.3);
+      
+      oscillator1.start();
+      oscillator2.start();
+      oscillator1.stop(towerSound.audioContext.currentTime + 0.3);
+      oscillator2.stop(towerSound.audioContext.currentTime + 0.3);
+      
+      towerSound.registerSound(oscillator1, gainNode1);
+      towerSound.registerSound(oscillator2, gainNode2);
+    });
+  };
+
+  const playCardMismatchSound = () => {
+    towerSound.safePlay(() => {
+      // Play a negative mismatch sound
+      const oscillator = towerSound.audioContext.createOscillator();
+      const gainNode = towerSound.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(towerSound.audioContext.destination);
+      
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(400, towerSound.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(300, towerSound.audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.15 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.2);
+      
+      oscillator.start();
+      oscillator.stop(towerSound.audioContext.currentTime + 0.2);
+      
+      towerSound.registerSound(oscillator, gainNode);
+    });
+  };
+
+  const playGameStartSound = () => {
+    towerSound.safePlay(() => {
+      // Card shuffling sound
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          towerSound.safePlay(() => {
+            const oscillator = towerSound.audioContext.createOscillator();
+            const gainNode = towerSound.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(towerSound.audioContext.destination);
+            
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(200 + Math.random() * 100, towerSound.audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.1 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.05);
+            
+            oscillator.start();
+            oscillator.stop(towerSound.audioContext.currentTime + 0.05);
+            
+            towerSound.registerSound(oscillator, gainNode);
+          });
+        }, i * 100);
+      }
+    });
+  };
+
+  const playGameCompleteSound = () => {
+    towerSound.playVictoryCelebration();
+  };
+
+  const playGameOverSound = () => {
+    towerSound.playTowerCrash();
+  };
+
+  const playCashOutSound = () => {
+    towerSound.playCashOut();
+  };
+
+  const playErrorSound = () => {
+    towerSound.playWarningSound();
+  };
+
+  /* =========================
      DEEP REFRESH
   ========================== */
   const deepRefresh = async () => {
@@ -109,20 +264,24 @@ const CardMatchingGame = ({ user }) => {
      START GAME
   ========================== */
   const startGame = async () => {
+    playButtonClickSound();
     setError('');
 
     if (!Number.isFinite(numericBet) || numericBet <= 0) {
       setError('Enter a valid stake amount');
+      playErrorSound();
       return;
     }
 
     if (numericBet < MIN_BET) {
       setError(`Minimum stake is ₦${MIN_BET.toLocaleString("en-NG")}`);
+      playErrorSound();
       return;
     }
 
     if (numericBet > combinedBalance) {
       setError('Insufficient balance');
+      playErrorSound();
       return;
     }
 
@@ -155,6 +314,9 @@ const CardMatchingGame = ({ user }) => {
       setShowModal(false);
       setLastWin(null);
 
+      // Play game start sound
+      playGameStartSound();
+
       if (refreshWallet) {
         await refreshWallet();
       }
@@ -162,6 +324,7 @@ const CardMatchingGame = ({ user }) => {
     } catch (err) {
       console.error("Game start error:", err);
       setError(err.response?.data?.error || 'Failed to start game');
+      playErrorSound();
     }
   };
 
@@ -175,6 +338,7 @@ const CardMatchingGame = ({ user }) => {
     if (selectedCards.length === 2) return;
     if (cards[index].isMatched || cards[index].isRevealed) return;
 
+    playCardFlipSound();
     setLocked(true);
 
     try {
@@ -214,6 +378,9 @@ const CardMatchingGame = ({ user }) => {
       /* SECOND PICK - Handle match result */
       if (res.data.match_found === true) {
         console.log('Match found!');
+        // Play match sound
+        playCardMatchSound();
+        
         // Match found
         setTimeout(() => {
           const newCards = [...updatedCards];
@@ -228,6 +395,7 @@ const CardMatchingGame = ({ user }) => {
       } else {
         // No match
         console.log('No match');
+        playCardMismatchSound();
         setAttempts(prev => prev + 1);
         
         setTimeout(() => {
@@ -247,6 +415,7 @@ const CardMatchingGame = ({ user }) => {
       if (res.data.status === 'failed') {
         console.log('Game failed');
         setGameStatus('failed');
+        playGameOverSound();
         setTimeout(() => {
           setShowLossModal(true);
         }, 1500);
@@ -261,6 +430,9 @@ const CardMatchingGame = ({ user }) => {
           matches_found: res.data.matches_found,
         });
 
+        // Play victory sound
+        playGameCompleteSound();
+
         if (refreshWallet) {
           await refreshWallet();
         }
@@ -273,6 +445,7 @@ const CardMatchingGame = ({ user }) => {
     } catch (err) {
       console.error("Card reveal error:", err);
       setLocked(false);
+      playErrorSound();
     }
   };
 
@@ -281,6 +454,8 @@ const CardMatchingGame = ({ user }) => {
   ========================== */
   const cashOutEarly = async () => {
     if (!gameId || gameStatus !== 'playing' || refreshing) return;
+
+    playButtonClickSound();
 
     try {
       const res = await cardService.cashOut({
@@ -292,6 +467,9 @@ const CardMatchingGame = ({ user }) => {
         win_amount: res.data.win_amount,
       });
 
+      // Play cash out sound
+      playCashOutSound();
+
       if (refreshWallet) {
         await refreshWallet();
       }
@@ -300,6 +478,7 @@ const CardMatchingGame = ({ user }) => {
 
     } catch (err) {
       console.error("Cash out error:", err);
+      playErrorSound();
     }
   };
 
@@ -330,8 +509,22 @@ const CardMatchingGame = ({ user }) => {
 
       {/* HEADER */}
       <div className="game-header">
-        <button onClick={() => navigate('/')} className="back-button">
+        <button 
+          onClick={() => {
+            playButtonClickSound();
+            navigate('/');
+          }} 
+          className="back-button"
+        >
           ← Back
+        </button>
+        
+        {/* Sound Toggle Button */}
+        <button 
+          className="sound-toggle"
+          onClick={toggleSound}
+        >
+          {isSoundMuted ? "🔇" : "🔊"}
         </button>
       </div>
 
@@ -355,8 +548,12 @@ const CardMatchingGame = ({ user }) => {
                     <button
                       key={d.size}
                       className={gridSize === d.size ? "active" : ""}
-                      onClick={() => setGridSize(d.size)}
+                      onClick={() => {
+                        playButtonClickSound();
+                        setGridSize(d.size);
+                      }}
                       disabled={walletLoading || refreshing}
+                      onMouseEnter={playButtonClickSound}
                     >
                       {d.label} ({d.size} cards)
                     </button>
@@ -371,7 +568,11 @@ const CardMatchingGame = ({ user }) => {
                 type="number"
                 placeholder="1000"
                 value={betAmount}
-                onChange={(e) => setBetAmount(e.target.value)}
+                onChange={(e) => {
+                  playButtonClickSound();
+                  setBetAmount(e.target.value);
+                }}
+                onFocus={playButtonClickSound}
                 disabled={walletLoading || refreshing}
                 min={MIN_BET}
                 step={100}
@@ -390,6 +591,7 @@ const CardMatchingGame = ({ user }) => {
               className="start-btn"
               disabled={!canStart}
               onClick={startGame}
+              onMouseEnter={playButtonClickSound}
             >
               {refreshing ? "REFRESHING..." : 
                walletLoading ? "LOADING..." : 
@@ -419,7 +621,11 @@ const CardMatchingGame = ({ user }) => {
 
           {gameStatus === 'playing' && (
             <div className="action-buttons">
-              <button className="cashout-btn" onClick={cashOutEarly}>
+              <button 
+                className="cashout-btn" 
+                onClick={cashOutEarly}
+                onMouseEnter={playButtonClickSound}
+              >
                 💰 Cash Out
               </button>
             </div>
@@ -477,8 +683,12 @@ const CardMatchingGame = ({ user }) => {
 
               <button
                 className="restart-btn"
-                onClick={deepRefresh}
+                onClick={() => {
+                  playButtonClickSound();
+                  deepRefresh();
+                }}
                 disabled={refreshing}
+                onMouseEnter={playButtonClickSound}
               >
                 {refreshing ? "Refreshing..." : "🔁 Play Again"}
               </button>
@@ -518,10 +728,12 @@ const CardMatchingGame = ({ user }) => {
             <button
               className="continue-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowWinModal(false);
                 deepRefresh();
               }}
               disabled={refreshing}
+              onMouseEnter={playButtonClickSound}
             >
               {refreshing ? "Refreshing..." : "🎮 Continue Playing"}
             </button>
@@ -553,10 +765,12 @@ const CardMatchingGame = ({ user }) => {
             <button
               className="try-again-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowLossModal(false);
                 deepRefresh();
               }}
               disabled={refreshing}
+              onMouseEnter={playButtonClickSound}
             >
               {refreshing ? "Refreshing..." : "🔁 Try Again"}
             </button>

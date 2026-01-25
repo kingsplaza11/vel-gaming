@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../contexts/WalletContext";
 import { colorSwitchService } from "../services/api";
+import { towerSound } from "../utils/TowerSoundManager";
 import "./ColorSwitchGame.css";
 
 const ColorSwitchGame = ({ user }) => {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet } = useWallet();
+  const soundInitialized = useRef(false);
 
   /* -------------------- HELPER FUNCTIONS -------------------- */
   const getCombinedBalance = () => {
@@ -52,6 +54,230 @@ const ColorSwitchGame = ({ user }) => {
   const [showWinModal, setShowWinModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState(
+    localStorage.getItem('tower_sounds_muted') === 'true'
+  );
+
+  /* -------------------- SOUND INITIALIZATION -------------------- */
+  useEffect(() => {
+    // Initialize sound manager on component mount
+    if (!soundInitialized.current) {
+      towerSound.init();
+      soundInitialized.current = true;
+    }
+
+    // Cleanup on unmount
+    return () => {
+      towerSound.stopAllSounds();
+    };
+  }, []);
+
+  /* -------------------- SOUND CONTROL FUNCTIONS -------------------- */
+  const toggleSound = () => {
+    const muted = towerSound.toggleMute();
+    setIsSoundMuted(muted);
+  };
+
+  const playButtonClickSound = () => {
+    towerSound.playButtonClick();
+  };
+
+  const playStakeSelectSound = () => {
+    towerSound.playStakeSelect();
+  };
+
+  const playSequenceSelectSound = () => {
+    towerSound.playHeightSelect(); // Reusing height select sound
+  };
+
+  const playGameStartSound = () => {
+    towerSound.safePlay(() => {
+      // Colorful startup sound
+      const colors = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      
+      colors.forEach((freq, index) => {
+        setTimeout(() => {
+          towerSound.safePlay(() => {
+            const oscillator = towerSound.audioContext.createOscillator();
+            const gainNode = towerSound.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(towerSound.audioContext.destination);
+            
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(freq, towerSound.audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.2 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.15);
+            
+            oscillator.start();
+            oscillator.stop(towerSound.audioContext.currentTime + 0.15);
+            
+            towerSound.registerSound(oscillator, gainNode);
+          });
+        }, index * 100);
+      });
+    });
+  };
+
+  const playColorClickSound = (colorIndex) => {
+    const colorFrequencies = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00]; // Different tones for each color
+    
+    towerSound.safePlay(() => {
+      const oscillator = towerSound.audioContext.createOscillator();
+      const gainNode = towerSound.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(towerSound.audioContext.destination);
+      
+      const baseFreq = colorFrequencies[colorIndex % colorFrequencies.length];
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(baseFreq, towerSound.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(baseFreq * 1.2, towerSound.audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.2 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.1);
+      
+      oscillator.start();
+      oscillator.stop(towerSound.audioContext.currentTime + 0.1);
+      
+      towerSound.registerSound(oscillator, gainNode);
+    });
+  };
+
+  const playSequenceRevealSound = (index) => {
+    const notes = [261.63, 329.63, 392.00, 493.88, 587.33]; // C4, E4, G4, B4, D5
+    
+    setTimeout(() => {
+      towerSound.safePlay(() => {
+        const oscillator = towerSound.audioContext.createOscillator();
+        const gainNode = towerSound.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(towerSound.audioContext.destination);
+        
+        const noteIndex = index % notes.length;
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(notes[noteIndex], towerSound.audioContext.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.25 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.4);
+        
+        oscillator.start();
+        oscillator.stop(towerSound.audioContext.currentTime + 0.4);
+        
+        towerSound.registerSound(oscillator, gainNode);
+      });
+    }, index * 400); // Adjust timing to match visual animation
+  };
+
+  const playCorrectSequenceSound = () => {
+    towerSound.safePlay(() => {
+      // Happy ascending scale for correct sequence
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      
+      notes.forEach((freq, index) => {
+        setTimeout(() => {
+          towerSound.safePlay(() => {
+            const oscillator = towerSound.audioContext.createOscillator();
+            const gainNode = towerSound.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(towerSound.audioContext.destination);
+            
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(freq, towerSound.audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.2 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.2);
+            
+            oscillator.start();
+            oscillator.stop(towerSound.audioContext.currentTime + 0.2);
+            
+            towerSound.registerSound(oscillator, gainNode);
+          });
+        }, index * 150);
+      });
+    });
+  };
+
+  const playWrongSequenceSound = () => {
+    towerSound.safePlay(() => {
+      // Sad descending scale for wrong sequence
+      const notes = [523.25, 466.16, 415.30, 349.23]; // C5, A#4, G#4, F4
+      
+      notes.forEach((freq, index) => {
+        setTimeout(() => {
+          towerSound.safePlay(() => {
+            const oscillator = towerSound.audioContext.createOscillator();
+            const gainNode = towerSound.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(towerSound.audioContext.destination);
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(freq, towerSound.audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.25 * towerSound.masterVolume, towerSound.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.25);
+            
+            oscillator.start();
+            oscillator.stop(towerSound.audioContext.currentTime + 0.25);
+            
+            towerSound.registerSound(oscillator, gainNode);
+          });
+        }, index * 100);
+      });
+    });
+  };
+
+  const playGameCompleteSound = (tier) => {
+    const tierVolumes = {
+      'low': 0.2,
+      'normal': 0.25,
+      'high': 0.3,
+      'jackpot': 0.35,
+      'mega_jackpot': 0.4
+    };
+    
+    const volume = tierVolumes[tier] || 0.25;
+    
+    towerSound.safePlay(() => {
+      // Victory fanfare for completing the game
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
+      
+      notes.forEach((freq, index) => {
+        setTimeout(() => {
+          towerSound.safePlay(() => {
+            const oscillator = towerSound.audioContext.createOscillator();
+            const gainNode = towerSound.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(towerSound.audioContext.destination);
+            
+            oscillator.type = ['sine', 'triangle', 'square', 'sawtooth', 'sine'][index % 5];
+            oscillator.frequency.setValueAtTime(freq, towerSound.audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(volume * towerSound.masterVolume, towerSound.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, towerSound.audioContext.currentTime + 0.3);
+            
+            oscillator.start();
+            oscillator.stop(towerSound.audioContext.currentTime + 0.3);
+            
+            towerSound.registerSound(oscillator, gainNode);
+          });
+        }, index * 150);
+      });
+    });
+  };
+
+  const playCashOutSound = () => {
+    towerSound.playCashOut();
+  };
+
+  const playErrorSound = () => {
+    towerSound.playWarningSound();
+  };
 
   /* -------------------- DEEP REFRESH -------------------- */
   const deepRefresh = async () => {
@@ -71,15 +297,18 @@ const ColorSwitchGame = ({ user }) => {
 
   /* -------------------- START GAME -------------------- */
   const startGame = async () => {
+    playButtonClickSound();
     setError("");
 
     if (stake < 100) {
       setError("Minimum stake is ₦100");
+      playErrorSound();
       return;
     }
 
     if (stake > combinedBalance) {
       setError("Insufficient balance");
+      playErrorSound();
       return;
     }
 
@@ -113,13 +342,22 @@ const ColorSwitchGame = ({ user }) => {
       setStatus("showing");
       setShowModal(false);
 
+      // Play game start sound
+      playGameStartSound();
+
       if (refreshWallet) {
         await refreshWallet();
       }
 
-      // Show animated sequence
+      // Show animated sequence with sounds
       setShowSequence(true);
       setIsAnimating(true);
+      
+      // Play reveal sounds for each color in sequence
+      res.data.sequence.forEach((_, index) => {
+        playSequenceRevealSound(index);
+      });
+      
       setTimeout(() => {
         setShowSequence(false);
         setIsAnimating(false);
@@ -137,14 +375,18 @@ const ColorSwitchGame = ({ user }) => {
                           "Failed to start game";
       
       setError(`Error: ${errorMessage}\n\nCheck console for details (F12 → Console)`);
+      playErrorSound();
     }
   };
 
   /* -------------------- COLOR CLICK -------------------- */
-  const handleColorClick = (color) => {
+  const handleColorClick = (colorKey, colorIndex) => {
     if (status !== "playing" || isAnimating) return;
 
-    const next = [...playerSequence, color];
+    // Play color-specific sound
+    playColorClickSound(colorIndex);
+
+    const next = [...playerSequence, colorKey];
     setPlayerSequence(next);
 
     if (next.length === sequence.length) {
@@ -163,12 +405,16 @@ const ColorSwitchGame = ({ user }) => {
       const data = res.data;
 
       if (data.status === "lost" || !data.correct) {
+        playWrongSequenceSound();
         setStatus("lost");
         setTimeout(() => {
           setShowLossModal(true);
         }, 1000);
         return;
       }
+
+      // Play correct sequence sound
+      playCorrectSequenceSound();
 
       setMultiplier(data.multiplier);
       setPotentialWinRatio(data.potential_win_ratio || 0);
@@ -179,12 +425,19 @@ const ColorSwitchGame = ({ user }) => {
 
       setShowSequence(true);
       setIsAnimating(true);
+      
+      // Play reveal sounds for next sequence
+      data.next_sequence.forEach((_, index) => {
+        playSequenceRevealSound(index);
+      });
+      
       setTimeout(() => {
         setShowSequence(false);
         setIsAnimating(false);
         setStatus("playing");
       }, data.next_sequence.length * 700 + 800);
     } catch (err) {
+      playWrongSequenceSound();
       setStatus("lost");
       setTimeout(() => {
         setShowLossModal(true);
@@ -194,6 +447,8 @@ const ColorSwitchGame = ({ user }) => {
 
   /* -------------------- CASH OUT -------------------- */
   const cashOut = async () => {
+    playButtonClickSound();
+    
     try {
       const res = await colorSwitchService.cashOut({
         game_id: gameId,
@@ -207,12 +462,16 @@ const ColorSwitchGame = ({ user }) => {
         sequence_length: res.data.sequence_length,
       });
 
+      // Play cash out sound
+      playCashOutSound();
+
       if (refreshWallet) {
         await refreshWallet();
       }
 
-      // Show win modal for big wins
+      // Play game complete sound for big wins
       if (res.data.win_ratio > 0.5) {
+        playGameCompleteSound(res.data.win_tier);
         setTimeout(() => {
           setShowWinModal(true);
         }, 500);
@@ -221,6 +480,7 @@ const ColorSwitchGame = ({ user }) => {
       setStatus("cashed_out");
     } catch (err) {
       console.error("Cash out error:", err);
+      playErrorSound();
       alert("Cash out failed");
     }
   };
@@ -242,11 +502,27 @@ const ColorSwitchGame = ({ user }) => {
     <div className="color-switch-game">
       {/* HEADER */}
       <header className="game-header">
-        <button onClick={() => navigate("/")}>← Back</button>
+        <button 
+          onClick={() => {
+            playButtonClickSound();
+            navigate("/");
+          }}
+        >
+          ← Back
+        </button>
         <div className="game-title">
           <span className="game-icon">🎨</span>
           <h2>Color Switch</h2>
         </div>
+        
+        {/* Sound Toggle Button */}
+        <button 
+          className="sound-toggle"
+          onClick={toggleSound}
+        >
+          {isSoundMuted ? "🔇" : "🔊"}
+        </button>
+        
         <div className="balance-details">
           <div className="balance-total">
             {walletLoading ? (
@@ -295,8 +571,12 @@ const ColorSwitchGame = ({ user }) => {
                     <button
                       key={length}
                       className={sequenceLength === length ? "active" : ""}
-                      onClick={() => setSequenceLength(length)}
+                      onClick={() => {
+                        playSequenceSelectSound();
+                        setSequenceLength(length);
+                      }}
                       disabled={walletLoading}
+                      onMouseEnter={playButtonClickSound}
                     >
                       {length} Colors
                     </button>
@@ -312,7 +592,11 @@ const ColorSwitchGame = ({ user }) => {
                 value={stake}
                 min={100}
                 step={100}
-                onChange={(e) => setStake(Number(e.target.value))}
+                onChange={(e) => {
+                  playStakeSelectSound();
+                  setStake(Number(e.target.value));
+                }}
+                onFocus={playButtonClickSound}
                 disabled={walletLoading}
               />
             </div>
@@ -323,6 +607,7 @@ const ColorSwitchGame = ({ user }) => {
               className="start-btn animated-pulse"
               onClick={startGame}
               disabled={walletLoading || stake > combinedBalance}
+              onMouseEnter={playButtonClickSound}
             >
               {walletLoading ? "LOADING..." : "🎮 START CHALLENGE"}
             </button>
@@ -392,13 +677,14 @@ const ColorSwitchGame = ({ user }) => {
               </div>
               
               <div className="color-grid">
-                {COLORS.map((color) => (
+                {COLORS.map((color, index) => (
                   <button
                     key={color.key}
                     className={`color-btn ${color.className} animated-pulse`}
                     style={{backgroundColor: color.color}}
-                    onClick={() => handleColorClick(color.key)}
+                    onClick={() => handleColorClick(color.key, index)}
                     disabled={isAnimating}
+                    onMouseEnter={playButtonClickSound}
                   >
                     <span className="color-emoji">{color.emoji}</span>
                   </button>
@@ -427,7 +713,11 @@ const ColorSwitchGame = ({ user }) => {
 
           {(status === "playing" || status === "showing") && !showSequence && (
             <div className="action-buttons">
-              <button className="cashout-btn animated-pulse-glow" onClick={cashOut}>
+              <button 
+                className="cashout-btn animated-pulse-glow" 
+                onClick={cashOut}
+                onMouseEnter={playButtonClickSound}
+              >
                 💰 CASH OUT 
                 <span className="cashout-amount">
                   {formatNaira(stake * multiplier)}
@@ -466,7 +756,14 @@ const ColorSwitchGame = ({ user }) => {
                 </div>
               )}
 
-              <button className="restart-btn" onClick={deepRefresh}>
+              <button 
+                className="restart-btn" 
+                onClick={() => {
+                  playButtonClickSound();
+                  deepRefresh();
+                }}
+                onMouseEnter={playButtonClickSound}
+              >
                 🔁 PLAY AGAIN
               </button>
             </div>
@@ -520,9 +817,11 @@ const ColorSwitchGame = ({ user }) => {
             <button
               className="continue-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowWinModal(false);
                 deepRefresh();
               }}
+              onMouseEnter={playButtonClickSound}
             >
               🎮 Play Again
             </button>
@@ -566,9 +865,11 @@ const ColorSwitchGame = ({ user }) => {
             <button
               className="try-again-button"
               onClick={() => {
+                playButtonClickSound();
                 setShowLossModal(false);
                 deepRefresh();
               }}
+              onMouseEnter={playButtonClickSound}
             >
               🔁 Try Again
             </button>

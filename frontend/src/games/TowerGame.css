@@ -201,6 +201,33 @@
   box-shadow: 0 2px 0 #8b0000;
 }
 
+/* Sound Toggle Button */
+.sound-toggle {
+  background: linear-gradient(135deg, #2d3748, #4a5568);
+  border: 2px solid #ffd700;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.sound-toggle:hover {
+  background: linear-gradient(135deg, #4a5568, #2d3748);
+  transform: scale(1.1);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+}
+
+.sound-toggle:active {
+  transform: translateY(2px) scale(1);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+
 .balance-details {
   display: flex;
   flex-direction: column;
@@ -674,14 +701,14 @@
   background: linear-gradient(135deg, #4CAF50, #2E7D32);
   border-color: #4CAF50;
   opacity: 1;
-  animation: towerBuild 0.5s ease-out forwards;
+  animation: floorBuilt 0.3s ease-out forwards;
   box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
 }
 
 .tower-floor.current {
   background: linear-gradient(135deg, #FF9800, #F57C00);
   border-color: #FF9800;
-  animation: pulse 1.5s infinite, towerBuild 0.5s ease-out;
+  animation: pulse 1.5s infinite, floorBuilt 0.3s ease-out;
   box-shadow: 0 4px 20px rgba(255, 152, 0, 0.4);
 }
 
@@ -701,6 +728,7 @@
   height: 100%;
   pointer-events: none;
   z-index: 10;
+  animation: shake 0.5s ease-in-out;
 }
 
 .explosion {
@@ -742,6 +770,18 @@
   gap: 15px;
   width: 100%;
   max-width: 400px;
+}
+
+/* Button hover effects */
+button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .build-btn {
@@ -1063,6 +1103,11 @@
   box-shadow: 0 10px 25px rgba(255, 215, 0, 0.5);
 }
 
+.continue-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(255, 215, 0, 0.5);
+}
+
 /* ===== LOSS MODAL ===== */
 .loss-modal-overlay {
   background: rgba(0, 0, 0, 0.98);
@@ -1151,6 +1196,11 @@
 .try-again-button:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 25px rgba(244, 67, 54, 0.5);
+}
+
+.try-again-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(244, 67, 54, 0.5);
 }
 
 /* ===== RESPONSIVE BREAKPOINTS ===== */
@@ -1418,7 +1468,8 @@
   .restart-btn,
   .continue-button,
   .try-again-button,
-  .game-header button {
+  .game-header button,
+  .sound-toggle {
     min-height: 48px;
   }
   
