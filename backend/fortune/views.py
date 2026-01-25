@@ -492,10 +492,25 @@ def take_step(request, session_id: uuid.UUID):
             session.current_multiplier = new_multiplier
             session.last_client_msg_id = uuid.UUID(client_msg_id)
             
+            payout = None
+            
             if is_game_over:
+                # Trap tile - instant loss
                 session.status = GameSession.STATUS_LOST
                 session.finished_at = timezone.now()
                 payout = Decimal("0.00")
+                session.payout_amount = payout
+                
+                # Create outcome record for loss
+                GameOutcome.objects.create(
+                    session=session,
+                    house_edge=Decimal("0.75"),
+                    rtp_used=Decimal("0.25"),
+                    win=False,
+                    gross_payout=payout,
+                    net_profit=session.bet_amount * -1,
+                    reason="trap_hit",
+                )
             else:
                 # Check if max steps reached
                 cfg = RTPConfig.objects.filter(game=session.game).first()
@@ -507,7 +522,7 @@ def take_step(request, session_id: uuid.UUID):
                     session.finished_at = timezone.now()
                     result_type = "auto_cashout"
                     
-                    # Create outcome record
+                    # Create outcome record for win
                     GameOutcome.objects.create(
                         session=session,
                         house_edge=Decimal("0.75"),
@@ -526,6 +541,9 @@ def take_step(request, session_id: uuid.UUID):
                             ref=f"fortune:{session.id}:auto_cashout"
                         )
                     )
+                else:
+                    # Normal step - game continues
+                    session.status = GameSession.STATUS_ACTIVE  # Keep it active
             
             session.save()
             
@@ -550,7 +568,7 @@ def take_step(request, session_id: uuid.UUID):
                 "session_id": str(session.id),
             }
             
-            if session.status == GameSession.STATUS_CASHED:
+            if payout is not None:
                 response_data["payout_amount"] = str(session.payout_amount)
             
             return Response(StepOut(response_data).data)
@@ -562,8 +580,10 @@ def take_step(request, session_id: uuid.UUID):
         )
     except Exception as e:
         print(f"[Fortune] Error taking step: {e}")
+        import traceback
+        traceback.print_exc()  # Add this for detailed error tracing
         return Response(
-            {"detail": "Internal server error"},
+            {"detail": f"Internal server error: {str(e)}"},  # Include error message
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
