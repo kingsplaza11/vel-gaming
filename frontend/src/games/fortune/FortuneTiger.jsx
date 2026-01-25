@@ -18,10 +18,11 @@ const MINIMUM_STAKE = 100;
 
 // Sound durations for proper timing
 const SOUND_DURATIONS = {
-  GAME_OVER: 4000, // Defeated whimper + mocking hyena + final growl
-  CASHOUT: 4000, // Victory fanfare + celebration
-  ROAR: 1000, // Tiger roar
+  GAME_OVER: 4000, // Dwarf laughter sequence
+  CASHOUT: 4000, // Applause + birthday cheer + victory sounds
+  ROAR: 1200, // Tiger roar
   TILE_REVEAL: 500, // Generic tile reveal
+  STAKE: 2000, // Monster growl stake sound
 };
 
 export default function FortuneTiger() {
@@ -80,6 +81,7 @@ export default function FortuneTiger() {
   const lastTileRef = useRef(null);
   const confettiTimeoutRef = useRef(null);
   const resetTimeoutRef = useRef(null);
+  const clickTimestamps = useRef(new Map());
 
   /* =========================
      WINDOW SIZE TRACKING
@@ -94,6 +96,28 @@ export default function FortuneTiger() {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  /* =========================
+     AUDIO INITIALIZATION
+  ========================= */
+  useEffect(() => {
+    // Initialize audio on component mount
+    tigerSound.init();
+    
+    // Cleanup on unmount
+    return () => {
+      cleanupEffects();
+    };
+  }, []);
+
+  /* =========================
+     CLEANUP EFFECTS FUNCTION
+  ========================= */
+  const cleanupEffects = useCallback(() => {
+    if (confettiTimeoutRef.current) clearTimeout(confettiTimeoutRef.current);
+    if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+    setShowConfetti(false);
   }, []);
 
   /* =========================
@@ -126,23 +150,12 @@ export default function FortuneTiger() {
     
     // Show confetti immediately
     setShowConfetti(true);
-    console.log("🎉 Confetti triggered - should be visible!");
+    console.log("🎉 Tiger victory confetti triggered!");
 
     // Hide confetti after 6 seconds
     confettiTimeoutRef.current = setTimeout(() => {
       setShowConfetti(false);
-      console.log("🎉 Confetti hidden");
     }, 6000);
-  }, []);
-
-  const cleanupEffects = useCallback(() => {
-    if (confettiTimeoutRef.current) {
-      clearTimeout(confettiTimeoutRef.current);
-    }
-    if (resetTimeoutRef.current) {
-      clearTimeout(resetTimeoutRef.current);
-    }
-    setShowConfetti(false);
   }, []);
 
   /* =========================
@@ -240,7 +253,7 @@ export default function FortuneTiger() {
   }, [resetToStakeModal]);
 
   /* =========================
-     GAME ACTIONS
+     GAME ACTIONS - UPDATED SOUNDS
   ========================= */
   
   const startGame = async () => {
@@ -268,7 +281,8 @@ export default function FortuneTiger() {
     // Cleanup any existing effects
     cleanupEffects();
     
-    // Play stake sound
+    // Play monster growl stake sound
+    console.log("[FortuneTiger] Playing monster growl stake sound");
     tigerSound.playStake();
     
     try {
@@ -305,17 +319,19 @@ export default function FortuneTiger() {
       
       refreshWallet();
       
-      // Tiger roar effect
-      tigerSound.playRoar();
-      setTigerRoar(true);
-      setTimeout(() => setTigerRoar(false), 1000);
+      // Tiger roar effect after stake
+      setTimeout(() => {
+        tigerSound.playRoar();
+        setTigerRoar(true);
+        setTimeout(() => setTigerRoar(false), 1000);
+      }, 500);
       
       // Randomly highlight a tile (visual cue)
       setTimeout(() => {
         const randomTile = Math.floor(Math.random() * GRID_SIZE);
         setHighlightTile(randomTile);
         setTimeout(() => setHighlightTile(null), 2000);
-      }, 1500);
+      }, 2000);
       
       toast.success("Tiger game started! High risk, high reward!", {
         icon: "🐯",
@@ -331,13 +347,14 @@ export default function FortuneTiger() {
   };
 
   const pickTile = useCallback(async (id) => {
+    // Early validation checks
     if (!activeSessionId) {
       toast.error("No active game session");
       return;
     }
     
     if (tapLock.current) {
-      toast.error("Please wait for previous action to complete");
+      console.log('Tile click blocked: tap lock active');
       return;
     }
     
@@ -347,16 +364,30 @@ export default function FortuneTiger() {
     }
     
     if (tiles[id]?.revealed) {
-      toast.error("This tile has already been revealed");
+      console.log('Tile already revealed:', id);
       return;
     }
 
+    // Debounce: prevent multiple clicks on same tile within 500ms
+    const now = Date.now();
+    const lastClick = clickTimestamps.current.get(id);
+    if (lastClick && (now - lastClick) < 500) {
+      console.log('Tile click debounced:', id);
+      return;
+    }
+    clickTimestamps.current.set(id, now);
+
+    // Set lock immediately
     tapLock.current = true;
     lastTileRef.current = id;
 
-    console.log("[FortuneTiger] Taking step for tile:", id);
-    
-    // Play tiger tap sound
+    // Update UI immediately - show tile as processing
+    setTiles(prev => prev.map((t, idx) => 
+      idx === id ? { ...t, processing: true } : t
+    ));
+
+    // Play tile click sound
+    console.log("[FortuneTiger] Playing tile click sound");
     tigerSound.playTap();
     
     try {
@@ -369,6 +400,9 @@ export default function FortuneTiger() {
       
       if (res.data.type === "duplicate") {
         tapLock.current = false;
+        setTiles(prev => prev.map((t, idx) => 
+          idx === id ? { ...t, processing: false } : t
+        ));
         return;
       }
       
@@ -378,12 +412,13 @@ export default function FortuneTiger() {
       setTiles(prev =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, revealed: true, kind: resultType }
+            ? { ...t, revealed: true, kind: resultType, processing: false }
             : t
         )
       );
 
       // Play tile reveal sound
+      console.log("[FortuneTiger] Playing tile sound for result:", resultType);
       tigerSound.playTileSound(resultType);
 
       // Apply visual effect based on result
@@ -403,7 +438,8 @@ export default function FortuneTiger() {
         setShake(true);
         setTigerRoar(true);
         
-        // Play game over sound (includes mocking hyena laughter)
+        // Play game over sound (dwarf laughter sequence)
+        console.log("[FortuneTiger] Playing game over sound (dwarf laughter)");
         tigerSound.playGameOverSound();
 
         toast.error(`${resultInfo.label}! Game Over!`, {
@@ -411,7 +447,7 @@ export default function FortuneTiger() {
           duration: SOUND_DURATIONS.GAME_OVER - 1000,
         });
 
-        // Wait for sound to finish before resetting (plus extra time for visuals)
+        // Wait for sound to finish before resetting
         setTimeout(() => {
           setShake(false);
           setTigerRoar(false);
@@ -420,10 +456,11 @@ export default function FortuneTiger() {
         // Reset to stake modal after sound finishes
         delayedResetToStakeModal(SOUND_DURATIONS.GAME_OVER);
         
+        tapLock.current = false;
         return;
       }
       
-      // Handle auto-cashout - WITH SOUND DELAY AND CONFETTI
+      // Handle auto-cashout - WITH ENHANCED CELEBRATION SOUNDS
       if (resultType === "auto_cashout") {
         setGame((g) => ({
           ...g,
@@ -435,11 +472,12 @@ export default function FortuneTiger() {
 
         setStageEffect("effect-cashout");
         
-        // Play cashout sound (includes victory fanfare and jungle celebration)
+        // Play enhanced cashout sound (applause + birthday cheer + victory sounds)
+        console.log("[FortuneTiger] Playing enhanced cashout celebration");
         tigerSound.playCashoutSound();
         refreshWallet();
 
-        // Trigger confetti for auto-cashout win - DO THIS IMMEDIATELY
+        // Trigger confetti for auto-cashout win
         triggerWinEffects();
 
         toast.success(`Auto-cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`, {
@@ -449,6 +487,7 @@ export default function FortuneTiger() {
         // Reset to stake modal after sound finishes and confetti displays
         delayedResetToStakeModal(Math.max(SOUND_DURATIONS.CASHOUT, 3000));
         
+        tapLock.current = false;
         return;
       }
 
@@ -476,6 +515,7 @@ export default function FortuneTiger() {
         });
       }
       
+      // Randomly highlight another tile every 3rd step
       if (game.step_index % 3 === 0) {
         const unrevealedTiles = tiles.filter(t => !t.revealed && t.id !== id);
         if (unrevealedTiles.length > 0) {
@@ -496,6 +536,11 @@ export default function FortuneTiger() {
       console.error("[FortuneTiger] Failed to take step:", e);
       const errorMsg = e.response?.data?.detail || e.response?.data?.message || e.message;
       toast.error(`Failed to reveal tile: ${errorMsg}`);
+      
+      // Reset tile processing state on error
+      setTiles(prev => prev.map((t, idx) => 
+        idx === id ? { ...t, processing: false } : t
+      ));
       
       if (e.response?.status === 404) {
         setTimeout(() => {
@@ -521,13 +566,13 @@ export default function FortuneTiger() {
     }
 
     if (tapLock.current) {
-      toast.error("Please wait for previous action to complete");
+      console.log('Cashout blocked: tap lock active');
       return;
     }
 
     tapLock.current = true;
     
-    // Play tiger tap sound
+    // Play tile click sound
     tigerSound.playTap();
     
     toast.loading("Processing cashout...", { id: "cashout" });
@@ -547,7 +592,8 @@ export default function FortuneTiger() {
 
       setStageEffect("effect-cashout");
       
-      // Play cashout sound (victory fanfare and celebration)
+      // Play enhanced cashout sound (applause + birthday cheer + victory sounds)
+      console.log("[FortuneTiger] Playing enhanced cashout celebration");
       tigerSound.playCashoutSound();
       refreshWallet();
       
@@ -563,7 +609,7 @@ export default function FortuneTiger() {
         }
       );
 
-      // Trigger confetti for manual cashout win - DO THIS IMMEDIATELY
+      // Trigger confetti for manual cashout win
       triggerWinEffects();
 
       // Reset to stake modal after sound finishes and confetti displays
@@ -839,15 +885,6 @@ export default function FortuneTiger() {
             <div className="hud-value tiger-value">{game.step_index}</div>
           </div>
           
-          {/* Last Result Display */}
-          {resultInfo && game.status === "active" && (
-            <div className="hud-card tiger-hud-card last-result" style={{ color: resultInfo.color }}>
-              <div className="hud-label tiger-label">LAST</div>
-              <div className="hud-value tiger-value">
-                {resultInfo.icon} {resultInfo.label}
-              </div>
-            </div>
-          )}
 
           <button
             className={`hud-cashout tiger-cashout ${
@@ -875,6 +912,9 @@ export default function FortuneTiger() {
         <div className="fortune-grid tiger-grid">
           {tiles.map((tile) => {
             const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
+            const isProcessing = tile.processing;
+            const isDisabled = tile.revealed || game.status !== "active" || tapLock.current || isProcessing;
+            
             return (
               <button
                 key={tile.id}
@@ -883,7 +923,7 @@ export default function FortuneTiger() {
                 } ${highlightTile === tile.id ? 'highlight-tile' : ''} ${
                   game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""
                 }`}
-                disabled={tile.revealed || game.status !== "active" || tapLock.current}
+                disabled={isDisabled}
                 onClick={() => pickTile(tile.id)}
                 style={tileResultInfo && tile.revealed ? {
                   borderColor: tileResultInfo.color,
@@ -891,7 +931,9 @@ export default function FortuneTiger() {
                 } : {}}
               >
                 <div className="tile-face">
-                  {!tile.revealed ? (
+                  {isProcessing ? (
+                    <span className="tile-processing">⏳</span>
+                  ) : !tile.revealed ? (
                     <>
                       <span className="tile-glyph">🐾</span>
                       {highlightTile === tile.id && (

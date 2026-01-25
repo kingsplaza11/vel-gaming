@@ -2,578 +2,343 @@
 class TigerSoundManager {
   constructor() {
     this.audioContext = null;
-    this.oscillators = new Map();
+    this.audioBuffers = new Map(); // Store loaded audio buffers
+    this.activeSources = new Map(); // Store active audio sources
     this.isMuted = localStorage.getItem('tiger_muted') === 'true';
     this.masterVolume = 0.7;
+    this.MAX_SIMULTANEOUS_SOUNDS = 8;
+    this.isInitialized = false;
+    this.isResumed = false;
     this.lastTigerRoar = 0;
     this.ROAR_COOLDOWN = 2000;
+    
+    // Sound file paths (update these to match your actual file paths)
+    this.soundFiles = {
+      // New stake sound (monster growl)
+      'stake': '/sounds/mixkit-monster-calm-growl-1956.wav',
+      
+      // Click/tap sounds
+      'click': '/sounds/mixkit-arcade-bonus-alert-767.wav',
+      
+      // Game over sounds (keep existing)
+      'defeatedWhimper': '/sounds/mixkit-evil-dwarf-laugh-421.wav',
+      'mockingLaughter': '/sounds/mixkit-dwarf-creature-laugh-420.wav',
+      
+      // Tile reveal sounds
+      'smallWin': '/sounds/mixkit-positive-interface-beep-221.wav', // CHANGED THIS
+      'penalty': '/sounds/mixkit-sci-fi-error-alert-898.wav',
+      'majorPenalty': '/sounds/mixkit-electric-low-buzzer-2961.wav',
+      'reset': '/sounds/mixkit-police-short-whistle-615.wav',
+      'trap': '/sounds/mixkit-wrong-answer-bass-buzzer-948.wav',
+      
+      // Victory sounds (NEW - using applause like Fortune Mouse)
+      'applause': '/sounds/mixkit-conference-audience-clapping-strongly-476.wav',
+      'birthdayCheer': '/sounds/mixkit-birthday-crowd-party-cheer-531.wav',
+      'victoryBonus': '/sounds/mixkit-game-bonus-reached-2065.wav',
+      'levelComplete': '/sounds/mixkit-completion-of-a-level-2063.wav'
+    };
   }
 
   // Initialize Web Audio API
   init() {
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      try {
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('Tiger Audio context created, state:', this.audioContext.state);
+        
+        // Set up auto-resume
+        this.setupAutoResume();
+        
+        // Preload all sounds on initialization
+        this.preloadAllSounds();
+      } catch (error) {
+        console.error('Failed to initialize audio context:', error);
+      }
+    }
+    
+    // Ensure context is resumed if suspended
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.resumeAudioContext();
     }
   }
 
-  /* =========================
-     TIGER THEMED SOUNDS
-  ========================= */
+  // Setup auto-resume on user interaction
+  setupAutoResume() {
+    const resumeAudio = () => {
+      console.log('User interaction detected, resuming audio context');
+      if (!this.isResumed && this.audioContext && this.audioContext.state === 'suspended') {
+        this.resumeAudioContext();
+      }
+    };
+    
+    // Add listeners for multiple interaction types
+    const events = ['click', 'touchstart', 'keydown'];
+    events.forEach(event => {
+      document.addEventListener(event, resumeAudio, { 
+        once: true,
+        passive: true 
+      });
+    });
+  }
 
-  // Tiger paw tap sound
+  // Resume audio context
+  resumeAudioContext() {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume().then(() => {
+        console.log('Audio context resumed successfully');
+        this.isResumed = true;
+      }).catch(error => {
+        console.error('Failed to resume audio context:', error);
+      });
+    }
+  }
+
+  // Preload all sounds
+  async preloadAllSounds() {
+    if (this.isInitialized) return;
+    
+    console.log('Preloading all tiger sounds...');
+    const soundKeys = Object.keys(this.soundFiles);
+    
+    // Load sounds in parallel but limit concurrency
+    const batchSize = 3;
+    for (let i = 0; i < soundKeys.length; i += batchSize) {
+      const batch = soundKeys.slice(i, i + batchSize);
+      await Promise.all(batch.map(key => this.loadSoundBuffer(key)));
+    }
+    
+    this.isInitialized = true;
+    console.log('All tiger sounds preloaded');
+  }
+
+  // Load a sound file into buffer
+  async loadSoundBuffer(soundKey) {
+    if (this.audioBuffers.has(soundKey)) return this.audioBuffers.get(soundKey);
+    
+    const url = this.soundFiles[soundKey];
+    if (!url) {
+      console.error('Sound URL not found for:', soundKey);
+      return null;
+    }
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      
+      this.audioBuffers.set(soundKey, audioBuffer);
+      console.log('Loaded tiger sound:', soundKey);
+      return audioBuffer;
+    } catch (error) {
+      console.error('Failed to load tiger sound:', soundKey, error);
+      return null;
+    }
+  }
+
+  // Play a sound by key (synchronous - returns immediately)
+  playSound(soundKey, options = {}) {
+    if (this.isMuted || !this.audioContext) return null;
+    
+    this.init();
+    
+    // Check if sound is loaded
+    const audioBuffer = this.audioBuffers.get(soundKey);
+    if (!audioBuffer) {
+      console.warn('Tiger sound not loaded yet:', soundKey);
+      // Try to load it in background but don't wait
+      this.loadSoundBuffer(soundKey).catch(() => {});
+      return null;
+    }
+    
+    // Check sound count limit
+    if (this.getActiveSoundCount() >= this.MAX_SIMULTANEOUS_SOUNDS) {
+      console.log('Too many sounds playing, skipping:', soundKey);
+      return null;
+    }
+    
+    const {
+      volume = this.masterVolume,
+      loop = false,
+      playbackRate = 1.0,
+      delay = 0,
+      onEnded = null
+    } = options;
+    
+    try {
+      // Create source node
+      const source = this.audioContext.createBufferSource();
+      const gainNode = this.audioContext.createGain();
+      
+      source.buffer = audioBuffer;
+      source.loop = loop;
+      source.playbackRate.value = playbackRate;
+      
+      source.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      // Set volume
+      gainNode.gain.value = volume;
+      
+      // Play with optional delay
+      const startTime = this.audioContext.currentTime + delay;
+      source.start(startTime);
+      
+      // Generate unique ID for this sound instance
+      const soundId = `${soundKey}_${Date.now()}_${Math.random()}`;
+      
+      // Set up cleanup on ended
+      source.onended = () => {
+        this.cleanupSoundSource(soundId);
+        if (onEnded) onEnded();
+      };
+      
+      // Store active source
+      this.activeSources.set(soundId, { source, gainNode });
+      
+      return soundId;
+    } catch (error) {
+      console.error('Failed to play tiger sound:', soundKey, error);
+      return null;
+    }
+  }
+
+  // Play tiger tap sound
   playTap() {
     if (this.isMuted) return;
-    this.init();
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(350, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(180, this.audioContext.currentTime + 0.1);
-    
-    gainNode.gain.setValueAtTime(0.15 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.1);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 100);
+    this.playSound('click', { volume: 0.6 * this.masterVolume });
   }
 
-  // Tiger stake sound (placing bet)
+  // Play stake sound - USING MONSTER GROWL
   playStake() {
     if (this.isMuted) return;
-    this.init();
-    
-    // Play coin drop + tiger growl
-    this.playCoinDrop();
-    setTimeout(() => this.playGrowl(), 80);
-  }
-
-  playCoinDrop() {
-    if (this.isMuted) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'triangle';
-    oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(350, this.audioContext.currentTime + 0.25);
-    
-    gainNode.gain.setValueAtTime(0.18 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.25);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.25);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 250);
-  }
-
-  playGrowl() {
-    if (this.isMuted) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(90, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(65, this.audioContext.currentTime + 0.4);
-    
-    gainNode.gain.setValueAtTime(0.12 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.4);
-    
-    const id = Date.now() + 1;
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 400);
+    console.log('Playing monster growl for stake');
+    this.playSound('stake', { 
+      volume: 0.8 * this.masterVolume,
+      playbackRate: 0.9 // Slightly slower for more menacing effect
+    });
   }
 
   // Generate tile reveal sound based on result
   playTileSound(resultType) {
     if (this.isMuted) return;
-    this.init();
     
-    switch (resultType) {
-      case 'small_win':
-        this.playSmallWinSound();
-        break;
-      case 'penalty':
-        this.playPenaltySound();
-        break;
-      case 'major_penalty':
-        this.playMajorPenaltySound();
-        break;
-      case 'reset':
-        this.playResetSound();
-        break;
-      case 'trap':
-        this.playTrapSound();
-        break;
-      case 'auto_cashout':
-        this.playCashoutSound();
-        break;
-      default:
-        this.playTap();
-    }
+    // Play sounds with minimal delay to prevent blocking
+    setTimeout(() => {
+      switch (resultType) {
+        case 'small_win':
+          this.playSound('smallWin', { 
+            volume: 0.7 * this.masterVolume,
+            playbackRate: 1.0 
+          });
+          console.log('Playing positive interface beep for small win');
+          break;
+        case 'penalty':
+          this.playSound('penalty', { 
+            volume: 0.6 * this.masterVolume,
+            playbackRate: 1.0 
+          });
+          break;
+        case 'major_penalty':
+          this.playSound('majorPenalty', { 
+            volume: 0.7 * this.masterVolume,
+            playbackRate: 0.9 // Slightly slower for more ominous feel
+          });
+          break;
+        case 'reset':
+          this.playSound('reset', { 
+            volume: 0.5 * this.masterVolume,
+            playbackRate: 1.2 // Slightly faster for alert feel
+          });
+          break;
+        case 'trap':
+          this.playGameOverSound();
+          break;
+        case 'auto_cashout':
+          this.playCashoutSound();
+          break;
+        default:
+          this.playTap();
+      }
+    }, 0);
   }
 
-  // Small win sound (contented purr)
-  playSmallWinSound() {
-    if (this.isMuted) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(140, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(200, this.audioContext.currentTime + 0.3);
-    
-    gainNode.gain.setValueAtTime(0.2 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.3);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 300);
-  }
-
-  // Penalty sound (warning growl)
-  playPenaltySound() {
-    if (this.isMuted) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(220, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(120, this.audioContext.currentTime + 0.35);
-    
-    gainNode.gain.setValueAtTime(0.22 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.35);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.35);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 350);
-  }
-
-  // Major penalty sound (angry snarl)
-  playMajorPenaltySound() {
-    if (this.isMuted) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    const filter = this.audioContext.createBiquadFilter();
-    
-    oscillator.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(160, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(80, this.audioContext.currentTime + 0.5);
-    
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(400, this.audioContext.currentTime);
-    
-    gainNode.gain.setValueAtTime(0.25 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.5);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode, filter });
-    
-    setTimeout(() => this.cleanupOscillator(id), 500);
-  }
-
-  // Reset sound
-  playResetSound() {
-    if (this.isMuted) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(320, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(180, this.audioContext.currentTime + 0.3);
-    
-    gainNode.gain.setValueAtTime(0.18 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.3);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 300);
-  }
-
-  // Trap sound
-  playTrapSound() {
-    if (this.isMuted) return;
-    
-    // Angry roar + cage slam
-    this.playAngryRoar();
-    setTimeout(() => this.playCageSlam(), 400);
-  }
-
-  playAngryRoar() {
-    if (this.isMuted) return;
-    
-    const now = Date.now();
-    if (now - this.lastTigerRoar < this.ROAR_COOLDOWN) return;
-    
-    this.lastTigerRoar = now;
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(100, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(60, this.audioContext.currentTime + 0.7);
-    
-    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.28 * this.masterVolume, this.audioContext.currentTime + 0.1);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.7);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.7);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 700);
-  }
-
-  playCageSlam() {
-    if (this.isMuted) return;
-    
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(70, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(35, this.audioContext.currentTime + 0.4);
-    
-    gainNode.gain.setValueAtTime(0.32 * this.masterVolume, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.4);
-    
-    const id = Date.now() + 1;
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 400);
-  }
-
-  /* =========================
-     ENHANCED WINNING/LOSING SOUNDS
-     Similar to FortuneSoundManager but tiger-themed
-  ========================= */
-
-  // Cashout sound - Tiger victory celebration
+  // Cashout sound - ENHANCED WITH APPLAUSE AND BIRTHDAY CHEER
   playCashoutSound() {
     if (this.isMuted) return;
     
-    // Play victory roar sequence
-    this.playVictoryFanfare();
+    console.log('Playing enhanced cashout celebration');
     
-    // Play jungle celebration sounds
-    setTimeout(() => this.playJungleCelebration(), 1200);
-  }
-
-  // Victory fanfare for tiger
-  playVictoryFanfare() {
-    const notes = [
-      { freq: 130.81, duration: 0.4 }, // C3 (deep)
-      { freq: 164.81, duration: 0.4 }, // E3
-      { freq: 196.00, duration: 0.4 }, // G3
-      { freq: 261.63, duration: 0.6 }, // C4
-      { freq: 329.63, duration: 0.6 }, // E4
-      { freq: 392.00, duration: 1.0 }, // G4
-    ];
-    
-    let cumulativeTime = 0;
-    
-    notes.forEach((note, i) => {
-      setTimeout(() => {
-        if (this.isMuted) return;
-        this.init();
-        
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        oscillator.type = i < 3 ? 'sawtooth' : 'triangle';
-        oscillator.frequency.setValueAtTime(note.freq, this.audioContext.currentTime);
-        
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3 * this.masterVolume, this.audioContext.currentTime + 0.08);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + note.duration);
-        
-        oscillator.start();
-        oscillator.stop(this.audioContext.currentTime + note.duration);
-        
-        const id = Date.now() + i;
-        this.oscillators.set(id, { oscillator, gainNode });
-        
-        setTimeout(() => {
-          this.cleanupOscillator(id);
-        }, cumulativeTime * 1000 + note.duration * 1000);
-        
-      }, cumulativeTime * 1000);
-      
-      cumulativeTime += note.duration;
+    // Play applause for longer duration (like Fortune Mouse)
+    this.playSound('applause', { 
+      volume: 0.8 * this.masterVolume,
+      loop: false 
     });
     
-    // Victory roar at the end
+    // Play birthday cheer with slight delay (overlaps with applause)
     setTimeout(() => {
-      this.playVictoryRoar();
-    }, cumulativeTime * 1000 + 200);
+      if (!this.isMuted) {
+        this.playSound('birthdayCheer', { 
+          volume: 0.9 * this.masterVolume,
+          delay: 0.1 
+        });
+      }
+    }, 500);
+    
+    // Play victory bonus sound
+    setTimeout(() => {
+      if (!this.isMuted) {
+        this.playSound('victoryBonus', { 
+          volume: 0.6 * this.masterVolume,
+          delay: 0 
+        });
+      }
+    }, 1500);
+    
+    // Play level complete sound
+    setTimeout(() => {
+      if (!this.isMuted) {
+        this.playSound('levelComplete', { 
+          volume: 0.5 * this.masterVolume,
+          delay: 0 
+        });
+      }
+    }, 2500);
   }
 
-  playVictoryRoar() {
-    if (this.isMuted) return;
-    
-    const now = Date.now();
-    if (now - this.lastTigerRoar < this.ROAR_COOLDOWN) return;
-    
-    this.lastTigerRoar = now;
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(85, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(65, this.audioContext.currentTime + 0.9);
-    
-    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.25 * this.masterVolume, this.audioContext.currentTime + 0.15);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.9);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.9);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 900);
-  }
-
-  // Jungle celebration (animals joining in)
-  playJungleCelebration() {
-    if (this.isMuted) return;
-    
-    const animalSounds = [
-      { freq: 800, type: 'triangle', duration: 0.3, delay: 0, volume: 0.15 }, // Bird 1
-      { freq: 1200, type: 'triangle', duration: 0.25, delay: 150, volume: 0.12 }, // Bird 2
-      { freq: 300, type: 'sine', duration: 0.4, delay: 300, volume: 0.2 }, // Monkey
-      { freq: 600, type: 'sawtooth', duration: 0.35, delay: 450, volume: 0.18 }, // Exotic bird
-    ];
-    
-    animalSounds.forEach(sound => {
-      setTimeout(() => {
-        if (this.isMuted) return;
-        this.init();
-        
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        oscillator.type = sound.type;
-        oscillator.frequency.setValueAtTime(sound.freq, this.audioContext.currentTime);
-        
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(sound.volume * this.masterVolume, this.audioContext.currentTime + 0.05);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + sound.duration);
-        
-        oscillator.start();
-        oscillator.stop(this.audioContext.currentTime + sound.duration);
-        
-        const id = Date.now() + sound.freq;
-        this.oscillators.set(id, { oscillator, gainNode });
-        
-        setTimeout(() => this.cleanupOscillator(id), sound.duration * 1000);
-      }, sound.delay);
-    });
-  }
-
-  // Game over sound - Tiger defeated with mocking jungle sounds
+  // Game over sound - USING DWARF LAUGHTERS
   playGameOverSound() {
     if (this.isMuted) return;
     
-    // Play defeated tiger whimper
-    this.playDefeatedWhimper();
+    console.log('Playing game over with dwarf laughter');
     
-    // Play mocking hyena laughter after a delay
-    setTimeout(() => {
-      this.playMockingHyena();
-    }, 800);
-  }
-
-  playDefeatedWhimper() {
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(120, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(70, this.audioContext.currentTime + 0.8);
-    
-    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.18 * this.masterVolume, this.audioContext.currentTime + 0.1);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.8);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.8);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 800);
-  }
-
-  // Mocking hyena laughter (tiger-themed game over)
-  playMockingHyena() {
-    const laughPattern = [
-      { baseFreq: 380, duration: 0.25, count: 2 }, // "hee hee"
-      { baseFreq: 320, duration: 0.3, count: 2 }, // "hee hee" (lower)
-      { baseFreq: 280, duration: 0.35, count: 1 }, // "ha"
-      { baseFreq: 240, duration: 0.4, count: 1 }, // "ha" (lower)
-    ];
-    
-    let cumulativeTime = 0;
-    
-    laughPattern.forEach((pattern, patternIndex) => {
-      for (let i = 0; i < pattern.count; i++) {
-        setTimeout(() => {
-          if (this.isMuted) return;
-          this.init();
-          
-          const oscillator = this.audioContext.createOscillator();
-          const gainNode = this.audioContext.createGain();
-          const filter = this.audioContext.createBiquadFilter();
-          
-          oscillator.connect(filter);
-          filter.connect(gainNode);
-          gainNode.connect(this.audioContext.destination);
-          
-          oscillator.type = 'square';
-          
-          const freqVariance = Math.random() * 25 - 12.5;
-          const startFreq = pattern.baseFreq + freqVariance;
-          const endFreq = pattern.baseFreq - 40 + freqVariance;
-          
-          oscillator.frequency.setValueAtTime(startFreq, this.audioContext.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(endFreq, this.audioContext.currentTime + pattern.duration);
-          
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(startFreq, this.audioContext.currentTime);
-          filter.Q.setValueAtTime(10, this.audioContext.currentTime);
-          
-          gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-          gainNode.gain.linearRampToValueAtTime(0.28 * this.masterVolume, this.audioContext.currentTime + 0.04);
-          gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + pattern.duration);
-          
-          oscillator.start();
-          oscillator.stop(this.audioContext.currentTime + pattern.duration);
-          
-          const id = Date.now() + patternIndex * 100 + i;
-          this.oscillators.set(id, { oscillator, gainNode, filter });
-          
-          setTimeout(() => {
-            this.cleanupOscillator(id);
-          }, cumulativeTime * 1000 + pattern.duration * 1000);
-          
-        }, cumulativeTime * 1000);
-        
-        cumulativeTime += pattern.duration + 0.08;
-      }
-      
-      cumulativeTime += 0.12;
+    // Play first dwarf laugh
+    this.playSound('defeatedWhimper', { 
+      volume: 0.7 * this.masterVolume,
+      loop: false 
     });
     
-    // Final defeated growl
+    // Play second dwarf laugh with delay
     setTimeout(() => {
-      if (this.isMuted) return;
-      this.init();
-      
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.type = 'sawtooth';
-      oscillator.frequency.setValueAtTime(180, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(80, this.audioContext.currentTime + 1.2);
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.22 * this.masterVolume, this.audioContext.currentTime + 0.15);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 1.2);
-      
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 1.2);
-      
-      const id = Date.now() + 1000;
-      this.oscillators.set(id, { oscillator, gainNode });
-      
-      setTimeout(() => {
-        this.cleanupOscillator(id);
-      }, cumulativeTime * 1000 + 1200);
-      
-    }, cumulativeTime * 1000);
+      if (!this.isMuted) {
+        this.playSound('mockingLaughter', { 
+          volume: 0.7 * this.masterVolume,
+          loop: false 
+        });
+      }
+    }, 1000);
+    
+    // Play trap sound after laughs
+    setTimeout(() => {
+      if (!this.isMuted) {
+        this.playSound('trap', { 
+          volume: 0.8 * this.masterVolume,
+          loop: false 
+        });
+      }
+    }, 2000);
   }
 
   // Play tiger roar (for special events)
@@ -584,52 +349,98 @@ class TigerSoundManager {
     if (now - this.lastTigerRoar < this.ROAR_COOLDOWN) return;
     
     this.lastTigerRoar = now;
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
     
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(90, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(60, this.audioContext.currentTime + 0.8);
-    
-    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.24 * this.masterVolume, this.audioContext.currentTime + 0.12);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.8);
-    
-    oscillator.start();
-    oscillator.stop(this.audioContext.currentTime + 0.8);
-    
-    const id = Date.now();
-    this.oscillators.set(id, { oscillator, gainNode });
-    
-    setTimeout(() => this.cleanupOscillator(id), 800);
+    // Fallback to a synthesized roar if no audio file
+    this.playSynthesizedRoar();
   }
 
-  /* =========================
-     UTILITY METHODS
-  ========================= */
-  
-  // Cleanup individual oscillator
-  cleanupOscillator(id) {
-    const sound = this.oscillators.get(id);
+  // Fallback synthesized roar (if no audio file available)
+  playSynthesizedRoar() {
+    if (this.isMuted || !this.audioContext) return;
+    
+    try {
+      const oscillator1 = this.audioContext.createOscillator();
+      const oscillator2 = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator1.connect(gainNode);
+      oscillator2.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      oscillator1.type = 'sawtooth';
+      oscillator2.type = 'sawtooth';
+      
+      oscillator1.frequency.setValueAtTime(85, this.audioContext.currentTime);
+      oscillator1.frequency.exponentialRampToValueAtTime(55, this.audioContext.currentTime + 1.2);
+      
+      oscillator2.frequency.setValueAtTime(120, this.audioContext.currentTime);
+      oscillator2.frequency.exponentialRampToValueAtTime(75, this.audioContext.currentTime + 1.2);
+      
+      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.25 * this.masterVolume, this.audioContext.currentTime + 0.2);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 1.2);
+      
+      oscillator1.start();
+      oscillator2.start();
+      oscillator1.stop(this.audioContext.currentTime + 1.2);
+      oscillator2.stop(this.audioContext.currentTime + 1.2);
+      
+      const soundId = `roar_${Date.now()}`;
+      this.activeSources.set(soundId, { 
+        source: oscillator1, 
+        gainNode,
+        oscillator2 
+      });
+      
+      setTimeout(() => {
+        this.cleanupSoundSource(soundId);
+      }, 1200);
+      
+    } catch (error) {
+      console.error('Failed to play synthesized roar:', error);
+    }
+  }
+
+  // Get count of active sounds
+  getActiveSoundCount() {
+    let count = 0;
+    for (const [key, sound] of this.activeSources) {
+      if (sound.source) count++;
+    }
+    return count;
+  }
+
+  // Cleanup individual sound source
+  cleanupSoundSource(soundId) {
+    const sound = this.activeSources.get(soundId);
     if (sound) {
       try {
-        if (sound.oscillator) {
-          sound.oscillator.stop();
-          sound.oscillator.disconnect();
+        if (sound.source && sound.source.stop) {
+          sound.source.stop(0);
         }
-        if (sound.gainNode) {
+        if (sound.source && sound.source.disconnect) {
+          sound.source.disconnect();
+        }
+        if (sound.gainNode && sound.gainNode.disconnect) {
           sound.gainNode.disconnect();
         }
-        if (sound.filter) {
-          sound.filter.disconnect();
+        if (sound.oscillator2 && sound.oscillator2.stop) {
+          sound.oscillator2.stop(0);
+        }
+        if (sound.oscillator2 && sound.oscillator2.disconnect) {
+          sound.oscillator2.disconnect();
         }
       } catch (e) {
         // Sound already stopped
       }
-      this.oscillators.delete(id);
+      this.activeSources.delete(soundId);
+    }
+  }
+
+  // Cleanup all playing sounds
+  cleanupAllSounds() {
+    for (const [soundId] of this.activeSources) {
+      this.cleanupSoundSource(soundId);
     }
   }
 
@@ -639,26 +450,40 @@ class TigerSoundManager {
     localStorage.setItem('tiger_muted', this.isMuted);
     
     if (this.isMuted) {
-      // Cleanup all oscillators when muted
-      this.oscillators.forEach((sound, id) => {
-        this.cleanupOscillator(id);
-      });
+      // Cleanup all playing sounds when muted
+      this.cleanupAllSounds();
     }
     
     return this.isMuted;
   }
 
-  // Set master volume
+  // Set volume
   setVolume(volume) {
     this.masterVolume = Math.max(0, Math.min(1, volume));
   }
 
   // Cleanup everything
   cleanup() {
-    this.oscillators.forEach((sound, id) => {
-      this.cleanupOscillator(id);
-    });
-    this.oscillators.clear();
+    this.cleanupAllSounds();
+    
+    // Clear audio buffers
+    const bufferKeys = [];
+    for (const [key] of this.audioBuffers) {
+      bufferKeys.push(key);
+    }
+    bufferKeys.forEach(key => this.audioBuffers.delete(key));
+    
+    if (this.audioContext) {
+      try {
+        this.audioContext.close();
+      } catch (e) {
+        // Ignore errors
+      }
+      this.audioContext = null;
+    }
+    
+    this.isInitialized = false;
+    this.isResumed = false;
   }
 }
 
