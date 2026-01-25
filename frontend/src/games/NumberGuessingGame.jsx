@@ -39,7 +39,7 @@ const NumberGuessingGame = ({ user }) => {
   const [showModal, setShowModal] = useState(true);
   const [feedback, setFeedback] = useState(null);
   const [proximityHint, setProximityHint] = useState("");
-  const [remainingAttempts, setRemainingAttempts] = useState(10);
+  const [remainingAttempts, setRemainingAttempts] = useState(maxAttempts); // Fixed: Initialize with maxAttempts
   const [attemptsUsed, setAttemptsUsed] = useState(0);
   const [showWinModal, setShowWinModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
@@ -270,6 +270,8 @@ const NumberGuessingGame = ({ user }) => {
     setShowLossModal(false);
     setFeedback(null);
     setProximityHint("");
+    setRemainingAttempts(maxAttempts); // Reset to current maxAttempts
+    setAttemptsUsed(0);
     
     if (refreshWallet) {
       await refreshWallet();
@@ -484,41 +486,68 @@ const NumberGuessingGame = ({ user }) => {
       {/* AMBIENT ANIMATION */}
       <div className="ambient-animation"></div>
 
-      {/* HEADER */}
+      {/* ENHANCED HEADER WITH GAME INFO DISPLAY */}
       <div className="game-header">
-        <button 
-          onClick={() => {
-            playButtonClickSound();
-            navigate("/");
-          }} 
-          className="back-button"
-        >
-          ← Back
-        </button>
-        
-        {/* Sound Toggle Button */}
-        <button 
-          className="sound-toggle"
-          onClick={toggleSound}
-        >
-          {isSoundMuted ? "🔇" : "🔊"}
-        </button>
-        
-        <div className="balance-details">
-          <div className="balance-total">
-            {walletLoading || refreshing ? (
-              <div className="balance-loading">
-                <span className="loading-spinner-small" />
-                {refreshing ? "Refreshing..." : "Loading..."}
+        {/* Left Section - Back Button & Game Title */}
+        <div className="header-left">
+          <button 
+            onClick={() => {
+              playButtonClickSound();
+              navigate("/");
+            }} 
+            className="back-button"
+          >
+            ← Back
+          </button>
+          
+          <div className="game-title">
+            <h2>Number Guessing</h2>
+          </div>
+        </div>
+
+        {/* Center Section - Game Info Display (Arcade Screen) */}
+        <div className="header-center">
+          <div className="arcade-screen">
+            <div className="screen-grid">
+              <div className="screen-item">
+                <span className="screen-label">RANGE</span>
+                <div className="screen-value">
+                  <span className="value-glow">1 - {maxNumber || 100}</span>
+                </div>
               </div>
-            ) : (
-              formatNGN(combinedBalance)
-            )}
+              <div className="screen-item">
+                <span className="screen-label">ATTEMPTS</span>
+                <div className="screen-value">
+                  <span className="value-glow">{remainingAttempts !== undefined ? remainingAttempts : maxAttempts}</span>
+                </div>
+              </div>
+              <div className="screen-item">
+                <span className="screen-label">USED</span>
+                <div className="screen-value">
+                  <span className="value-glow">{attemptsUsed}</span>
+                </div>
+              </div>
+              <div className="screen-item">
+                <span className="screen-label">MODE</span>
+                <div className="screen-value">
+                  <span className="value-glow">
+                    {difficulties.find(d => d.maxNumber === maxNumber)?.label || 'Hard'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="balance-breakdown">
-            <span className="balance-main">Main: {formatNGN(wallet?.balance || 0)}</span>
-            <span className="balance-spot">Spot: {formatNGN(spotBalance)}</span>
-          </div>
+        </div>
+
+        {/* Right Section - Balance & Sound */}
+        <div className="header-right">
+          {/* Sound Toggle Button */}
+          <button 
+            className="sound-toggle"
+            onClick={toggleSound}
+          >
+            {isSoundMuted ? "🔇" : "🔊"}
+          </button>
         </div>
       </div>
 
@@ -561,6 +590,7 @@ const NumberGuessingGame = ({ user }) => {
                         playDifficultySelectSound();
                         setMaxNumber(d.maxNumber);
                         setMaxAttempts(d.maxAttempts);
+                        setRemainingAttempts(d.maxAttempts); // Update remaining attempts
                       }}
                       disabled={walletLoading || refreshing}
                       onMouseEnter={playButtonClickSound}
@@ -603,69 +633,48 @@ const NumberGuessingGame = ({ user }) => {
         </div>
       )}
 
-      {/* GAMEPLAY */}
+      {/* GAMEPLAY AREA */}
       {game && (
         <div className="game-board-section">
-          <div className="game-info-bar">
-            <div className="info-item">
-              <span>Range</span>
-              <strong>1 - {maxNumber}</strong>
-            </div>
-            <div className="info-item">
-              <span>Attempts</span>
-              <strong>{attemptsUsed}/{maxAttempts}</strong>
-            </div>
-            <div className="info-item">
-              <span>Remaining</span>
-              <strong>{remainingAttempts}</strong>
-            </div>
-          </div>
-
-          <div className="guess-container">
-            <div className="guess-input-group">
-              <input
-                type="number"
-                value={guess}
-                onChange={(e) => setGuess(e.target.value)}
-                placeholder={`Enter number (1-${maxNumber})`}
-                min={1}
-                max={maxNumber}
-                disabled={refreshing}
-                onKeyPress={(e) => e.key === 'Enter' && submitGuess()}
-                onFocus={playButtonClickSound}
-              />
-              <button 
-                className="guess-button"
-                onClick={submitGuess}
-                disabled={!guess || refreshing}
-                onMouseEnter={playButtonClickSound}
-              >
-                GUESS
-              </button>
-            </div>
-
-            <button 
-              className="hint-button"
-              onClick={getHint}
-              disabled={refreshing}
-              onMouseEnter={playButtonClickSound}
-            >
-              💡 Get Hint
-            </button>
-          </div>
-
-          {feedback && (
-            <div className="feedback-container">
-              <div className="feedback-message" style={{color: getProximityColor()}}>
-                {feedback}
+          <div className="game-controls">
+            <div className="guess-container">
+              <div className="guess-input-group">
+                <input
+                  type="number"
+                  value={guess}
+                  onChange={(e) => setGuess(e.target.value)}
+                  placeholder={`Enter number (1-${maxNumber})`}
+                  min={1}
+                  max={maxNumber}
+                  disabled={refreshing}
+                  onKeyPress={(e) => e.key === 'Enter' && submitGuess()}
+                  onFocus={playButtonClickSound}
+                />
+                <button 
+                  className="guess-button"
+                  onClick={submitGuess}
+                  disabled={!guess || refreshing}
+                  onMouseEnter={playButtonClickSound}
+                >
+                  GUESS
+                </button>
               </div>
-              {proximityHint && (
-                <div className="proximity-indicator" style={{color: getProximityColor()}}>
-                  {proximityHint}
-                </div>
-              )}
+
             </div>
-          )}
+
+            {feedback && (
+              <div className="feedback-container">
+                <div className="feedback-message" style={{color: getProximityColor()}}>
+                  {feedback}
+                </div>
+                {proximityHint && (
+                  <div className="proximity-indicator" style={{color: getProximityColor()}}>
+                    {proximityHint}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Game History */}
           {gameHistory.length > 0 && (
@@ -724,14 +733,6 @@ const NumberGuessingGame = ({ user }) => {
               <div className="stat-item">
                 <span>Attempts Used:</span>
                 <span>{lastWin.attempts_used}</span>
-              </div>
-              <div className="stat-item">
-                <span>Win Ratio:</span>
-                <span>{(lastWin.win_ratio * 100).toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span>Multiplier:</span>
-                <span>{lastWin.multiplier.toFixed(2)}x</span>
               </div>
               <div className="stat-item">
                 <span>Win Tier:</span>

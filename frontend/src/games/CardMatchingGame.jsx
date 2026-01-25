@@ -604,25 +604,10 @@ const CardMatchingGame = ({ user }) => {
       {/* GAME BOARD */}
       {!showModal && (
         <div className="game-board-section">
-          <div className="game-info-bar">
-            <div className="info-item">
-              <span>Matches</span>
-              <strong>{matchedPairs}/{gridSize / 2}</strong>
-            </div>
-            <div className="info-item">
-              <span>Attempts Used</span>
-              <strong>{attempts} / 3</strong>
-            </div>
-            <div className="info-item">
-              <span>Stake</span>
-              <strong>{formatNGN(numericBet)}</strong>
-            </div>
-          </div>
 
           {gameStatus === 'playing' && (
             <div className="action-buttons">
               <button 
-                className="cashout-btn" 
                 onClick={cashOutEarly}
                 onMouseEnter={playButtonClickSound}
               >

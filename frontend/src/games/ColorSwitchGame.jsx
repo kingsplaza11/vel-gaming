@@ -511,7 +511,6 @@ const ColorSwitchGame = ({ user }) => {
           ← Back
         </button>
         <div className="game-title">
-          <span className="game-icon">🎨</span>
           <h2>Color Switch</h2>
         </div>
         
@@ -522,23 +521,6 @@ const ColorSwitchGame = ({ user }) => {
         >
           {isSoundMuted ? "🔇" : "🔊"}
         </button>
-        
-        <div className="balance-details">
-          <div className="balance-total">
-            {walletLoading ? (
-              <div className="balance-loading">
-                <span className="loading-spinner-small" />
-                Loading...
-              </div>
-            ) : (
-              formatNaira(combinedBalance)
-            )}
-          </div>
-          <div className="balance-breakdown">
-            <span className="balance-main">Main: {formatNaira(wallet?.balance || 0)}</span>
-            <span className="balance-spot">Spot: {formatNaira(spotBalance)}</span>
-          </div>
-        </div>
       </header>
 
       {/* STAKE MODAL */}
@@ -618,23 +600,6 @@ const ColorSwitchGame = ({ user }) => {
       {/* GAME AREA */}
       {!showModal && (
         <div className="game-area">
-          <div className="game-info-bar">
-            <div className="info-item">
-              <span>Multiplier</span>
-              <strong className="multiplier-display">{multiplier.toFixed(2)}x</strong>
-            </div>
-            <div className="info-item">
-              <span>Sequence</span>
-              <strong>{sequence.length} Colors</strong>
-            </div>
-            <div className="info-item">
-              <span>Potential Win</span>
-              <strong style={{color: getWinTierColor(potentialWinTier)}}>
-                {potentialWinTier === "playing" ? "Calculating..." : 
-                 `${(potentialWinRatio * 100).toFixed(1)}%`}
-              </strong>
-            </div>
-          </div>
 
           {showSequence && (
             <div className="sequence-show animated-fadeIn">
@@ -739,7 +704,6 @@ const ColorSwitchGame = ({ user }) => {
                   <>
                     <div className="result-icon">💰</div>
                     <h3>Cashed Out Successfully!</h3>
-                    <p>Winnings added to your spot balance</p>
                   </>
                 )}
               </div>
@@ -793,26 +757,6 @@ const ColorSwitchGame = ({ user }) => {
               </p>
             </div>
             
-            <div className="win-stats">
-              <div className="stat-item">
-                <span>Win Ratio:</span>
-                <span>{(lastWin.win_ratio * 100).toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span>Multiplier:</span>
-                <span>{lastWin.multiplier.toFixed(2)}x</span>
-              </div>
-              <div className="stat-item">
-                <span>Sequence Length:</span>
-                <span>{lastWin.sequence_length} Colors</span>
-              </div>
-              <div className="stat-item">
-                <span>Win Tier:</span>
-                <span style={{color: getWinTierColor(lastWin.win_tier), textTransform: 'capitalize'}}>
-                  {lastWin.win_tier.replace('_', ' ')}
-                </span>
-              </div>
-            </div>
             
             <button
               className="continue-button"
@@ -842,24 +786,7 @@ const ColorSwitchGame = ({ user }) => {
             <div className="loss-message">
               <p className="loss-encouragement">
                 Color sequences can be tricky!
-                <br />
-                <span className="loss-tip">Try shorter sequences first!</span>
               </p>
-            </div>
-            
-            <div className="loss-stats">
-              <div className="stat-item">
-                <span>Stake:</span>
-                <span>{formatNaira(stake)}</span>
-              </div>
-              <div className="stat-item">
-                <span>Sequence Length:</span>
-                <span>{sequence.length} Colors</span>
-              </div>
-              <div className="stat-item">
-                <span>Multiplier:</span>
-                <span>{multiplier.toFixed(2)}x</span>
-              </div>
             </div>
             
             <button
