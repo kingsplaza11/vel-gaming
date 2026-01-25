@@ -10,7 +10,7 @@ import "./fortunemouse.css";
 const GRID_SIZE = 20;
 const MINIMUM_STAKE = 100;
 
-// Flower component for additional visual effects
+// Flower component
 const Flower = ({ x, y, size, color, rotation, delay }) => {
   return (
     <div 
@@ -85,6 +85,7 @@ export default function FortuneMouse() {
   const flowersTimeoutRef = useRef(null);
   const modalTimeoutRef = useRef(null);
   const resizeTimeoutRef = useRef(null);
+  const clickTimestamps = useRef(new Map());
 
   /* =========================
      GAME RESULTS CONFIGURATION
@@ -123,7 +124,120 @@ export default function FortuneMouse() {
   }), []);
 
   /* =========================
-     WINDOW SIZE TRACKING WITH DEBOUNCE
+     CLEANUP EFFECTS FUNCTION (DEFINED FIRST)
+  ========================= */
+  const cleanupEffects = useCallback(() => {
+    if (confettiTimeoutRef.current) clearTimeout(confettiTimeoutRef.current);
+    if (flowersTimeoutRef.current) clearTimeout(flowersTimeoutRef.current);
+    if (modalTimeoutRef.current) clearTimeout(modalTimeoutRef.current);
+    setShowConfetti(false);
+    setShowFlowers(false);
+  }, []);
+
+  /* =========================
+     VISUAL EFFECTS FUNCTIONS
+  ========================= */
+  const triggerWinEffects = useCallback(() => {
+    if (confettiTimeoutRef.current) clearTimeout(confettiTimeoutRef.current);
+    if (flowersTimeoutRef.current) clearTimeout(flowersTimeoutRef.current);
+
+    setConfettiKey(prev => prev + 1);
+    setShowConfetti(true);
+    setShowFlowers(true);
+
+    confettiTimeoutRef.current = setTimeout(() => {
+      setShowConfetti(false);
+    }, 5000);
+
+    flowersTimeoutRef.current = setTimeout(() => {
+      setShowFlowers(false);
+    }, 5000);
+  }, []);
+
+  /* =========================
+     GENERATE FLOWERS
+  ========================= */
+  const generateFlowers = useMemo(() => {
+    if (!showFlowers) return [];
+    
+    const flowers = [];
+    const colors = ['#FF6B6B', '#4ECDC4', '#FFD700', '#A29BFE'];
+    
+    for (let i = 0; i < 10; i++) {
+      flowers.push({
+        id: i,
+        x: Math.random() * 80 + 10,
+        y: Math.random() * 80 + 10,
+        size: Math.random() * 30 + 20,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * 360,
+        delay: Math.random() * 1,
+      });
+    }
+    
+    return flowers;
+  }, [showFlowers]);
+
+  /* =========================
+     RESET GAME
+  ========================= */
+  const resetGame = useCallback(() => {
+    cleanupEffects();
+    
+    setGame({
+      status: "idle",
+      step_index: 0,
+      current_multiplier: "1.00",
+      payout_amount: "0.00",
+      session_id: null,
+    });
+
+    setTiles(
+      Array.from({ length: GRID_SIZE }, (_, i) => ({
+        id: i,
+        revealed: false,
+        kind: null,
+      }))
+    );
+
+    tapLock.current = false;
+    lastTileRef.current = null;
+    setActiveSessionId(null);
+    clickTimestamps.current.clear();
+  }, [cleanupEffects]);
+
+  /* =========================
+     RESET GAME AFTER MODAL
+  ========================= */
+  const resetGameAfterModal = useCallback(() => {
+    if (modalTimeoutRef.current) {
+      clearTimeout(modalTimeoutRef.current);
+    }
+    
+    modalTimeoutRef.current = setTimeout(() => {
+      resetGame();
+      setStakeOpen(true);
+    }, 3000);
+  }, [resetGame]);
+
+  /* =========================
+     TILE STYLES
+  ========================= */
+  const tileStyles = useMemo(() => {
+    return tiles.map(tile => {
+      const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
+      if (tileResultInfo && tile.revealed) {
+        return {
+          borderColor: tileResultInfo.color,
+          backgroundColor: `${tileResultInfo.color}15`
+        };
+      }
+      return {};
+    });
+  }, [tiles, resultConfig]);
+
+  /* =========================
+     WINDOW SIZE TRACKING
   ========================= */
   useEffect(() => {
     const handleResize = () => {
@@ -150,41 +264,20 @@ export default function FortuneMouse() {
   }, []);
 
   /* =========================
-     AUDIO CONTEXT RESUME HANDLING
+     AUDIO INITIALIZATION
   ========================= */
   useEffect(() => {
-    console.log('Setting up audio context resume');
-    
-    // Force audio context creation on component mount
+    // Initialize audio on component mount
     fortuneSound.init();
     
-    // Auto-resume audio context on any user interaction
-    const resumeAudioOnInteraction = () => {
-      console.log('User interaction for audio resume');
-      if (fortuneSound.audioContext && fortuneSound.audioContext.state === 'suspended') {
-        fortuneSound.audioContext.resume().then(() => {
-          console.log('Audio context resumed from component');
-        }).catch(error => {
-          console.error('Failed to resume audio context:', error);
-        });
+    // Cleanup on unmount
+    return () => {
+      cleanupEffects();
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
       }
     };
-
-    // Add listeners for multiple interaction types
-    const events = ['click', 'touchstart', 'keydown', 'mousedown'];
-    events.forEach(event => {
-      document.addEventListener(event, resumeAudioOnInteraction, { 
-        once: true,
-        passive: true 
-      });
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, resumeAudioOnInteraction);
-      });
-    };
-  }, []);
+  }, [cleanupEffects]);
 
   /* =========================
      AUDIO CONTROLS
@@ -199,137 +292,7 @@ export default function FortuneMouse() {
   };
 
   /* =========================
-     VISUAL EFFECTS FUNCTIONS
-  ========================= */
-  const triggerWinEffects = useCallback(() => {
-    // Clear any existing timeouts
-    if (confettiTimeoutRef.current) {
-      clearTimeout(confettiTimeoutRef.current);
-    }
-    if (flowersTimeoutRef.current) {
-      clearTimeout(flowersTimeoutRef.current);
-    }
-
-    // Reset confetti key to ensure new instance
-    setConfettiKey(prev => prev + 1);
-    
-    // Show confetti and flowers
-    setShowConfetti(true);
-    setShowFlowers(true);
-
-    // Hide effects after 5 seconds (reduced from 6)
-    confettiTimeoutRef.current = setTimeout(() => {
-      setShowConfetti(false);
-    }, 5000);
-
-    flowersTimeoutRef.current = setTimeout(() => {
-      setShowFlowers(false);
-    }, 5000);
-  }, []);
-
-  const cleanupEffects = useCallback(() => {
-    if (confettiTimeoutRef.current) {
-      clearTimeout(confettiTimeoutRef.current);
-    }
-    if (flowersTimeoutRef.current) {
-      clearTimeout(flowersTimeoutRef.current);
-    }
-    if (modalTimeoutRef.current) {
-      clearTimeout(modalTimeoutRef.current);
-    }
-    setShowConfetti(false);
-    setShowFlowers(false);
-  }, []);
-
-  /* =========================
-     GENERATE FLOWERS (MEMOIZED)
-  ========================= */
-  const generateFlowers = useMemo(() => {
-    if (!showFlowers) return [];
-    
-    const flowers = [];
-    const colors = [
-      '#FF6B6B', // Red
-      '#4ECDC4', // Teal
-      '#FFD700', // Gold
-      '#A29BFE', // Purple
-    ];
-    
-    for (let i = 0; i < 10; i++) { // Reduced from 15
-      flowers.push({
-        id: i,
-        x: Math.random() * 80 + 10,
-        y: Math.random() * 80 + 10,
-        size: Math.random() * 30 + 20, // Reduced size
-        color: colors[Math.floor(Math.random() * colors.length)],
-        rotation: Math.random() * 360,
-        delay: Math.random() * 1,
-      });
-    }
-    
-    return flowers;
-  }, [showFlowers]);
-
-  /* =========================
-     RESET GAME
-  ========================= */
-  const resetGame = useCallback(() => {
-    // Cleanup effects
-    cleanupEffects();
-    
-    setGame({
-      status: "idle",
-      step_index: 0,
-      current_multiplier: "1.00",
-      payout_amount: "0.00",
-      session_id: null,
-    });
-
-    setTiles(
-      Array.from({ length: GRID_SIZE }, (_, i) => ({
-        id: i,
-        revealed: false,
-        kind: null,
-      }))
-    );
-
-    tapLock.current = false;
-    lastTileRef.current = null;
-    setActiveSessionId(null);
-  }, [cleanupEffects]);
-
-  /* =========================
-     RESET GAME AFTER MODAL
-  ========================= */
-  const resetGameAfterModal = useCallback(() => {
-    if (modalTimeoutRef.current) {
-      clearTimeout(modalTimeoutRef.current);
-    }
-    
-    modalTimeoutRef.current = setTimeout(() => {
-      resetGame();
-      setStakeOpen(true);
-    }, 3000);
-  }, [resetGame]);
-
-  /* =========================
-     TILE STYLES (MEMOIZED)
-  ========================= */
-  const tileStyles = useMemo(() => {
-    return tiles.map(tile => {
-      const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
-      if (tileResultInfo && tile.revealed) {
-        return {
-          borderColor: tileResultInfo.color,
-          backgroundColor: `${tileResultInfo.color}15`
-        };
-      }
-      return {};
-    });
-  }, [tiles, resultConfig]);
-
-  /* =========================
-     GAME ACTIONS
+     GAME ACTIONS - FIXED TILE CLICK HANDLER
   ========================= */
   
   const startGame = async () => {
@@ -352,12 +315,9 @@ export default function FortuneMouse() {
     }
 
     setStarting(true);
-    
-    // Cleanup any existing effects
     cleanupEffects();
     
-    // Play stake sound
-    console.log('Playing stake sound');
+    // Play sound immediately (synchronous)
     fortuneSound.playStake();
     
     try {
@@ -367,10 +327,8 @@ export default function FortuneMouse() {
         client_seed: `fortune:${Date.now()}:${Math.random()}`,
       });
       
-      // Reset game state
       resetGame();
       
-      // Set new game state
       setGame({
         status: "active",
         step_index: res.data.step_index,
@@ -381,8 +339,6 @@ export default function FortuneMouse() {
       
       setActiveSessionId(res.data.session_id);
       setStakeOpen(false);
-      
-      // Refresh wallet to show updated balance
       refreshWallet();
       
       toast.success("Game started! Click tiles to reveal.", {
@@ -398,16 +354,14 @@ export default function FortuneMouse() {
   };
 
   const pickTile = useCallback(async (id) => {
-    console.log('pickTile called for id:', id);
-    
+    // Early validation checks
     if (!activeSessionId) {
       toast.error("No active game session");
       return;
     }
     
     if (tapLock.current) {
-      console.log('Tap lock active, blocking click');
-      toast.error("Please wait for previous action to complete");
+      console.log('Tile click blocked: tap lock active');
       return;
     }
     
@@ -417,16 +371,29 @@ export default function FortuneMouse() {
     }
     
     if (tiles[id]?.revealed) {
-      toast.error("This tile has already been revealed");
+      console.log('Tile already revealed:', id);
       return;
     }
 
-    // Lock to prevent multiple clicks
+    // Debounce: prevent multiple clicks on same tile within 500ms
+    const now = Date.now();
+    const lastClick = clickTimestamps.current.get(id);
+    if (lastClick && (now - lastClick) < 500) {
+      console.log('Tile click debounced:', id);
+      return;
+    }
+    clickTimestamps.current.set(id, now);
+
+    // Set lock immediately
     tapLock.current = true;
     lastTileRef.current = id;
 
-    // Play click sound
-    console.log('Playing click sound');
+    // Update UI immediately - show tile as processing
+    setTiles(prev => prev.map((t, idx) => 
+      idx === id ? { ...t, processing: true } : t
+    ));
+
+    // Play sound immediately (synchronous, doesn't wait)
     fortuneSound.playClick();
     
     try {
@@ -437,24 +404,28 @@ export default function FortuneMouse() {
       
       if (res.data.type === "duplicate") {
         tapLock.current = false;
+        setTiles(prev => prev.map((t, idx) => 
+          idx === id ? { ...t, processing: false } : t
+        ));
         return;
       }
       
       const resultType = res.data.result;
       const resultInfo = resultConfig[resultType] || { icon: "?", label: "Unknown" };
       
-      // Update tile
+      // Update tile immediately
       setTiles(prev =>
         prev.map((t) =>
           t.id === id
-            ? { ...t, revealed: true, kind: resultType }
+            ? { ...t, revealed: true, kind: resultType, processing: false }
             : t
         )
       );
 
-      // Play tile reveal sound
-      console.log('Playing tile sound for result:', resultType);
-      fortuneSound.playTileSound(resultType);
+      // Play tile sound (async, but doesn't block)
+      setTimeout(() => {
+        fortuneSound.playTileSound(resultType);
+      }, 10);
 
       // Handle game over (trap)
       if (resultType === "trap") {
@@ -471,14 +442,12 @@ export default function FortuneMouse() {
           duration: 3000,
         });
 
-        // 3 seconds delay for modal display
         resetGameAfterModal();
-        
         tapLock.current = false;
         return;
       }
       
-      // Handle auto-cashout at max steps
+      // Handle auto-cashout
       if (resultType === "auto_cashout") {
         setGame((g) => ({
           ...g,
@@ -495,12 +464,8 @@ export default function FortuneMouse() {
           duration: 3000,
         });
 
-        // Trigger win effects for auto-cashout win
         triggerWinEffects();
-
-        // 3 seconds delay for modal display
         resetGameAfterModal();
-        
         tapLock.current = false;
         return;
       }
@@ -539,6 +504,11 @@ export default function FortuneMouse() {
       console.error('Error in pickTile:', errorMsg);
       toast.error(`Failed to reveal tile: ${errorMsg}`);
       
+      // Reset tile processing state on error
+      setTiles(prev => prev.map((t, idx) => 
+        idx === id ? { ...t, processing: false } : t
+      ));
+      
       if (e.response?.status === 404) {
         setTimeout(() => {
           resetGame();
@@ -547,14 +517,12 @@ export default function FortuneMouse() {
         }, 1000);
       }
     } finally {
+      // Always release the lock
       tapLock.current = false;
-      console.log('pickTile completed, tap lock released');
     }
   }, [activeSessionId, game, tiles, refreshWallet, resetGame, resetGameAfterModal, resultConfig, triggerWinEffects]);
 
   const cashout = useCallback(async () => {
-    console.log('cashout called');
-    
     if (!activeSessionId) {
       toast.error("No active game session");
       return;
@@ -566,15 +534,12 @@ export default function FortuneMouse() {
     }
 
     if (tapLock.current) {
-      console.log('Tap lock active, blocking cashout');
-      toast.error("Please wait for previous action to complete");
+      console.log('Cashout blocked: tap lock active');
       return;
     }
 
     tapLock.current = true;
     
-    // Play click sound
-    console.log('Playing click sound for cashout');
     fortuneSound.playClick();
     
     toast.loading("Processing cashout...", { id: "cashout" });
@@ -596,10 +561,7 @@ export default function FortuneMouse() {
       toast.dismiss("cashout");
       toast.success(`Cashed out! Won ₦${parseFloat(res.data.payout_amount).toLocaleString("en-NG")}`);
 
-      // Trigger win effects for manual cashout win
       triggerWinEffects();
-
-      // 3 seconds delay for modal display
       resetGameAfterModal();
       
     } catch (e) {
@@ -617,16 +579,14 @@ export default function FortuneMouse() {
       }
     } finally {
       tapLock.current = false;
-      console.log('cashout completed, tap lock released');
     }
   }, [activeSessionId, game.status, refreshWallet, resetGame, resetGameAfterModal, triggerWinEffects]);
 
   /* =========================
-     EFFECTS
+     SESSION PERSISTENCE
   ========================= */
   
   useEffect(() => {
-    // Check for existing session
     const savedSessionId = localStorage.getItem('fortune_active_session');
     if (savedSessionId) {
       fortuneService.getSessionState(savedSessionId)
@@ -653,15 +613,7 @@ export default function FortuneMouse() {
           localStorage.removeItem('fortune_active_session');
         });
     }
-    
-    // Cleanup on unmount
-    return () => {
-      cleanupEffects();
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-    };
-  }, [cleanupEffects]);
+  }, []);
 
   useEffect(() => {
     if (activeSessionId && game.status === "active") {
@@ -672,7 +624,7 @@ export default function FortuneMouse() {
   }, [activeSessionId, game.status]);
 
   /* =========================
-     PERFORMANCE OPTIMIZATION
+     RENDER
   ========================= */
   const totalBalance = Number(availableBalance || 0);
   const betAmount = Number(bet);
@@ -685,22 +637,18 @@ export default function FortuneMouse() {
     );
   }, [betAmount, totalBalance]);
 
-  const currentResult = tiles.find(t => t.revealed && t.id === lastTileRef.current);
-  const resultInfo = currentResult ? resultConfig[currentResult.kind] : null;
-
   return (
     <div className="fortune-stage">
-      {/* WINNING VISUAL EFFECTS LAYER */}
+      {/* WINNING VISUAL EFFECTS */}
       {(showConfetti || showFlowers) && (
         <div className="winning-effects-layer">
-          {/* OPTIMIZED CONFETTI */}
           {showConfetti && (
             <Confetti
               key={`confetti-${confettiKey}`}
               width={windowSize.width}
               height={windowSize.height}
               recycle={false}
-              numberOfPieces={150} // Reduced for performance
+              numberOfPieces={150}
               gravity={0.12}
               opacity={0.8}
               colors={['#FFD700', '#FF6B6B', '#4ECDC4', '#A29BFE']}
@@ -716,7 +664,6 @@ export default function FortuneMouse() {
             />
           )}
           
-          {/* COLORFUL FLOWERS */}
           {showFlowers && generateFlowers.map(flower => (
             <Flower
               key={flower.id}
@@ -729,7 +676,6 @@ export default function FortuneMouse() {
             />
           ))}
           
-          {/* GLOWING BACKGROUND EFFECT */}
           <div className="winning-glow" style={{
             position: 'fixed',
             top: 0,
@@ -791,19 +737,24 @@ export default function FortuneMouse() {
         <div className="fortune-grid">
           {tiles.map((tile, index) => {
             const tileResultInfo = tile.revealed ? resultConfig[tile.kind] : null;
+            const isProcessing = tile.processing;
+            const isDisabled = tile.revealed || game.status !== "active" || tapLock.current || isProcessing;
+            
             return (
               <button
                 key={tile.id}
                 className={`fortune-tile ${
                   tile.revealed ? tile.kind : ""
-                } ${game.status !== "active" || tile.revealed || tapLock.current ? "disabled" : ""}`}
-                disabled={tile.revealed || game.status !== "active" || tapLock.current}
+                } ${isProcessing ? "processing" : ""} ${isDisabled ? "disabled" : ""}`}
+                disabled={isDisabled}
                 onClick={() => pickTile(tile.id)}
                 style={tileStyles[index]}
                 aria-label={tile.revealed ? `Revealed tile: ${tileResultInfo?.label || 'Unknown'}` : 'Hidden tile'}
               >
                 <div className="tile-face">
-                  {!tile.revealed ? (
+                  {isProcessing ? (
+                    <span className="tile-processing">⏳</span>
+                  ) : !tile.revealed ? (
                     <span className="tile-glyph">?</span>
                   ) : (
                     <div className="tile-revealed">

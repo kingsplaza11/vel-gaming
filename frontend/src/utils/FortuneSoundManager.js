@@ -2,7 +2,8 @@
 class FortuneSoundManager {
   constructor() {
     this.audioContext = null;
-    this.sounds = new Map();
+    this.soundBuffers = new Map(); // Store audio buffers
+    this.activeSources = new Map(); // Store active audio sources
     this.isMuted = localStorage.getItem('fortune_muted') === 'true';
     this.masterVolume = 0.7;
     this.MAX_SIMULTANEOUS_SOUNDS = 8;
@@ -27,13 +28,13 @@ class FortuneSoundManager {
       'electricBuzz': '/sounds/mixkit-electric-low-buzzer-2961.wav',
       'wrongAnswer': '/sounds/mixkit-wrong-answer-bass-buzzer-948.wav',
       
-      // Click sound (fallback)
+      // Click sound
       'click': '/sounds/mixkit-arcade-bonus-alert-767.wav',
       'stake': '/sounds/mixkit-game-bonus-reached-2065.wav'
     };
   }
 
-  // Initialize Web Audio API
+  // Initialize Web Audio API synchronously
   init() {
     if (!this.audioContext) {
       try {
@@ -43,8 +44,8 @@ class FortuneSoundManager {
         // Set up auto-resume
         this.setupAutoResume();
         
-        // Preload important sounds
-        this.preloadSounds();
+        // Preload all sounds on initialization
+        this.preloadAllSounds();
       } catch (error) {
         console.error('Failed to initialize audio context:', error);
       }
@@ -65,12 +66,7 @@ class FortuneSoundManager {
       }
     };
     
-    // Remove existing listeners first
-    document.removeEventListener('click', resumeAudio);
-    document.removeEventListener('touchstart', resumeAudio);
-    document.removeEventListener('keydown', resumeAudio);
-    
-    // Add new listeners
+    // Add listeners for multiple interaction types
     const events = ['click', 'touchstart', 'keydown'];
     events.forEach(event => {
       document.addEventListener(event, resumeAudio, { 
@@ -92,24 +88,27 @@ class FortuneSoundManager {
     }
   }
 
-  // Preload important sounds
-  async preloadSounds() {
+  // Preload all sounds
+  async preloadAllSounds() {
     if (this.isInitialized) return;
     
-    console.log('Preloading sounds...');
-    const soundsToPreload = ['click', 'goodTap', 'badTap', 'wrongAnswer'];
+    console.log('Preloading all sounds...');
+    const soundKeys = Object.keys(this.soundFiles);
     
-    for (const soundKey of soundsToPreload) {
-      await this.loadSound(soundKey);
+    // Load sounds in parallel but limit concurrency
+    const batchSize = 3;
+    for (let i = 0; i < soundKeys.length; i += batchSize) {
+      const batch = soundKeys.slice(i, i + batchSize);
+      await Promise.all(batch.map(key => this.loadSoundBuffer(key)));
     }
     
     this.isInitialized = true;
-    console.log('Sounds preloaded');
+    console.log('All sounds preloaded');
   }
 
-  // Load a sound file
-  async loadSound(soundKey) {
-    if (this.sounds.has(soundKey)) return this.sounds.get(soundKey);
+  // Load a sound file into buffer
+  async loadSoundBuffer(soundKey) {
+    if (this.soundBuffers.has(soundKey)) return this.soundBuffers.get(soundKey);
     
     const url = this.soundFiles[soundKey];
     if (!url) {
@@ -119,23 +118,36 @@ class FortuneSoundManager {
     
     try {
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
       
-      this.sounds.set(soundKey, audioBuffer);
-      console.log('Loaded sound:', soundKey);
+      this.soundBuffers.set(soundKey, audioBuffer);
+      console.log('Loaded sound buffer:', soundKey);
       return audioBuffer;
     } catch (error) {
       console.error('Failed to load sound:', soundKey, error);
+      // Return null instead of throwing to prevent crashes
       return null;
     }
   }
 
-  // Play a sound by key
-  async playSound(soundKey, options = {}) {
+  // Play a sound by key (synchronous - returns immediately)
+  playSound(soundKey, options = {}) {
     if (this.isMuted || !this.audioContext) return null;
     
     this.init();
+    
+    // Check if sound is loaded
+    const audioBuffer = this.soundBuffers.get(soundKey);
+    if (!audioBuffer) {
+      console.warn('Sound not loaded yet:', soundKey);
+      // Try to load it in background but don't wait
+      this.loadSoundBuffer(soundKey).catch(() => {});
+      return null;
+    }
     
     // Check sound count limit
     if (this.getActiveSoundCount() >= this.MAX_SIMULTANEOUS_SOUNDS) {
@@ -147,18 +159,10 @@ class FortuneSoundManager {
       volume = this.masterVolume,
       loop = false,
       playbackRate = 1.0,
-      delay = 0,
-      onEnded = null
+      delay = 0
     } = options;
     
     try {
-      // Load sound if not already loaded
-      let audioBuffer = this.sounds.get(soundKey);
-      if (!audioBuffer) {
-        audioBuffer = await this.loadSound(soundKey);
-        if (!audioBuffer) return null;
-      }
-      
       // Create source node
       const source = this.audioContext.createBufferSource();
       const gainNode = this.audioContext.createGain();
@@ -177,164 +181,126 @@ class FortuneSoundManager {
       const startTime = this.audioContext.currentTime + delay;
       source.start(startTime);
       
-      // Set up cleanup
-      const soundId = Date.now() + Math.random();
-      const soundEntry = { source, gainNode, isPlaying: true };
+      // Generate unique ID for this sound instance
+      const soundId = `${soundKey}_${Date.now()}_${Math.random()}`;
       
+      // Set up cleanup on ended
       source.onended = () => {
-        soundEntry.isPlaying = false;
-        this.cleanupSound(soundId);
-        if (onEnded) onEnded();
+        this.cleanupSoundSource(soundId);
       };
       
-      this.sounds.set(soundId, soundEntry);
+      // Store active source
+      this.activeSources.set(soundId, { source, gainNode });
       
-      return { soundId, source, gainNode };
+      return soundId;
     } catch (error) {
       console.error('Failed to play sound:', soundKey, error);
       return null;
     }
   }
 
-  // Play click sound
+  // Play click sound (synchronous)
   playClick() {
     if (this.isMuted) return;
     this.playSound('click', { volume: 0.5 * this.masterVolume });
   }
 
-  // Play stake sound
+  // Play stake sound (synchronous)
   playStake() {
     if (this.isMuted) return;
     this.playSound('stake', { volume: 0.6 * this.masterVolume });
   }
 
-  // Generate tile reveal sound based on result
+  // Play tile sound based on result (synchronous)
   playTileSound(resultType) {
     if (this.isMuted) return;
     
-    switch (resultType) {
-      case 'safe':
-      case 'carrot_bonus':
-        this.playGoodTap();
-        break;
-      case 'small_win':
-        this.playGoodTap();
-        break;
-      case 'penalty':
-        this.playBadTap();
-        break;
-      case 'major_penalty':
-        this.playVeryBadTap();
-        break;
-      case 'reset':
-        this.playResetTap();
-        break;
-      case 'trap':
-        this.playGameOverSound();
-        break;
-      case 'auto_cashout':
-        this.playCashoutSound();
-        break;
-      default:
-        this.playClick();
-    }
+    // Play sounds with minimal delay to prevent blocking
+    setTimeout(() => {
+      switch (resultType) {
+        case 'safe':
+        case 'carrot_bonus':
+        case 'small_win':
+          this.playSound('goodTap', { volume: 0.6 * this.masterVolume });
+          break;
+        case 'penalty':
+          // Play both bad tap sounds with slight delay
+          this.playSound('badTap', { volume: 0.5 * this.masterVolume });
+          setTimeout(() => {
+            this.playSound('electricBuzz', { volume: 0.4 * this.masterVolume });
+          }, 100);
+          break;
+        case 'major_penalty':
+          this.playSound('wrongAnswer', { volume: 0.6 * this.masterVolume });
+          break;
+        case 'reset':
+          this.playSound('resetTap', { volume: 0.5 * this.masterVolume });
+          break;
+        case 'trap':
+          // Play game over sounds with delays
+          this.playSound('laugh1', { volume: 0.6 * this.masterVolume });
+          setTimeout(() => {
+            this.playSound('laugh2', { volume: 0.6 * this.masterVolume });
+          }, 800);
+          setTimeout(() => {
+            this.playSound('wrongAnswer', { volume: 0.6 * this.masterVolume });
+          }, 1600);
+          break;
+        case 'auto_cashout':
+          // Play winning sounds with delays
+          this.playSound('applause', { volume: 0.7 * this.masterVolume });
+          setTimeout(() => {
+            this.playSound('bonus', { volume: 0.6 * this.masterVolume });
+          }, 300);
+          setTimeout(() => {
+            this.playSound('levelComplete', { volume: 0.5 * this.masterVolume });
+          }, 600);
+          break;
+        default:
+          this.playClick();
+      }
+    }, 0); // Minimal delay to ensure UI thread isn't blocked
   }
 
-  // Good tap sound
-  playGoodTap() {
-    if (this.isMuted) return;
-    this.playSound('goodTap', { volume: 0.6 * this.masterVolume });
-  }
-
-  // Reset tap sound
-  playResetTap() {
-    if (this.isMuted) return;
-    this.playSound('resetTap', { volume: 0.5 * this.masterVolume });
-  }
-
-  // Bad tap sound
-  playBadTap() {
-    if (this.isMuted) return;
-    // Play both bad tap sounds with slight delay
-    this.playSound('badTap', { volume: 0.5 * this.masterVolume });
-    this.playSound('electricBuzz', { 
-      volume: 0.4 * this.masterVolume,
-      delay: 0.1 
-    });
-  }
-
-  // Very bad tap sound
-  playVeryBadTap() {
-    if (this.isMuted) return;
-    this.playSound('wrongAnswer', { volume: 0.6 * this.masterVolume });
-  }
-
-  // Cashout sound - plays winning sounds together
+  // Play cashout sound (synchronous wrapper)
   playCashoutSound() {
     if (this.isMuted) return;
     
-    // Play applause for longer duration
-    this.playSound('applause', { 
-      volume: 0.7 * this.masterVolume,
-      loop: false 
-    });
-    
-    // Play bonus sound with slight delay
+    // Play winning sounds with delays
     setTimeout(() => {
-      if (!this.isMuted) {
+      this.playSound('applause', { volume: 0.7 * this.masterVolume });
+      setTimeout(() => {
         this.playSound('bonus', { volume: 0.6 * this.masterVolume });
-      }
-    }, 300);
-    
-    // Play level complete sound with more delay
-    setTimeout(() => {
-      if (!this.isMuted) {
+      }, 300);
+      setTimeout(() => {
         this.playSound('levelComplete', { volume: 0.5 * this.masterVolume });
-      }
-    }, 600);
+      }, 600);
+    }, 0);
   }
 
-  // Game over sound - plays losing sounds together
+  // Play game over sound (synchronous wrapper)
   playGameOverSound() {
     if (this.isMuted) return;
     
-    // Play first laugh
-    this.playSound('laugh1', { 
-      volume: 0.6 * this.masterVolume,
-      loop: false 
-    });
-    
-    // Play second laugh with delay
     setTimeout(() => {
-      if (!this.isMuted) {
-        this.playSound('laugh2', { 
-          volume: 0.6 * this.masterVolume,
-          loop: false 
-        });
-      }
-    }, 800);
-    
-    // Play very bad tap sound after laughs
-    setTimeout(() => {
-      if (!this.isMuted) {
-        this.playVeryBadTap();
-      }
-    }, 1600);
+      this.playSound('laugh1', { volume: 0.6 * this.masterVolume });
+      setTimeout(() => {
+        this.playSound('laugh2', { volume: 0.6 * this.masterVolume });
+      }, 800);
+      setTimeout(() => {
+        this.playSound('wrongAnswer', { volume: 0.6 * this.masterVolume });
+      }, 1600);
+    }, 0);
   }
 
   // Get count of active sounds
   getActiveSoundCount() {
-    let count = 0;
-    for (const [key, sound] of this.sounds) {
-      if (typeof key === 'string') continue; // Skip buffer entries
-      if (sound.isPlaying) count++;
-    }
-    return count;
+    return this.activeSources.size;
   }
 
-  // Cleanup individual sound
-  cleanupSound(soundId) {
-    const sound = this.sounds.get(soundId);
+  // Cleanup individual sound source
+  cleanupSoundSource(soundId) {
+    const sound = this.activeSources.get(soundId);
     if (sound) {
       try {
         if (sound.source && sound.source.stop) {
@@ -349,15 +315,14 @@ class FortuneSoundManager {
       } catch (e) {
         // Sound already stopped
       }
-      this.sounds.delete(soundId);
+      this.activeSources.delete(soundId);
     }
   }
 
   // Cleanup all playing sounds
   cleanupAllSounds() {
-    for (const [key, sound] of this.sounds) {
-      if (typeof key === 'string') continue; // Skip buffer entries
-      this.cleanupSound(key);
+    for (const [soundId] of this.activeSources) {
+      this.cleanupSoundSource(soundId);
     }
   }
 
@@ -367,7 +332,6 @@ class FortuneSoundManager {
     localStorage.setItem('fortune_muted', this.isMuted);
     
     if (this.isMuted) {
-      // Cleanup all playing sounds when muted
       this.cleanupAllSounds();
     }
     
@@ -382,15 +346,8 @@ class FortuneSoundManager {
   // Cleanup everything
   cleanup() {
     this.cleanupAllSounds();
-    
-    // Clear audio buffers
-    const bufferKeys = [];
-    for (const [key] of this.sounds) {
-      if (typeof key === 'string') {
-        bufferKeys.push(key);
-      }
-    }
-    bufferKeys.forEach(key => this.sounds.delete(key));
+    this.activeSources.clear();
+    this.soundBuffers.clear();
     
     if (this.audioContext) {
       try {
