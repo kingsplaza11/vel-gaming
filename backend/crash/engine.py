@@ -9,7 +9,7 @@ from .models import GameRound, CrashBet, RiskSettings
 from .provably_fair import generate_round_result, generate_server_seed, sha256_hex
 from wallets.services import settle_lost_bet_atomic
 
-BETTING_DURATION = 7    # seconds
+BETTING_DURATION = 10    # seconds
 TICK_INTERVAL = 0.05    # 20 FPS
 COOLDOWN_DURATION = 3   # seconds
 
@@ -170,7 +170,7 @@ def run_single_round(round_obj: GameRound, heartbeat=None):
     for i in range(0, len(bet_list), batch_size):
         batch = bet_list[i:i + batch_size]
         for bet in batch:
-            settle_lost_bet_atomic(bet, is_demo=bet.is_demo)
+            settle_lost_bet_atomic(bet)
         
         check_heartbeat()  # 🔒 Check heartbeat after each batch
 

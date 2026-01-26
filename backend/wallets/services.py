@@ -124,3 +124,61 @@ def settle_lost_bet_atomic(bet):
     bet.status = "LOST"
     bet.win_amount = Decimal("0.00")
     bet.save(update_fields=["status", "win_amount"])
+
+
+def process_auto_cashout(user, bet, payout_amount, reference, is_demo=False):
+    """
+    Process an auto cashout for a crash bet and add winnings to wallet spot balance.
+    
+    Args:
+        user: The user who placed the bet
+        bet: The CrashBet instance
+        payout_amount: Decimal amount to pay out
+        reference: Transaction reference string
+        is_demo: Whether this is a demo transaction
+        
+    Returns:
+        Decimal: The new wallet balance after cashout
+    """
+    with transaction.atomic():
+        try:
+            # Get the wallet with lock to prevent race conditions
+            wallet = Wallet.objects.select_for_update().get(
+                user=user
+            )
+            
+            # Add the payout to spot balance (original bet was already deducted)
+            wallet.spot_balance += payout_amount
+            wallet.balance = wallet.spot_balance + wallet.bonus_balance
+            wallet.save()
+            
+            # Record the transaction
+            Transaction.objects.create(
+                wallet=wallet,
+                transaction_type="CRASH_WIN",
+                amount=payout_amount,
+                balance_before=wallet.spot_balance - payout_amount,
+                balance_after=wallet.spot_balance,
+                reference=reference,
+                description=f"Crash auto cashout at {bet.cashout_multiplier}x",
+                status="COMPLETED",
+                metadata={
+                    "bet_id": bet.id,
+                    "round_id": bet.round.id,
+                    "crash_multiplier": str(bet.cashout_multiplier),
+                    "auto_cashout": True,
+                    "original_bet": str(bet.bet_amount),
+                    "payout_multiplier": str(bet.cashout_multiplier)
+                }
+            )
+            
+            logger.info(f"Auto cashout processed for user {user.id}: "
+                       f"bet {bet.id}, payout {payout_amount}, "
+                       f"new balance {wallet.spot_balance}")
+            
+            return wallet.spot_balance
+            
+        except Exception as e:
+            logger.error(f"Failed to process auto cashout for user {user.id}, "
+                        f"bet {bet.id}: {str(e)}")
+            raise ValueError(f"Auto cashout failed: {str(e)}")

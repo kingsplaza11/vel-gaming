@@ -72,13 +72,6 @@ def place_bet(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Check maximum bet
-        max_bet = getattr(risk, 'max_bet_per_player', Decimal('1000'))
-        if amount > max_bet:
-            return Response(
-                {'error': f'Maximum bet is ₦{max_bet}'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
         
         # Validate auto cashout if provided
         if auto_cashout:
@@ -418,7 +411,7 @@ def get_stats(request):
         risk = RiskSettings.get()
         risk_data = {
             'min_bet': float(getattr(risk, 'min_bet_per_player', Decimal('100'))),
-            'max_bet': float(getattr(risk, 'max_bet_per_player', Decimal('1000'))),
+            'max_bet': float(getattr(risk, 'max_bet_per_player', Decimal('999999999'))),
             'max_win_per_bet': float(getattr(risk, 'max_win_per_bet', Decimal('50000'))),
             'max_exposure_per_round': float(getattr(risk, 'max_exposure_per_round', Decimal('10000'))),
             'house_edge': float(getattr(risk, 'house_edge_percent', Decimal('1.0'))),

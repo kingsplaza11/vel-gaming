@@ -69,11 +69,11 @@
                 <h5 class="mb-0">Wallet</h5>
 
                 {% if wallet %}
-                    <button class="btn btn-sm btn-outline-warning"
+                    <!-- <button class="btn btn-sm btn-outline-warning"
                             type="button"
                             onclick="document.getElementById('wallet-edit-form').classList.toggle('d-none')">
                         <i class="fas fa-edit me-1"></i> Edit Wallet
-                    </button>
+                    </button> -->
                 {% endif %}
             </div>
 
@@ -85,7 +85,7 @@
                 </div>
 
                 <!-- Edit form (hidden by default) -->
-                <form method="post"
+                <!-- <form method="post"
                     action="{% url 'adminpanel:update_wallet' user_obj.id %}"
                     id="wallet-edit-form"
                     class="d-none mt-3">
@@ -123,7 +123,7 @@
                             Cancel
                         </button>
                     </div>
-                </form>
+                </form> -->
             {% else %}
                 <span class="badge badge-soft-secondary">No Wallet</span>
             {% endif %}

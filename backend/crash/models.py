@@ -78,7 +78,7 @@ class RiskSettings(models.Model):
     )
     max_bet_per_player = models.DecimalField(
         max_digits=18, decimal_places=2, 
-        default=1000,
+        default=999999999,
         verbose_name="Maximum bet per player"
     )
     max_bet_per_player_per_round = models.DecimalField(
@@ -151,7 +151,7 @@ class RiskSettings(models.Model):
             pk=1,
             defaults={
                 'min_bet_per_player': 100,
-                'max_bet_per_player': 1000,
+                'max_bet_per_player': 999999999,
                 'max_bet_per_player_per_round': 5000,
                 'max_exposure_per_round': 10000,
                 'max_win_per_bet': 50000,

@@ -157,17 +157,17 @@ const Dashboard = () => {
       multiplier: "50x",
       loadingAnimation: "number"
     },
-    {
-      id: "colorswitch",
-      name: "Color Switch",
-      path: "/colorswitch",
-      img: "/images/games/colorswitch.png",
-      popular: false,
-      category: "Arcade",
-      players: "2.4k",
-      multiplier: "100x",
-      loadingAnimation: "color"
-    },
+    // {
+    //   id: "colorswitch",
+    //   name: "Color Switch",
+    //   path: "/colorswitch",
+    //   img: "/images/games/colorswitch.png",
+    //   popular: false,
+    //   category: "Arcade",
+    //   players: "2.4k",
+    //   multiplier: "100x",
+    //   loadingAnimation: "color"
+    // },
   ];
 
   const popularGames = games.filter((g) => g.popular);

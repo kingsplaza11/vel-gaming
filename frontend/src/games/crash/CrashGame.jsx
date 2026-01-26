@@ -26,7 +26,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   const [roundId, setRoundId] = useState(null);
 
   /* ---------------- BET STATE ---------------- */
-  const [betAmount, setBetAmount] = useState("1000"); // Start with minimum stake
+  const [betAmount, setBetAmount] = useState("100"); // Start with minimum stake
   const [autoCashout, setAutoCashout] = useState(2.0);
   const [useAuto, setUseAuto] = useState(true);
   const [activeBetId, setActiveBetId] = useState(null);
@@ -311,6 +311,13 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   };
 
   const quickBets = [1000, 2000, 5000, 10000];
+  
+  /* ---------------- QUICK AUTO CASHOUT HANDLER ---------------- */
+  const handleQuickAutoCashout = (value) => {
+    setAutoCashout(value);
+  };
+
+  const quickAutoCashouts = [1.5, 2.0, 3.0, 5.0, 10.0];
 
   /* ---------------- RENDER ---------------- */
   return (
@@ -370,11 +377,23 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
           <CrashCandleChart multiplier={multiplier} phase={phase} />
 
           <div className="history-row">
-            {history.slice(0, 18).map((v, i) => (
-              <span key={i} className={`chip ${colorFor(v)}`}>
-                {v.toFixed(2)}x
-              </span>
-            ))}
+            {history.length > 0 ? (
+              history.slice(0, 5).map((v, i) => (
+                <span key={i} className={`chip ${colorFor(v)}`}>
+                  {v.toFixed(2)}x
+                </span>
+              ))
+            ) : (
+              <div style={{
+                width: '100%',
+                textAlign: 'center',
+                padding: '12px',
+                color: 'rgba(255,255,255,0.35)',
+                fontSize: '12px'
+              }}>
+                No previous rounds yet
+              </div>
+            )}
           </div>
         </div>
 
@@ -402,12 +421,12 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                 />
               </div>
               
-              <div className="quick-bet-container">
+              <div className="quick quick-bet-container">
                 {quickBets.map((amount) => (
                   <button 
                     key={amount} 
                     onClick={() => handleQuickBet(amount)}
-                    className={`quick-bet-btn ${numericBet === amount ? 'active' : ''}`}
+                    className={`${numericBet === amount ? 'active' : ''}`}
                     disabled={walletLoading || amount > balance}
                     type="button"
                   >
@@ -424,6 +443,85 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
               )}
             </div>
 
+            {/* Auto Cashout Settings */}
+            <div className="field two">
+              <div className="toggle">
+                <div className="panel-title" style={{ fontSize: "14px", marginBottom: "8px" }}>Auto Cashout</div>
+                <div 
+                  className={`pill ${useAuto ? 'on' : 'off'}`}
+                  onClick={() => setUseAuto(!useAuto)}
+                  style={{ cursor: (phase !== "betting" || activeBetId || walletLoading) ? 'not-allowed' : 'pointer', opacity: (phase !== "betting" || activeBetId || walletLoading) ? 0.5 : 1 }}
+                >
+                  {useAuto ? 'ENABLED' : 'DISABLED'}
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: "12px", color: useAuto ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.35)" }}>
+                    Cashout at
+                  </label>
+                  <div style={{ fontSize: "18px", fontWeight: "bold", color: useAuto ? "#00ff99" : "rgba(255,255,255,0.35)" }}>
+                    {autoCashout.toFixed(1)}x
+                  </div>
+                </div>
+                
+                <input
+                  type="range"
+                  min="1.1"
+                  max="50"
+                  step="0.1"
+                  value={autoCashout}
+                  onChange={(e) => setAutoCashout(parseFloat(e.target.value))}
+                  disabled={!useAuto || phase !== "betting" || activeBetId || walletLoading}
+                  style={{
+                    width: '100%',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: useAuto ? 'linear-gradient(90deg, #00ff99 0%, #ff3b3b 100%)' : 'rgba(255,255,255,0.1)',
+                    outline: 'none',
+                    opacity: (!useAuto || phase !== "betting" || activeBetId || walletLoading) ? 0.5 : 1,
+                    cursor: (!useAuto || phase !== "betting" || activeBetId || walletLoading) ? 'not-allowed' : 'pointer'
+                  }}
+                />
+                
+                <div className="quick" style={{ marginTop: '4px' }}>
+                  {quickAutoCashouts.map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => handleQuickAutoCashout(value)}
+                      className={autoCashout === value ? 'active' : ''}
+                      disabled={!useAuto || phase !== "betting" || activeBetId || walletLoading}
+                      type="button"
+                      style={{
+                        fontSize: '11px',
+                        padding: '6px 4px'
+                      }}
+                    >
+                      {value.toFixed(1)}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Payout Preview */}
+            {useAuto && isStakeValid && (
+              <div className="field" style={{ marginTop: "-4px", marginBottom: "16px" }}>
+                <div style={{ 
+                  fontSize: "12px", 
+                  color: "#00ff99",
+                  textAlign: "center",
+                  padding: "8px",
+                  borderRadius: "8px",
+                  background: "rgba(0,255,153,0.05)",
+                  border: "1px solid rgba(0,255,153,0.15)"
+                }}>
+                  Auto cashout at <strong>{autoCashout.toFixed(1)}x</strong> will payout <strong>{formatNGN(numericBet * autoCashout)}</strong>
+                </div>
+              </div>
+            )}
+
             {/* Error Display */}
             {error && (
               <div className="error-display">
@@ -435,7 +533,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
             <div className="actions">
               {!activeBetId ? (
                 <button
-                  className={`bet-btn ${!isStakeValid || walletLoading ? 'disabled' : ''}`}
+                  className={`primary ${!isStakeValid || walletLoading ? 'disabled' : ''}`}
                   onClick={placeBet}
                   disabled={!connected || phase !== "betting" || !isStakeValid || walletLoading}
                   type="button"
@@ -444,7 +542,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                 </button>
               ) : (
                 <button
-                  className="cashout-btn"
+                  className="danger"
                   onClick={cashOut}
                   disabled={!connected || phase !== "running" || walletLoading}
                   type="button"
@@ -453,54 +551,61 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                 </button>
               )}
 
-              <div className="game-status">
+              <div className="hint">
                 {phase === "betting" && (
-                  <div className="status-message">
-                    <span className="status-icon">⏳</span>
-                    <span className="status-text">
-                      {isStakeValid 
-                        ? "Place bet before flight starts" 
-                        : `Minimum bet: ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`}
-                    </span>
+                  <div>
+                    {isStakeValid 
+                      ? "Place your bet before the round starts" 
+                      : `Minimum bet: ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`}
                   </div>
                 )}
                 {phase === "running" && (
-                  <div className="status-message">
-                    <span className="status-icon">🚀</span>
-                    <span className="status-text">
-                      {activeBetId
-                        ? `Flight live! Current: ${multiplier.toFixed(2)}x`
-                        : "Flight live - Watch the multiplier!"}
-                    </span>
+                  <div>
+                    {activeBetId
+                      ? `Flight is live! Current multiplier: ${multiplier.toFixed(2)}x`
+                      : "Flight is live - watch the multiplier rise!"}
                   </div>
                 )}
                 {phase === "crashed" && (
-                  <div className="status-message">
-                    <span className="status-icon">💥</span>
-                    <span className="status-text">
-                      Round crashed at {history[0]?.toFixed(2)}x — Next round starting soon
-                    </span>
+                  <div>
+                    Round crashed at {history[0]?.toFixed(2)}x — Next round starting soon
                   </div>
                 )}
               </div>
               
               {/* Active Bet Info */}
               {activeBetId && (
-                <div className="active-bet-info">
-                  <div className="active-bet-details">
-                    <span className="bet-label">Active Bet:</span>
-                    <span className="bet-amount">{formatNGN(numericBet)}</span>
-                    {useAuto && (
-                      <span className="auto-info">Auto: {autoCashout.toFixed(1)}x</span>
-                    )}
+                <div style={{
+                  background: "rgba(0,0,0,0.3)",
+                  borderRadius: "12px",
+                  padding: "12px",
+                  marginTop: "12px",
+                  border: "1px solid rgba(0,255,153,0.2)"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)" }}>Active Bet:</span>
+                    <span style={{ fontSize: "14px", fontWeight: "bold", color: "#00ff99" }}>
+                      {formatNGN(numericBet)}
+                    </span>
                   </div>
-                  <div className="current-multiplier">
-                    <span className="multiplier-label">Current:</span>
-                    <span className="multiplier-value">{multiplier.toFixed(2)}x</span>
-                    {useAuto && autoCashout && (
-                      <span className="auto-progress">
-                        {(multiplier / autoCashout * 100).toFixed(0)}% to auto cashout
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", marginRight: "8px" }}>Current:</span>
+                      <span style={{ fontSize: "16px", fontWeight: "bold", color: "#00ff99" }}>
+                        {multiplier.toFixed(2)}x
                       </span>
+                    </div>
+                    {useAuto && autoCashout && (
+                      <div style={{
+                        fontSize: "11px",
+                        color: "#ffd36b",
+                        background: "rgba(255,211,107,0.1)",
+                        padding: "4px 8px",
+                        borderRadius: "12px",
+                        border: "1px solid rgba(255,211,107,0.2)"
+                      }}>
+                        {(multiplier / autoCashout * 100).toFixed(0)}% to auto
+                      </div>
                     )}
                   </div>
                 </div>
@@ -508,7 +613,42 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
             </div>
           </div>
 
-          <LiveBetTable rows={liveRows} />
+          <div className="livebets-card">
+            <div className="livebets-head">
+              <span>LIVE BETS</span>
+              <span className="muted">{liveRows.length} players</span>
+            </div>
+            <div className="livebets-scroll">
+              {liveRows.length > 0 ? (
+                <table className="livebets-table">
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th className="right">Bet</th>
+                      <th className="right">Multiplier</th>
+                      <th className="right">Payout</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveRows.map((row) => (
+                      <tr key={row.bet_id}>
+                        <td className="user">{row.user || "Anonymous"}</td>
+                        <td className="right">{formatNGN(row.amount)}</td>
+                        <td className="right">
+                          {row.multiplier ? `${row.multiplier.toFixed(2)}x` : "—"}
+                        </td>
+                        <td className="right">
+                          {row.payout ? formatNGN(row.payout) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="empty">No live bets yet</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

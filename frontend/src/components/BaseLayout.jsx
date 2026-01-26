@@ -543,27 +543,6 @@ const BaseLayout = ({ user, onLogout }) => {
             </nav>
 
             <div className="sidebar-footer">
-              <div className="theme-switch-container">
-                <div className="theme-switch">
-                  <button
-                    className={`theme-option ${!isDarkMode ? "active" : ""}`}
-                    onClick={() => toggleTheme(false)}
-                    aria-label="Light mode"
-                  >
-                    <Icon icon="mdi:weather-sunny" />
-                    <div className="theme-glow"></div>
-                  </button>
-                  <button
-                    className={`theme-option ${isDarkMode ? "active" : ""}`}
-                    onClick={() => toggleTheme(true)}
-                    aria-label="Dark mode"
-                  >
-                    <Icon icon="mdi:weather-night" />
-                    <div className="theme-glow"></div>
-                  </button>
-                </div>
-                <div className="theme-label">Theme</div>
-              </div>
 
               <button className="logout-btn" onClick={handleLogout}>
                 <div className="logout-glow"></div>

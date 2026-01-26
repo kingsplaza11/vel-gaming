@@ -5,6 +5,23 @@
   color: #fff;
   box-sizing: border-box;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile-specific scrolling optimizations */
+@media (max-width: 768px) {
+  .crash-page {
+    padding: 12px 12px 30px;
+    height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent horizontal scrolling */
+  body {
+    overflow-x: hidden;
+  }
 }
 
 .muted { color: rgba(255,255,255,0.55); }
@@ -16,12 +33,14 @@
   gap: 14px;
   align-items: center;
   margin-bottom: 14px;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .brand {
   display: flex;
   gap: 12px;
   align-items: center;
+  min-height: 44px; /* Minimum touch target */
 }
 .brand .dot {
   width: 12px;
@@ -55,6 +74,7 @@
   grid-template-columns: 1.25fr 0.75fr;
   gap: 14px;
   align-items: start;
+  min-height: 0; /* Important for flex/grid children scrolling */
 }
 
 .chart-card, .panel-card, .livebets-card {
@@ -62,18 +82,30 @@
   border: 1px solid rgba(92, 255, 210, 0.12);
   border-radius: 18px;
   box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+  overflow: hidden; /* Prevent content from overflowing cards */
 }
 
 .chart-card {
   padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for scrolling */
+}
+
+.crash-chart-wrap {
+  flex: 1;
+  min-height: 200px; /* Minimum height for chart */
+  overflow: hidden;
 }
 
 .crash-chart-wrap canvas {
   width: 100%;
-  height: auto;
+  height: 100%;
+  min-height: 200px;
   border-radius: 14px;
   background: rgba(0,0,0,0.35);
   border: 1px solid rgba(255,255,255,0.08);
+  display: block; /* Prevent inline extra space */
 }
 
 .history-row {
@@ -81,6 +113,8 @@
   gap: 8px;
   flex-wrap: wrap;
   padding: 10px 2px 2px;
+  flex-shrink: 0; /* Prevent history from shrinking */
+  min-height: 32px; /* Minimum height for history */
 }
 
 .chip {
@@ -89,6 +123,8 @@
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.10);
   background: rgba(0,0,0,0.25);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .chip.red { color: #ff6363; border-color: rgba(255,99,99,0.25); }
 .chip.yellow { color: #ffd36b; border-color: rgba(255,211,107,0.25); }
@@ -98,19 +134,34 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0; /* Important for scrolling */
 }
 
 .panel-card {
   padding: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for scrolling */
+}
+
+.panel-content {
+  flex: 1;
+  min-height: 0; /* Important for scrolling */
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-title {
   font-weight: 900;
   margin-bottom: 12px;
   letter-spacing: 0.2px;
+  flex-shrink: 0; /* Prevent title from shrinking */
 }
 
-.field { margin-bottom: 12px; }
+.field { 
+  margin-bottom: 12px; 
+  flex-shrink: 0; /* Prevent fields from shrinking */
+}
 .field label {
   display: block;
   font-size: 12px;
@@ -128,12 +179,14 @@
   color: #fff;
   font-size: 14px;
   box-sizing: border-box;
+  min-height: 44px; /* Minimum touch target */
 }
 
 .quick {
   display: flex;
   gap: 8px;
   margin-top: 10px;
+  flex-shrink: 0; /* Prevent quick buttons from shrinking */
 }
 .quick button {
   flex: 1;
@@ -143,6 +196,8 @@
   background: rgba(255,255,255,0.06);
   color: #fff;
   cursor: pointer;
+  min-height: 44px; /* Minimum touch target */
+  font-size: 14px;
 }
 .quick button:hover { background: rgba(255,255,255,0.10); }
 
@@ -157,29 +212,37 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
 }
 .pill {
   border-radius: 999px;
-  padding: 10px 12px;
+  padding: 12px 12px; /* Increased padding for better touch */
   border: 1px solid rgba(255,255,255,0.10);
   cursor: pointer;
   color: #fff;
   background: rgba(255,255,255,0.06);
+  min-height: 44px; /* Minimum touch target */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .pill.on { border-color: rgba(0,255,153,0.30); box-shadow: 0 0 18px rgba(0,255,153,0.12); }
 .pill.off { border-color: rgba(255,59,59,0.30); box-shadow: 0 0 18px rgba(255,59,59,0.10); }
 
 .actions {
   margin-top: 6px;
+  flex-shrink: 0; /* Prevent actions from shrinking */
 }
 .primary, .danger {
   width: 100%;
-  padding: 13px 14px;
+  padding: 16px 14px; /* Increased padding for better touch */
   border-radius: 14px;
   border: none;
   font-weight: 900;
   cursor: pointer;
   letter-spacing: 0.4px;
+  min-height: 56px; /* Minimum touch target for important actions */
+  font-size: 16px;
 }
 .primary {
   background: linear-gradient(135deg, rgba(0,255,153,0.95), rgba(0,210,255,0.75));
@@ -202,10 +265,15 @@
   margin-top: 10px;
   font-size: 12px;
   color: rgba(255,255,255,0.55);
+  flex-shrink: 0;
 }
 
 .livebets-card {
   padding: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for scrolling */
+  flex: 1;
 }
 
 .livebets-head {
@@ -214,13 +282,16 @@
   align-items: center;
   margin-bottom: 10px;
   font-weight: 900;
+  flex-shrink: 0;
 }
 
 .livebets-scroll {
-  max-height: 360px;
-  overflow: auto;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.08);
+  min-height: 200px; /* Minimum height for live bets */
 }
 
 .livebets-table {
@@ -245,17 +316,9 @@
 .livebets-table .user { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty { text-align: center; color: rgba(255,255,255,0.55); padding: 20px 10px; }
 
-/* Mobile */
-@media (max-width: 980px) {
-  .crash-grid {
-    grid-template-columns: 1fr;
-  }
-  .stat-value { font-size: 20px; }
-  .livebets-scroll { max-height: 260px; }
-}
-
 .wallet {
   text-align: right;
+  flex-shrink: 0;
 }
 
 .wallet-label {
@@ -271,9 +334,6 @@
   color: #22c55e;
 }
 
-
-/* Add to CrashGame.css */
-
 /* Stake validation error */
 .stake-validation-error {
   margin-top: 8px;
@@ -286,6 +346,7 @@
   font-weight: 500;
   text-align: center;
   animation: fadeIn 0.2s ease;
+  flex-shrink: 0;
 }
 
 /* Active quick bet button */
@@ -315,8 +376,6 @@
   }
 }
 
-/* Add these styles to your existing CrashGame.css */
-
 /* Wallet Loading States */
 .wallet.loading .wallet-value {
   color: var(--neon-yellow);
@@ -336,8 +395,8 @@
   background: transparent;
   border: 2px solid var(--neon-cyan);
   color: var(--neon-cyan);
-  width: 40px;
-  height: 40px;
+  width: 44px; /* Increased for better touch */
+  height: 44px; /* Increased for better touch */
   border-radius: 50%;
   font-size: 1.5rem;
   cursor: pointer;
@@ -346,6 +405,7 @@
   align-items: center;
   justify-content: center;
   margin-right: 1rem;
+  flex-shrink: 0;
 }
 
 .back-button:hover {
@@ -364,6 +424,7 @@
   padding: 0 1rem;
   margin-bottom: 1rem;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .input-wrapper:focus-within {
@@ -388,6 +449,7 @@
   color: var(--neon-green);
   text-align: center;
   min-width: 0;
+  min-height: 44px; /* Minimum touch target */
 }
 
 .input-wrapper input:focus {
@@ -400,6 +462,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+  flex-shrink: 0;
 }
 
 @media (min-width: 480px) {
@@ -419,6 +482,10 @@
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9rem;
+  min-height: 44px; /* Minimum touch target */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .quick-bet-btn:hover:not(:disabled) {
@@ -438,77 +505,6 @@
   cursor: not-allowed;
 }
 
-/* Auto Cashout Settings */
-.auto-cashout-settings {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  border: 1px solid rgba(0, 243, 255, 0.2);
-}
-
-.auto-toggle {
-  margin-bottom: 1rem;
-}
-
-.auto-toggle label {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  color: var(--neon-cyan);
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.auto-toggle input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--neon-green);
-}
-
-.auto-amount {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.auto-amount label {
-  color: var(--neon-yellow);
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-.auto-input {
-  display: flex;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--neon-cyan);
-  border-radius: 8px;
-  padding: 0.5rem;
-  flex: 1;
-}
-
-.auto-input input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--neon-green);
-  font-family: var(--font-digital);
-  font-size: 1.2rem;
-  text-align: center;
-  min-width: 0;
-}
-
-.auto-input input:focus {
-  outline: none;
-}
-
-.auto-suffix {
-  color: var(--neon-yellow);
-  font-weight: bold;
-  margin-left: 0.5rem;
-}
-
 /* Error Display */
 .error-display {
   background: rgba(255, 0, 85, 0.1);
@@ -521,6 +517,7 @@
   gap: 0.8rem;
   color: var(--neon-red);
   animation: errorShake 0.5s ease;
+  flex-shrink: 0;
 }
 
 @keyframes errorShake {
@@ -549,6 +546,7 @@
   transition: all 0.3s ease;
   font-family: var(--font-arcade);
   margin-bottom: 1rem;
+  min-height: 56px; /* Minimum touch target */
 }
 
 .bet-btn:hover:not(:disabled) {
@@ -581,6 +579,7 @@
   font-family: var(--font-arcade);
   margin-bottom: 1rem;
   animation: cashoutPulse 2s infinite;
+  min-height: 56px; /* Minimum touch target */
 }
 
 @keyframes cashoutPulse {
@@ -599,89 +598,6 @@
   animation: none;
 }
 
-/* Game Status */
-.game-status {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.status-message {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  color: var(--neon-cyan);
-}
-
-.status-icon {
-  font-size: 1.2rem;
-}
-
-.status-text {
-  font-size: 0.95rem;
-  opacity: 0.9;
-}
-
-/* Active Bet Info */
-.active-bet-info {
-  background: rgba(0, 255, 157, 0.1);
-  border: 1px solid var(--neon-green);
-  border-radius: 10px;
-  padding: 1rem;
-  animation: activeBetPulse 2s infinite;
-}
-
-@keyframes activeBetPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.9; }
-}
-
-.active-bet-details,
-.current-multiplier {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.bet-label,
-.multiplier-label {
-  font-size: 0.9rem;
-  color: var(--neon-cyan);
-  opacity: 0.8;
-}
-
-.bet-amount {
-  font-family: var(--font-digital);
-  font-size: 1.1rem;
-  color: var(--neon-green);
-  font-weight: bold;
-}
-
-.auto-info {
-  font-size: 0.85rem;
-  color: var(--neon-yellow);
-  background: rgba(255, 247, 0, 0.1);
-  padding: 0.2rem 0.6rem;
-  border-radius: 12px;
-  border: 1px solid var(--neon-yellow);
-}
-
-.multiplier-value {
-  font-family: var(--font-digital);
-  font-size: 1.3rem;
-  color: var(--neon-green);
-  font-weight: bold;
-  text-shadow: 0 0 10px var(--neon-green);
-}
-
-.auto-progress {
-  font-size: 0.8rem;
-  color: var(--neon-yellow);
-  font-style: italic;
-}
-
 /* Loading Spinner */
 .loading-spinner-small {
   display: inline-block;
@@ -693,38 +609,121 @@
   animation: spin 1s linear infinite;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Mobile Responsive Design */
+@media (max-width: 980px) {
+  .crash-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 12px;
+    height: calc(100vh - 140px); /* Account for header */
+  }
+  
+  .chart-card {
+    min-height: 300px;
+    max-height: 350px;
+  }
+  
+  .panel {
+    min-height: 0;
+    max-height: calc(100vh - 450px); /* Adjust based on chart height */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .panel-card {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .stat-value { font-size: 20px; }
+  .livebets-scroll { 
+    max-height: 200px;
+    min-height: 150px;
+  }
+  
   .crash-header {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
+    flex-direction: row;
+    padding: 0;
+    margin-bottom: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: radial-gradient(circle at top, #03281b 0%, #020712 45%, #000 100%);
+    padding: 12px 0;
   }
   
   .back-button {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    z-index: 10;
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-right: 12px;
   }
   
   .brand {
-    padding-left: 50px;
+    padding-left: 0;
   }
   
   .wallet {
-    width: 100%;
-    text-align: center;
+    width: auto;
+    text-align: right;
   }
   
   .quick-bet-container {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .auto-amount {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
+  /* Make mobile scrolling smooth */
+  .crash-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .crash-page {
+    padding: 10px 10px 20px;
+  }
+  
+  .crash-grid {
+    height: calc(100vh - 120px);
+  }
+  
+  .chart-card {
+    min-height: 250px;
+    max-height: 300px;
+  }
+  
+  .panel {
+    max-height: calc(100vh - 400px);
+  }
+  
+  .field.two {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .quick-bet-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .livebets-scroll {
+    max-height: 150px;
+  }
+  
+  .title {
+    font-size: 16px;
+  }
+  
+  .sub {
+    font-size: 11px;
   }
 }
 
@@ -733,18 +732,75 @@
   .back-button:hover,
   .quick-bet-btn:hover,
   .bet-btn:hover,
-  .cashout-btn:hover {
+  .cashout-btn:hover,
+  .pill:hover,
+  .quick button:hover {
     transform: none !important;
   }
   
-  /* Increase touch targets */
+  /* Increase touch targets for mobile */
+  .back-button,
   .quick-bet-btn,
   .bet-btn,
-  .cashout-btn {
+  .cashout-btn,
+  .pill,
+  .quick button {
     min-height: 44px;
+  }
+  
+  .bet-btn,
+  .cashout-btn {
+    min-height: 56px;
   }
   
   .auto-toggle label {
     min-height: 30px;
   }
+  
+  /* Remove hover effects on mobile */
+  .quick button:hover {
+    background: rgba(255,255,255,0.06);
+  }
+  
+  .quick-bet-btn:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .bet-btn:hover:not(:disabled),
+  .cashout-btn:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* Prevent text selection on buttons */
+.quick button,
+.primary,
+.danger,
+.pill,
+.back-button,
+.quick-bet-btn {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Smooth transitions */
+.crash-page,
+.crash-grid,
+.panel,
+.panel-card,
+.livebets-scroll {
+  transition: all 0.3s ease;
+}
+
+/* Prevent overscroll on body */
+body {
+  overscroll-behavior-y: none;
+}
+
+.crash-page {
+  overscroll-behavior-y: auto;
 }

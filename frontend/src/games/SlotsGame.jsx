@@ -719,25 +719,6 @@ const SlotsGame = ({ user }) => {
         <div className="arcade-machine">
           {/* Machine Frame */}
           <div className="machine-frame">
-            <div className="frame-top">
-              <div className="machine-title">
-                <span className="title-glow">SLOT MASTER</span>
-                <span className="title-version">PRO</span>
-              </div>
-              <div className="machine-stats">
-                <div className="stat">
-                  <span className="stat-label">THEME</span>
-                  <span className="stat-value" style={{ color: selectedTheme.color }}>
-                    {selectedTheme.icon} {selectedTheme.name}
-                  </span>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">STAKE</span>
-                  <span className="stat-value">{formatNGN(betAmount)}</span>
-                </div>
-              </div>
-            </div>
-
             {/* Reels Display */}
             <div className="reels-display">
               <div className="display-frame">
