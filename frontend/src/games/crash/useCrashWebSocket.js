@@ -1,24 +1,24 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-/**
- * Stable Crash WebSocket Hook
- * - No LIVE/OFFLINE flicker
- * - Debounced disconnect
- * - Engine-driven connection state
- */
-export function useCrashWebSocket(mode = "real", onMessage) {
+export function useCrashWebSocket(mode = "real", onMessage, onSendReady) {
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const offlineTimerRef = useRef(null);
   const onMessageRef = useRef(onMessage);
+  const onSendReadyRef = useRef(onSendReady);
 
   const [connected, setConnected] = useState(false);
   const [engineAlive, setEngineAlive] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
+  // Update refs when callbacks change
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+
+  useEffect(() => {
+    onSendReadyRef.current = onSendReady;
+  }, [onSendReady]);
 
   const markOnline = useCallback(() => {
     if (offlineTimerRef.current) {
@@ -37,8 +37,36 @@ export function useCrashWebSocket(mode = "real", onMessage) {
       setEngineAlive(false);
       setConnectionStatus("disconnected");
       offlineTimerRef.current = null;
-    }, 5000); // 👈 5s debounce
+    }, 5000);
   }, []);
+
+  const send = useCallback((payload) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      try {
+        const payloadStr = JSON.stringify(payload);
+        console.log("[CRASH WS] 📤 Sending message:", payloadStr);
+        console.log("[CRASH WS] WebSocket readyState:", wsRef.current.readyState);
+        wsRef.current.send(payloadStr);
+        return true;
+      } catch (e) {
+        console.error("[CRASH WS] ❌ Failed to send message:", e);
+        console.error("[CRASH WS] Error details:", e.message);
+        return false;
+      }
+    } else {
+      console.warn(`[CRASH WS] ⚠️ Not connected. Ready state: ${wsRef.current?.readyState}`);
+      console.log(`[CRASH WS] Connected state: ${connected}`);
+      console.log(`[CRASH WS] Connection status: ${connectionStatus}`);
+      return false;
+    }
+  }, [connected, connectionStatus]);
+
+  // Notify parent when send function is ready
+  useEffect(() => {
+    if (onSendReadyRef.current) {
+      onSendReadyRef.current(send);
+    }
+  }, [send]);
 
   const connect = useCallback(() => {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -68,7 +96,7 @@ export function useCrashWebSocket(mode = "real", onMessage) {
         const payload = JSON.parse(event.data);
         console.log("[CRASH WS] 📨 Received message:", payload);
 
-        // 🔑 Any engine event means backend is alive
+        // Any engine event means backend is alive
         if (payload?.event) {
           if (payload.event.startsWith("round_")) {
             setEngineAlive(true);
@@ -125,28 +153,10 @@ export function useCrashWebSocket(mode = "real", onMessage) {
     };
   }, [connect]);
 
-  const send = useCallback((payload) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      try {
-        const payloadStr = JSON.stringify(payload);
-        console.log("[CRASH WS] 📤 Sending message:", payloadStr);
-        wsRef.current.send(payloadStr);
-        return true;
-      } catch (e) {
-        console.error("[CRASH WS] ❌ Failed to send message:", e);
-        return false;
-      }
-    } else {
-      console.warn(`[CRASH WS] ⚠️ Not connected. Ready state: ${wsRef.current?.readyState}`);
-      console.log(`[CRASH WS] Connection status: ${connectionStatus}`);
-      return false;
-    }
-  }, [connectionStatus]);
-
   return {
-    connected,      // transport + debounce
-    engineAlive,    // true only if engine broadcasts
+    connected,
+    engineAlive,
     send,
-    connectionStatus, // For debugging
+    connectionStatus,
   };
 }

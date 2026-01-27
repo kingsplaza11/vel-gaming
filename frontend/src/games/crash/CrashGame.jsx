@@ -7,29 +7,29 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../../contexts/WalletContext";
-import { crashService } from "../../services/api";
 import { useCrashWebSocket } from "./useCrashWebSocket";
 import CrashCandleChart from "./CrashCandleChart";
 import LiveBetTable from "./LiveBetTable";
 import AlertModal from "../../components/ui/AlertModal";
 import "./CrashGame.css";
 
-const MINIMUM_STAKE = 100; // Minimum stake of 100 naira
+const MINIMUM_STAKE = 100;
 
 export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   const navigate = useNavigate();
   const { wallet, loading: walletLoading, refreshWallet, availableBalance } = useWallet();
 
   /* ---------------- GAME STATE ---------------- */
-  const [phase, setPhase] = useState("betting"); // betting | running | crashed
+  const [phase, setPhase] = useState("betting");
   const [multiplier, setMultiplier] = useState(1.0);
   const [roundId, setRoundId] = useState(null);
 
   /* ---------------- BET STATE ---------------- */
-  const [betAmount, setBetAmount] = useState("100"); // Start with minimum stake
+  const [betAmount, setBetAmount] = useState("100");
   const [autoCashout, setAutoCashout] = useState(2.0);
   const [useAuto, setUseAuto] = useState(true);
   const [activeBetId, setActiveBetId] = useState(null);
+  const [currentBalance, setCurrentBalance] = useState(0);
 
   /* ---------------- UI DATA ---------------- */
   const [history, setHistory] = useState([]);
@@ -44,25 +44,9 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
     message: "",
   });
 
-  const showAlert = (type, title, message) => {
-    setAlert({ open: true, type, title, message });
-  };
-
   /* ---------------- REFS ---------------- */
   const lastCashoutRef = useRef(0);
-
-  /* ---------------- WALLET HELPERS ---------------- */
-  const getWalletBalance = () => {
-    return availableBalance !== undefined ? availableBalance : (availableBalance);
-  };
-
-  const balance = Number(getWalletBalance() || 0);
-  const numericBet = Number(betAmount);
-
-  /* ---------------- STAKE VALIDATION ---------------- */
-  const isStakeValid = useMemo(() => {
-    return Number.isFinite(numericBet) && numericBet >= MINIMUM_STAKE && numericBet <= balance;
-  }, [numericBet, balance]);
+  const lastBetRef = useRef(0);
 
   /* ---------------- FORMATTING ---------------- */
   const formatNGN = (value) =>
@@ -84,6 +68,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
         amount: data.amount,
         multiplier: data.multiplier || null,
         payout: data.payout || null,
+        cashout_type: data.cashout_type || null,
       };
       const next = [row, ...prev.filter((p) => p.bet_id !== row.bet_id)];
       return next.slice(0, 40);
@@ -98,51 +83,31 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
               ...r,
               multiplier: data.multiplier || r.multiplier,
               payout: data.payout || r.payout,
+              cashout_type: data.cashout_type || r.cashout_type,
             }
           : r
       )
     );
   }, []);
 
-  /* ---------------- AUTO CASHOUT (SAFE) ---------------- */
-  const safeAutoCashout = useCallback(
-    async (m) => {
-      const now = Date.now();
-      if (now - lastCashoutRef.current < 400) return;
-      lastCashoutRef.current = now;
+  /* ---------------- ALERT HELPER ---------------- */
+  const showAlert = useCallback((type, title, message) => {
+    setAlert({ open: true, type, title, message });
+  }, []);
 
-      try {
-        const res = await crashService.cashOut({
-          bet_id: activeBetId,
-          multiplier: m,
-          mode,
-        });
-
-        setActiveBetId(null);
-
-        // Update wallet
-        if (refreshWallet) {
-          await refreshWallet();
-        }
-
-        // Also update parent component if needed
-        if (onBalanceUpdate && res.data?.balance != null) {
-          onBalanceUpdate((prev) => ({
-            ...prev,
-            wallet_balance: res.data.balance,
-          }));
-        }
-      } catch {
-        // ignore – too late or already cashed
-      }
-    },
-    [activeBetId, mode, refreshWallet, onBalanceUpdate]
-  );
-
-  /* ---------------- WEBSOCKET HANDLER ---------------- */
+  /* ---------------- WEBSOCKET MESSAGE HANDLER ---------------- */
   const handleMessage = useCallback(
     (msg) => {
       const { event, data } = msg;
+
+      console.log("[CRASH] WebSocket message:", event, data);
+
+      if (event === "connected") {
+        console.log("[CRASH] Connected to game server");
+        if (data?.mode) {
+          console.log(`[CRASH] Mode: ${data.mode}`);
+        }
+      }
 
       if (event === "round_start") {
         setPhase("betting");
@@ -150,10 +115,16 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
         setRoundId(data.round_id ?? null);
         setActiveBetId(null);
         setLiveRows([]);
+        console.log(`[CRASH] Round started: ${data.round_id}`);
+      }
+
+      if (event === "round_countdown") {
+        console.log(`[CRASH] Round countdown: ${data.seconds}s`);
       }
 
       if (event === "round_lock_bets") {
         setPhase("running");
+        console.log("[CRASH] Bets locked, round is running");
       }
 
       if (event === "multiplier_update") {
@@ -162,8 +133,21 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
 
         setMultiplier(m);
 
+        // Auto cashout logic
         if (activeBetId && useAuto && autoCashout && m >= autoCashout) {
-          safeAutoCashout(m);
+          const now = Date.now();
+          if (now - lastCashoutRef.current < 400) return;
+          lastCashoutRef.current = now;
+
+          console.log(`[CRASH] Auto cashout triggered at ${m}x`);
+          
+          sendRef.current?.({
+            event: "cashout",
+            data: {
+              bet_id: activeBetId,
+              multiplier: m.toString()
+            }
+          });
         }
       }
 
@@ -174,6 +158,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
           setHistory((prev) => [cp, ...prev].slice(0, 50));
         }
         setActiveBetId(null);
+        console.log(`[CRASH] Round crashed at ${cp}x`);
       }
 
       if (event === "player_bet") {
@@ -187,6 +172,17 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
       if (event === "bet_accepted") {
         setActiveBetId(data.bet_id);
         setRoundId(data.round_id ?? roundId);
+        if (data.balance) {
+          setCurrentBalance(parseFloat(data.balance));
+          refreshWallet && refreshWallet();
+        }
+        showAlert("success", "Bet Placed", `Bet of ${formatNGN(data.amount)} placed successfully!`);
+        console.log(`[CRASH] Bet accepted: ${data.bet_id}`);
+      }
+
+      if (event === "bet_failed") {
+        setError(data.error || "Failed to place bet");
+        showAlert("error", "Bet Failed", data.error || "Failed to place bet");
       }
 
       if (event === "cashout_success") {
@@ -194,7 +190,61 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
           bet_id: data.bet_id,
           multiplier: data.multiplier,
           payout: data.payout,
+          cashout_type: "MANUAL",
         });
+        setActiveBetId(null);
+        if (data.balance) {
+          setCurrentBalance(parseFloat(data.balance));
+          refreshWallet && refreshWallet();
+        }
+        showAlert(
+          "success",
+          "Cashout Successful",
+          `You cashed out at ${data.multiplier}x for ${formatNGN(data.payout)}!`
+        );
+        console.log(`[CRASH] Manual cashout: ${data.bet_id} at ${data.multiplier}x`);
+      }
+
+      if (event === "cashout_failed") {
+        showAlert("error", "Cashout Failed", data.error || "Failed to cash out");
+      }
+
+      if (event === "auto_cashout_triggered") {
+        updateLiveCashout({
+          bet_id: data.bet_id,
+          multiplier: data.multiplier,
+          payout: data.payout,
+          cashout_type: "AUTO",
+        });
+        setActiveBetId(null);
+        if (data.balance) {
+          setCurrentBalance(parseFloat(data.balance));
+          refreshWallet && refreshWallet();
+        }
+        showAlert(
+          "info",
+          "Auto Cashout",
+          `Auto cashout triggered at ${data.multiplier}x for ${formatNGN(data.payout)}!`
+        );
+        console.log(`[CRASH] Auto cashout: ${data.bet_id} at ${data.multiplier}x`);
+      }
+
+      if (event === "bet_crashed") {
+        setActiveBetId(null);
+        showAlert(
+          "error",
+          "Bet Lost",
+          `Round crashed at ${data.crash_multiplier}x. You lost ${formatNGN(data.lost_amount)}.`
+        );
+        console.log(`[CRASH] Bet crashed: lost ${data.lost_amount}`);
+      }
+
+      if (event === "auto_cashout_cancelled") {
+        showAlert("info", "Auto Cashout", "Auto cashout has been cancelled.");
+      }
+
+      if (event === "cancel_auto_cashout_failed") {
+        showAlert("error", "Cancel Failed", data.error || "Failed to cancel auto cashout");
       }
     },
     [
@@ -202,15 +252,37 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
       autoCashout,
       pushLiveBet,
       roundId,
-      safeAutoCashout,
       updateLiveCashout,
       useAuto,
+      refreshWallet,
+      formatNGN,
+      showAlert
     ]
   );
 
-  const { connected, engineAlive } = useCrashWebSocket(mode, handleMessage);
+  // Create a ref to hold the send function
+  const sendRef = useRef(null);
 
-  /* ---------------- REST ACTIONS ---------------- */
+  /* ---------------- WEBSOCKET CONNECTION ---------------- */
+  const { connected, engineAlive } = useCrashWebSocket(mode, handleMessage, (sendFn) => {
+    // Store the send function in a ref so we can access it
+    sendRef.current = sendFn;
+  });
+
+  /* ---------------- WALLET HELPERS ---------------- */
+  const getWalletBalance = () => {
+    return availableBalance !== undefined ? availableBalance : (availableBalance);
+  };
+
+  const balance = Number(getWalletBalance() || 0);
+  const numericBet = Number(betAmount);
+
+  /* ---------------- STAKE VALIDATION ---------------- */
+  const isStakeValid = useMemo(() => {
+    return Number.isFinite(numericBet) && numericBet >= MINIMUM_STAKE && numericBet <= balance;
+  }, [numericBet, balance]);
+
+  /* ---------------- PLACE BET VIA WEBSOCKET ---------------- */
   const placeBet = async () => {
     setError("");
 
@@ -220,89 +292,93 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
       return;
     }
 
-    // Check minimum stake
     if (numericBet < MINIMUM_STAKE) {
       setError(`Minimum bet is ₦${MINIMUM_STAKE.toLocaleString("en-NG")}`);
       return;
     }
 
-    // Check balance
     if (numericBet > balance) {
       setError("Insufficient balance");
       return;
     }
 
-    // Check if wallet is loading
     if (walletLoading) {
       setError("Please wait while your balance loads...");
       return;
     }
 
-    try {
-      const res = await crashService.placeBet({
-        amount: numericBet,
-        auto_cashout: useAuto ? autoCashout : null,
-        mode,
-      });
+    if (!connected) {
+      setError("Not connected to game server. Please wait...");
+      return;
+    }
 
-      setActiveBetId(res.data.bet_id);
+    if (phase !== "betting") {
+      setError("Cannot place bet - betting phase has ended");
+      return;
+    }
 
-      // Update wallet
-      if (refreshWallet) {
-        await refreshWallet();
+    // Throttle bet requests
+    const now = Date.now();
+    if (now - lastBetRef.current < 1000) {
+      setError("Please wait before placing another bet");
+      return;
+    }
+    lastBetRef.current = now;
+
+    // Send via WebSocket
+    const success = sendRef.current?.({
+      event: "place_bet",
+      data: {
+        amount: numericBet.toString(),
+        auto_cashout: useAuto ? autoCashout.toString() : null,
+        device_fp: "web-client"
       }
+    });
 
-      // Also update parent component if needed
-      if (onBalanceUpdate && res.data?.balance != null) {
-        onBalanceUpdate((prev) => ({
-          ...prev,
-          wallet_balance: res.data.balance,
-        }));
-      }
-    } catch (e) {
-      const errorMsg = e?.response?.data?.detail || 
-                      e?.response?.data?.error || 
-                      "Failed to place bet";
-      setError(errorMsg);
-      showAlert("error", "Bet Failed", errorMsg);
+    if (!success) {
+      setError("Failed to send bet request. Please try again.");
+      showAlert("error", "Connection Error", "Failed to connect to game server. Please try again.");
     }
   };
 
+  /* ---------------- CASHOUT VIA WEBSOCKET ---------------- */
   const cashOut = async () => {
-    if (!activeBetId) return;
-
-    try {
-      const res = await crashService.cashOut({
-        bet_id: activeBetId,
-        multiplier,
-        mode,
-      });
-
-      setActiveBetId(null);
-
-      // Update wallet
-      if (refreshWallet) {
-        await refreshWallet();
-      }
-
-      // Also update parent component if needed
-      if (onBalanceUpdate && res.data?.balance != null) {
-        onBalanceUpdate((prev) => ({
-          ...prev,
-          wallet_balance: res.data.balance,
-        }));
-      }
-
-      showAlert(
-        "success",
-        "Cashout Successful",
-        `You cashed out at ${multiplier.toFixed(2)}x!`
-      );
-    } catch (e) {
-      const errorMsg = e?.response?.data?.detail || 
-                      "Too late to cash out. The round has already crashed.";
-      showAlert("error", "Cashout Failed", errorMsg);
+    if (!activeBetId || !connected) {
+      showAlert("error", "Cashout Failed", "No active bet or not connected");
+      return;
     }
+
+    if (phase !== "running") {
+      showAlert("error", "Cashout Failed", "Cannot cash out - round is not running");
+      return;
+    }
+
+    const success = sendRef.current?.({
+      event: "cashout",
+      data: {
+        bet_id: activeBetId,
+        multiplier: multiplier.toString()
+      }
+    });
+
+    if (!success) {
+      showAlert("error", "Cashout Failed", "Failed to send cashout request. Please try again.");
+    }
+  };
+
+  /* ---------------- CANCEL AUTO CASHOUT ---------------- */
+  const cancelAutoCashout = () => {
+    if (!activeBetId || !connected) {
+      showAlert("error", "Cancel Failed", "No active bet or not connected");
+      return;
+    }
+
+    sendRef.current?.({
+      event: "cancel_auto_cashout",
+      data: {
+        bet_id: activeBetId
+      }
+    });
   };
 
   /* ---------------- QUICK BET HANDLER ---------------- */
@@ -318,6 +394,18 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
   };
 
   const quickAutoCashouts = [1.5, 2.0, 3.0, 5.0, 10.0];
+
+  /* ---------------- CALCULATE POTENTIAL PAYOUT ---------------- */
+  const potentialPayout = useMemo(() => {
+    if (!isStakeValid || !useAuto) return 0;
+    return numericBet * autoCashout;
+  }, [numericBet, autoCashout, useAuto, isStakeValid]);
+
+  /* ---------------- CALCULATE PROGRESS TO AUTO CASHOUT ---------------- */
+  const progressToAutoCashout = useMemo(() => {
+    if (!activeBetId || !useAuto || !autoCashout || multiplier >= autoCashout) return 100;
+    return (multiplier / autoCashout) * 100;
+  }, [activeBetId, useAuto, autoCashout, multiplier]);
 
   /* ---------------- RENDER ---------------- */
   return (
@@ -337,14 +425,14 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
             <div className="sub">
               <span
                 className={
-                  engineAlive
+                  engineAlive && connected
                     ? "live"
                     : connected
                     ? "connecting"
                     : "offline"
                 }
               >
-                {engineAlive
+                {engineAlive && connected
                   ? "LIVE"
                   : connected
                   ? "CONNECTING"
@@ -415,7 +503,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                       setBetAmount(numericBet.toFixed(2));
                     }
                   }}
-                  disabled={walletLoading}
+                  disabled={walletLoading || phase !== "betting" || activeBetId}
                   placeholder={`Min ${formatNGN(MINIMUM_STAKE)}`}
                   inputMode="decimal"
                 />
@@ -427,7 +515,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                     key={amount} 
                     onClick={() => handleQuickBet(amount)}
                     className={`${numericBet === amount ? 'active' : ''}`}
-                    disabled={walletLoading || amount > balance}
+                    disabled={walletLoading || amount > balance || phase !== "betting" || activeBetId}
                     type="button"
                   >
                     ₦{amount.toLocaleString()}
@@ -449,8 +537,14 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                 <div className="panel-title" style={{ fontSize: "14px", marginBottom: "8px" }}>Auto Cashout</div>
                 <div 
                   className={`pill ${useAuto ? 'on' : 'off'}`}
-                  onClick={() => setUseAuto(!useAuto)}
-                  style={{ cursor: (phase !== "betting" || activeBetId || walletLoading) ? 'not-allowed' : 'pointer', opacity: (phase !== "betting" || activeBetId || walletLoading) ? 0.5 : 1 }}
+                  onClick={() => {
+                    if (phase !== "betting" || activeBetId || walletLoading) return;
+                    setUseAuto(!useAuto);
+                  }}
+                  style={{ 
+                    cursor: (phase !== "betting" || activeBetId || walletLoading) ? 'not-allowed' : 'pointer', 
+                    opacity: (phase !== "betting" || activeBetId || walletLoading) ? 0.5 : 1 
+                  }}
                 >
                   {useAuto ? 'ENABLED' : 'DISABLED'}
                 </div>
@@ -506,7 +600,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
             </div>
 
             {/* Payout Preview */}
-            {useAuto && isStakeValid && (
+            {useAuto && isStakeValid && phase === "betting" && (
               <div className="field" style={{ marginTop: "-4px", marginBottom: "16px" }}>
                 <div style={{ 
                   fontSize: "12px", 
@@ -517,7 +611,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                   background: "rgba(0,255,153,0.05)",
                   border: "1px solid rgba(0,255,153,0.15)"
                 }}>
-                  Auto cashout at <strong>{autoCashout.toFixed(1)}x</strong> will payout <strong>{formatNGN(numericBet * autoCashout)}</strong>
+                  Auto cashout at <strong>{autoCashout.toFixed(1)}x</strong> will payout <strong>{formatNGN(potentialPayout)}</strong>
                 </div>
               </div>
             )}
@@ -541,14 +635,34 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                   {walletLoading ? "LOADING..." : "PLACE BET"}
                 </button>
               ) : (
-                <button
-                  className="danger"
-                  onClick={cashOut}
-                  disabled={!connected || phase !== "running" || walletLoading}
-                  type="button"
-                >
-                  CASH OUT AT {multiplier.toFixed(2)}x
-                </button>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <button
+                    className="danger"
+                    onClick={cashOut}
+                    disabled={!connected || phase !== "running" || walletLoading}
+                    type="button"
+                    style={{ padding: "12px" }}
+                  >
+                    CASH OUT AT {multiplier.toFixed(2)}x
+                  </button>
+                  
+                  {useAuto && (
+                    <button
+                      className="secondary"
+                      onClick={cancelAutoCashout}
+                      disabled={!connected || walletLoading}
+                      type="button"
+                      style={{
+                        fontSize: "12px",
+                        padding: "8px",
+                        background: "rgba(255,255,255,0.1)",
+                        border: "1px solid rgba(255,255,255,0.2)"
+                      }}
+                    >
+                      CANCEL AUTO CASHOUT
+                    </button>
+                  )}
+                </div>
               )}
 
               <div className="hint">
@@ -602,11 +716,38 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                         background: "rgba(255,211,107,0.1)",
                         padding: "4px 8px",
                         borderRadius: "12px",
-                        border: "1px solid rgba(255,211,107,0.2)"
+                        border: "1px solid rgba(255,211,107,0.2)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
                       }}>
-                        {(multiplier / autoCashout * 100).toFixed(0)}% to auto
+                        <div style={{
+                          width: "40px",
+                          height: "4px",
+                          background: "rgba(255,255,255,0.1)",
+                          borderRadius: "2px",
+                          overflow: "hidden"
+                        }}>
+                          <div 
+                            style={{
+                              width: `${progressToAutoCashout}%`,
+                              height: "100%",
+                              background: "#ffd36b",
+                              transition: "width 0.3s ease"
+                            }}
+                          />
+                        </div>
+                        <span>{(progressToAutoCashout).toFixed(0)}% to auto</span>
                       </div>
                     )}
+                  </div>
+                  <div style={{ 
+                    fontSize: "11px", 
+                    color: "rgba(255,255,255,0.5)", 
+                    marginTop: "8px",
+                    textAlign: "center"
+                  }}>
+                    Current value: {formatNGN(numericBet * multiplier)}
                   </div>
                 </div>
               )}
@@ -627,6 +768,7 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                       <th className="right">Bet</th>
                       <th className="right">Multiplier</th>
                       <th className="right">Payout</th>
+                      <th className="right">Type</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -635,10 +777,15 @@ export default function CrashGame({ user, onBalanceUpdate, mode = "real" }) {
                         <td className="user">{row.user || "Anonymous"}</td>
                         <td className="right">{formatNGN(row.amount)}</td>
                         <td className="right">
-                          {row.multiplier ? `${row.multiplier.toFixed(2)}x` : "—"}
+                          {row.multiplier ? `${row.multiplier}x` : "—"}
                         </td>
                         <td className="right">
                           {row.payout ? formatNGN(row.payout) : "—"}
+                        </td>
+                        <td className="right">
+                          <span className={`cashout-type ${row.cashout_type?.toLowerCase() || 'active'}`}>
+                            {row.cashout_type || "ACTIVE"}
+                          </span>
                         </td>
                       </tr>
                     ))}

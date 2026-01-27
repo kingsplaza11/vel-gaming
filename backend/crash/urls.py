@@ -10,7 +10,5 @@ urlpatterns = [
     path('history/', views.get_history, name='crash_history'),
     path('cancel-bet/', views.cancel_bet, name='crash_cancel_bet'),
     
-    # WebSocket URL (for channels routing)
-    # Note: This would be handled by channels routing, not Django URL patterns
 ]
 
