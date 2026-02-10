@@ -51,6 +51,17 @@ const WalletDashboard = () => {
     });
   };
 
+  const getTransactionTypeLabel = (txType) => {
+    switch(txType) {
+      case 'CREDIT':
+        return 'Deposit';
+      case 'DEBIT':
+        return 'Withdrawal';
+      default:
+        return txType || 'Unknown';
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await refreshWallet();
@@ -215,74 +226,6 @@ const WalletDashboard = () => {
             </div>
           </div>
 
-          {/* QUICK ACTIONS */}
-          <div className="quick-actions">
-            <div className="section-header">
-              <Icon icon="mdi:lightning-bolt" className="section-icon" />
-              <h2>Quick Actions</h2>
-            </div>
-            <div className="action-buttons">
-              <button 
-                className="action-btn deposit-action"
-                onClick={() => setActiveTab('deposit')}
-              >
-                <div className="action-glow"></div>
-                <Icon icon="mdi:credit-card-plus" className="action-icon" />
-                <div className="action-text">
-                  <span className="action-title">Deposit Funds</span>
-                  <span className="action-subtitle">Add money to wallet</span>
-                </div>
-                <Icon icon="mdi:arrow-right" className="action-arrow" />
-              </button>
-
-              <button 
-                className="action-btn withdraw-action"
-                onClick={() => setActiveTab('withdraw')}
-              >
-                <div className="action-glow"></div>
-                <Icon icon="mdi:credit-card-minus" className="action-icon" />
-                <div className="action-text">
-                  <span className="action-title">Withdraw Funds</span>
-                  <span className="action-subtitle">Cash out winnings</span>
-                </div>
-                <Icon icon="mdi:arrow-right" className="action-arrow" />
-              </button>
-
-              <button 
-                className="action-btn refresh-action"
-                onClick={handleRefresh}
-                disabled={refreshing}
-              >
-                <div className="action-glow"></div>
-                <div className="action-icon">
-                  {refreshing ? (
-                    <div className="refresh-spinner"></div>
-                  ) : (
-                    <Icon icon="mdi:refresh" />
-                  )}
-                </div>
-                <div className="action-text">
-                  <span className="action-title">Refresh Balance</span>
-                  <span className="action-subtitle">Update wallet status</span>
-                </div>
-                <Icon icon="mdi:arrow-right" className="action-arrow" />
-              </button>
-
-              <button 
-                className="action-btn total-action"
-                onClick={() => setActiveTab('total')}
-              >
-                <div className="action-glow"></div>
-                <Icon icon="mdi:calculator" className="action-icon" />
-                <div className="action-text">
-                  <span className="action-title">Balance Details</span>
-                  <span className="action-subtitle">View breakdown</span>
-                </div>
-                <Icon icon="mdi:arrow-right" className="action-arrow" />
-              </button>
-            </div>
-          </div>
-
           {/* RECENT TRANSACTIONS */}
           <div className="recent-transactions">
             <div className="section-header">
@@ -302,20 +245,16 @@ const WalletDashboard = () => {
             {safeTransactions.length > 0 ? (
               <div className="transactions-table">
                 <div className="table-header">
-                  <div className="table-cell">Date</div>
                   <div className="table-cell">Type</div>
                   <div className="table-cell">Amount</div>
-                  <div className="table-cell">Status</div>
+                  <div className="table-cell">Date</div>
                 </div>
                 <div className="table-body">
                   {safeTransactions.slice(0, 5).map((tx, index) => (
                     <div className="table-row" key={tx.id || tx.reference || index}>
-                      <div className="table-cell date-cell">
-                        {formatDate(tx.created_at)}
-                      </div>
                       <div className="table-cell">
                         <span className={`type-badge ${tx.tx_type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                          {tx.tx_type}
+                          {getTransactionTypeLabel(tx.tx_type)}
                         </span>
                       </div>
                       <div className="table-cell amount-cell">
@@ -323,10 +262,8 @@ const WalletDashboard = () => {
                           ₦{formatAmount(tx.amount)}
                         </span>
                       </div>
-                      <div className="table-cell">
-                        <span className={`status-badge ${tx.meta?.status }`}>
-                          {tx.meta?.status }
-                        </span>
+                      <div className="table-cell date-cell">
+                        {formatDate(tx.created_at)}
                       </div>
                     </div>
                   ))}
@@ -537,21 +474,17 @@ const WalletDashboard = () => {
           {safeTransactions.length > 0 ? (
             <div className="full-transactions-table">
               <div className="table-header full-header">
-                <div className="table-cell">Date</div>
                 <div className="table-cell">Type</div>
                 <div className="table-cell">Amount</div>
+                <div className="table-cell">Date</div>
                 <div className="table-cell">Reference</div>
-                <div className="table-cell">Status</div>
               </div>
               <div className="table-body">
                 {safeTransactions.map((tx, index) => (
                   <div className="table-row" key={tx.id || tx.reference || index}>
-                    <div className="table-cell date-cell">
-                      {formatDate(tx.created_at)}
-                    </div>
                     <div className="table-cell">
                       <span className={`type-badge ${tx.tx_type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                        {tx.tx_type}
+                        {getTransactionTypeLabel(tx.tx_type)}
                       </span>
                     </div>
                     <div className="table-cell amount-cell">
@@ -559,13 +492,11 @@ const WalletDashboard = () => {
                         ₦{formatAmount(tx.amount)}
                       </span>
                     </div>
+                    <div className="table-cell date-cell">
+                      {formatDate(tx.created_at)}
+                    </div>
                     <div className="table-cell reference-cell">
                       <span className="reference">{tx.reference || '--'}</span>
-                    </div>
-                    <div className="table-cell">
-                      <span className={`status-badge ${tx.meta?.status }`}>
-                        {tx.meta?.status }
-                      </span>
                     </div>
                   </div>
                 ))}

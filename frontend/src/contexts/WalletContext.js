@@ -13,6 +13,7 @@ export const useWallet = () => {
 
 export const WalletProvider = ({ children, user }) => {
   const [wallet, setWallet] = useState(null);
+  const [transactions, setTransactions] = useState([]); // ADDED: transactions state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -28,9 +29,33 @@ export const WalletProvider = ({ children, user }) => {
       locked_balance: parseFloat(apiData.locked_balance) || 0,
       total_balance: parseFloat(apiData.total_balance) || 0,
       updated_at: apiData.updated_at || new Date().toISOString(),
-      transactions: apiData.transactions || [],
     };
   };
+
+  /* ======================================================
+     FETCH TRANSACTIONS SEPARATELY
+  ====================================================== */
+  const fetchTransactions = useCallback(async () => {
+    if (!user) {
+      setTransactions([]);
+      return;
+    }
+
+    try {
+      const res = await api.get("/wallet/transactions/");
+      // Handle both array response and data property response
+      const transactionsData = Array.isArray(res.data) 
+        ? res.data 
+        : res.data.data || res.data.transactions || [];
+      
+      setTransactions(transactionsData);
+      return transactionsData;
+    } catch (err) {
+      console.warn("Failed to fetch transactions:", err);
+      setTransactions([]);
+      return [];
+    }
+  }, [user]);
 
   /* ======================================================
      SILENT WALLET FETCH (BACKGROUND REFRESH)
@@ -42,14 +67,17 @@ export const WalletProvider = ({ children, user }) => {
       const res = await api.get("/wallet/balance/");
       setWallet((prev) => normalizeWallet(res.data, prev));
       setLastUpdated(new Date().toISOString());
+      
+      // Also fetch transactions in silent refresh
+      fetchTransactions();
     } catch (err) {
       console.warn("Silent wallet refresh failed:", err);
       // Don't set error for silent refreshes
     }
-  }, [user]);
+  }, [user, fetchTransactions]);
 
   /* ======================================================
-     NORMAL WALLET FETCH (MANUAL)
+     NORMAL WALLET FETCH (MANUAL) - WITH TRANSACTIONS
   ====================================================== */
   const fetchWalletBalance = async () => {
     if (!user) return;
@@ -57,12 +85,36 @@ export const WalletProvider = ({ children, user }) => {
     setLoading(true);
     setError(null);
     try {
+      // Fetch wallet balance
       const res = await api.get("/wallet/balance/");
       setWallet((prev) => normalizeWallet(res.data, prev));
       setLastUpdated(new Date().toISOString());
+      
+      // Fetch transactions in parallel
+      const transactionsData = await fetchTransactions();
+      
+      return {
+        wallet: normalizeWallet(res.data),
+        transactions: transactionsData
+      };
     } catch (err) {
       console.error("Wallet fetch failed:", err);
-      setError("Failed to load wallet. Please try again.");
+      
+      // Check for specific error types
+      if (err.response) {
+        if (err.response.status === 401) {
+          setError("Session expired. Please log in again.");
+        } else if (err.response.status === 404) {
+          setError("Wallet not found. Please contact support.");
+        } else {
+          setError("Failed to load wallet. Please try again.");
+        }
+      } else if (err.request) {
+        setError("Network error. Please check your connection.");
+      } else {
+        setError("An unexpected error occurred.");
+      }
+      
       // Keep existing wallet data if available
     } finally {
       setLoading(false);
@@ -78,6 +130,7 @@ export const WalletProvider = ({ children, user }) => {
     } else {
       // Reset wallet if user logs out
       setWallet(null);
+      setTransactions([]); // Clear transactions
       setError(null);
       setLastUpdated(null);
     }
@@ -140,10 +193,18 @@ export const WalletProvider = ({ children, user }) => {
   };
 
   /* ======================================================
+     REFRESH TRANSACTIONS ONLY
+  ====================================================== */
+  const refreshTransactions = async () => {
+    return await fetchTransactions();
+  };
+
+  /* ======================================================
      CONTEXT VALUE
   ====================================================== */
   const value = {
     wallet,
+    transactions, // ADDED: transactions
     loading,
     error,
     lastUpdated,
@@ -151,6 +212,7 @@ export const WalletProvider = ({ children, user }) => {
     // Fetch functions
     fetchWalletBalance,
     refreshWallet,
+    refreshTransactions, // ADDED: function to refresh only transactions
     
     // Balance getters
     getAvailableBalance, // total available (balance + spot_balance)
@@ -166,6 +228,7 @@ export const WalletProvider = ({ children, user }) => {
     
     // State setters if needed
     setWallet,
+    setTransactions, // ADDED: setTransactions
     setLoading,
     setError,
   };

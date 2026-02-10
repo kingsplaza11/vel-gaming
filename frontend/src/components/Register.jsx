@@ -94,11 +94,6 @@ const Register = ({ onLogin }) => {
   return (
     <div className="auth-container">
       {/* Decorative Elements */}
-      <div className="decorative-cards"></div>
-      <div className="decorative-cards"></div>
-      <div className="decorative-cards"></div>
-      <div className="decorative-chip"></div>
-      <div className="decorative-chip"></div>
 
       <div className="auth-card">
         {/* Header */}

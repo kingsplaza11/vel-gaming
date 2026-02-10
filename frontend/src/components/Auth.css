@@ -17,17 +17,18 @@
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   background: linear-gradient(135deg, var(--veltora-darker) 0%, var(--veltora-dark) 50%, #1a1a2e 100%);
   position: relative;
-  overflow: hidden;
   padding: 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* Animated Background */
+/* Static Background - NO ANIMATION */
 .auth-container::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -36,26 +37,7 @@
     radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(255, 237, 78, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 40% 40%, rgba(212, 175, 55, 0.05) 0%, transparent 50%);
-  animation: pulseBackground 8s ease-in-out infinite alternate;
-}
-
-@keyframes pulseBackground {
-  0% {
-    opacity: 0.3;
-  }
-  100% {
-    opacity: 0.7;
-  }
-}
-
-/* Floating Elements Animation */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-20px) rotate(5deg);
-  }
+  z-index: 0;
 }
 
 /* Auth Card - Glass Morphism */
@@ -72,9 +54,9 @@
     0 0 100px rgba(255, 215, 0, 0.1),
     inset 0 0 20px rgba(255, 215, 0, 0.05);
   position: relative;
-  overflow: hidden;
-  z-index: 1;
+  z-index: 2;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin: 40px auto;
 }
 
 .auth-card:hover {
@@ -85,7 +67,7 @@
     inset 0 0 30px rgba(255, 215, 0, 0.1);
 }
 
-/* Card Background Pattern */
+/* Static Card Background Pattern - NO ANIMATION */
 .auth-card::before {
   content: '';
   position: absolute;
@@ -96,17 +78,7 @@
   background: 
     linear-gradient(45deg, transparent 30%, rgba(255, 215, 0, 0.03) 50%, transparent 70%),
     repeating-linear-gradient(45deg, transparent 0%, transparent 5%, rgba(255, 215, 0, 0.02) 5%, rgba(255, 215, 0, 0.02) 10%);
-  animation: shimmer 20s linear infinite;
   z-index: -1;
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%) translateY(-100%) rotate(45deg);
-  }
-  100% {
-    transform: translateX(100%) translateY(100%) rotate(45deg);
-  }
 }
 
 /* Logo Header */
@@ -135,7 +107,6 @@
   font-weight: 900;
   color: var(--veltora-dark);
   box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
-  animation: float 6s ease-in-out infinite;
 }
 
 .logo-text {
@@ -477,65 +448,60 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Decorative Elements */
+/* Static Decorative Elements - NO ANIMATION */
 .decorative-cards {
-  position: absolute;
-  z-index: 0;
-  animation: float 8s ease-in-out infinite;
+  position: fixed;
+  z-index: 1;
 }
 
 .decorative-cards:nth-child(1) {
   top: 10%;
   left: 10%;
   opacity: 0.3;
-  animation-delay: 0s;
 }
 
 .decorative-cards:nth-child(2) {
   bottom: 15%;
   right: 10%;
   opacity: 0.2;
-  animation-delay: 1s;
 }
 
 .decorative-cards:nth-child(3) {
   top: 40%;
   right: 15%;
   opacity: 0.25;
-  animation-delay: 2s;
 }
 
 .decorative-chip {
-  position: absolute;
+  position: fixed;
   width: 40px;
   height: 40px;
   background: linear-gradient(135deg, var(--veltora-gold), var(--veltora-gold-dark));
   border-radius: 50%;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  animation: float 5s ease-in-out infinite;
+  z-index: 1;
 }
 
 .decorative-chip:nth-child(1) {
   top: 20%;
   right: 20%;
-  animation-delay: 0.5s;
 }
 
 .decorative-chip:nth-child(2) {
   bottom: 25%;
   left: 15%;
-  animation-delay: 1.5s;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .auth-container {
-    padding: 15px;
+    padding: 20px 15px;
   }
   
   .auth-card {
     padding: 30px 25px;
     max-width: 400px;
+    margin: 30px auto;
   }
   
   .logo-symbol {
@@ -562,9 +528,14 @@
 }
 
 @media (max-width: 480px) {
+  .auth-container {
+    padding: 15px 10px;
+  }
+  
   .auth-card {
     padding: 25px 20px;
     border-radius: 20px;
+    margin: 20px auto;
   }
   
   .logo-container {
@@ -607,6 +578,58 @@
   .decorative-cards,
   .decorative-chip {
     display: none;
+  }
+}
+
+/* Center vertically on taller screens */
+@media (min-height: 700px) {
+  .auth-container {
+    align-items: center;
+  }
+  
+  .auth-card {
+    margin: 20px auto;
+  }
+}
+
+/* Smooth scrolling for the entire page */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for professional look */
+.auth-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.auth-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.3);
+  border-radius: 4px;
+}
+
+.auth-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 215, 0, 0.5);
+}
+
+/* Firefox scrollbar styling */
+.auth-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 215, 0, 0.3) transparent;
+}
+
+/* Ensure proper scrolling on all devices */
+@media (max-width: 768px) {
+  .auth-container {
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   }
 }
 
@@ -676,19 +699,14 @@
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
-  .auth-container::before,
-  .auth-card::before,
-  .auth-button::before,
-  .decorative-cards,
-  .decorative-chip,
-  .logo-symbol,
-  .error-message,
-  .success-message {
-    animation: none !important;
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
   
-  .auth-button:hover {
-    transform: none;
+  html {
+    scroll-behavior: auto;
   }
 }
 
@@ -721,65 +739,20 @@
   .auth-card {
     box-shadow: none;
     border: 1px solid #ccc;
+    max-width: 100%;
+    margin: 0;
   }
   
   .auth-button {
     background: #ccc !important;
     color: #000 !important;
   }
-}
-
-.auth-links {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 1rem;
-}
-
-.auth-link {
-  color: #ffd700;
-  text-decoration: none;
-  font-size: 0.9rem;
-  transition: color 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.auth-link:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-.success-message {
-  background: rgba(0, 255, 0, 0.1);
-  border: 1px solid rgba(0, 255, 0, 0.2);
-  border-radius: 4px;
-  padding: 12px;
-  margin: 1rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #00ff00;
-}
-
-.success-icon {
-  font-size: 1.2rem;
-}
-
-/* Add these styles to your Auth.css */
-.auth-link {
-  color: #ffd700;
-  text-decoration: none;
-  font-size: 0.9rem;
-  transition: color 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.auth-link:hover {
-  color: #fff;
-  text-decoration: underline;
+  
+  .auth-container {
+    overflow: visible;
+    min-height: auto;
+    padding: 0;
+  }
 }
 
 .auth-links {
@@ -788,6 +761,21 @@
   margin-top: 1rem;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.auth-link {
+  color: #ffd700;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.auth-link:hover {
+  color: #fff;
+  text-decoration: underline;
 }
 
 .success-message {
