@@ -205,14 +205,14 @@ def referral_dashboard(request):
         first_deposits_qs = WalletTransaction.objects.filter(
             user_id__in=referred_user_ids,
             first_deposit=True,
-            tx_type='CREDIT'  # Deposits are CREDIT type
+            tx_type='CREDIT',
             status="completed"
         )
 
         # TOTAL DEPOSITS (all successful CREDIT transactions from referred users)
         total_deposits_qs = WalletTransaction.objects.filter(
             user_id__in=referred_user_ids,
-            tx_type='CREDIT'  # Only credit transactions (deposits)
+            tx_type='CREDIT',
             status="completed"
 
         )
