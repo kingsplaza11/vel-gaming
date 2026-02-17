@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { referralService } from "../services/api";
 import "./Referral.css";
@@ -7,7 +7,12 @@ const Referral = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
+  
+  // Refs for direct DOM manipulation
+  const linkButtonRef = useRef(null);
+  const codeButtonRef = useRef(null);
+  const messageButtonRef = useRef(null);
+  
   const [shareText, setShareText] = useState("");
 
   useEffect(() => {
@@ -16,9 +21,8 @@ const Referral = () => {
     const fetchReferralData = async () => {
       try {
         const res = await referralService.getDashboard();
-        if (mounted) {
+        if (mounted && res?.data) {
           setData(res.data);
-          // Generate share text with user's referral code
           setShareText(
             `🎮 JOIN VELTORA & EARN AS YOU PLAY!\n\n` +
             `Play exciting games and earn real money! Use my referral code: ${res.data.referral_code}\n\n` +
@@ -31,7 +35,8 @@ const Referral = () => {
             `#EarnWhileYouPlay #GamingEarnings #VeltoraGaming`
           );
         }
-      } catch {
+      } catch (err) {
+        console.error("Error fetching referral data:", err);
         if (mounted) setError("Failed to load referral data");
       } finally {
         if (mounted) setLoading(false);
@@ -42,26 +47,116 @@ const Referral = () => {
     return () => (mounted = false);
   }, []);
 
-  const copyLink = () => {
-    if (!data?.referral_link) return;
-    navigator.clipboard.writeText(data.referral_link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  // Force copy function using multiple methods
+  const forceCopy = (text, type) => {
+    if (!text) {
+      alert(`No ${type} available to copy`);
+      return;
+    }
+
+    console.log(`Attempting to copy ${type}:`, text);
+
+    // Create a temporary input element
+    const tempInput = document.createElement('input');
+    tempInput.value = text;
+    tempInput.style.position = 'fixed';
+    tempInput.style.top = '0';
+    tempInput.style.left = '0';
+    tempInput.style.width = '100px';
+    tempInput.style.height = '30px';
+    tempInput.style.opacity = '1';
+    tempInput.style.zIndex = '999999';
+    tempInput.style.backgroundColor = 'white';
+    tempInput.style.color = 'black';
+    tempInput.style.fontSize = '14px';
+    tempInput.style.padding = '5px';
+    tempInput.readOnly = true;
+    
+    document.body.appendChild(tempInput);
+    
+    // Select the text
+    tempInput.select();
+    tempInput.setSelectionRange(0, 99999);
+    
+    let copied = false;
+    
+    // Try execCommand first (most reliable)
+    try {
+      copied = document.execCommand('copy');
+      console.log('execCommand result:', copied);
+    } catch (err) {
+      console.log('execCommand error:', err);
+    }
+    
+    // If execCommand failed, try clipboard API
+    if (!copied && navigator.clipboard) {
+      try {
+        navigator.clipboard.writeText(text).then(() => {
+          copied = true;
+          console.log('Clipboard API success');
+        }).catch(err => {
+          console.log('Clipboard API error:', err);
+        });
+      } catch (err) {
+        console.log('Clipboard API exception:', err);
+      }
+    }
+    
+    // Clean up
+    document.body.removeChild(tempInput);
+    
+    // Show result
+    if (copied) {
+      alert(`${type} copied successfully!`);
+    } else {
+      // Last resort - show prompt
+      const userCopy = prompt(`Please copy this ${type} manually:`, text);
+      if (userCopy !== null) {
+        alert(`You can now paste the ${type} wherever you need it.`);
+      }
+    }
   };
 
-  const copyCode = () => {
-    if (!data?.referral_code) return;
-    navigator.clipboard.writeText(data.referral_code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  // Direct button click handlers
+  const setupDirectClickHandlers = () => {
+    // Link button
+    if (linkButtonRef.current) {
+      linkButtonRef.current.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        forceCopy(data?.referral_link, 'referral link');
+        return false;
+      };
+    }
+    
+    // Code button
+    if (codeButtonRef.current) {
+      codeButtonRef.current.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        forceCopy(data?.referral_code, 'referral code');
+        return false;
+      };
+    }
+    
+    // Message button
+    if (messageButtonRef.current) {
+      messageButtonRef.current.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        forceCopy(shareText, 'share message');
+        return false;
+      };
+    }
   };
 
-  const copyShareText = () => {
-    if (!shareText) return;
-    navigator.clipboard.writeText(shareText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // Set up handlers after data loads
+  useEffect(() => {
+    if (data && !loading) {
+      // Small delay to ensure DOM is ready
+      setTimeout(setupDirectClickHandlers, 100);
+    }
+  }, [data, loading, shareText]);
 
   const shareToPlatform = (platform) => {
     if (!data?.referral_link) return;
@@ -105,13 +200,13 @@ const Referral = () => {
   }
 
   return (
-    <div className="">
-      <div className="">
+    <div className="referral-page">
+      <div className="referral-container">
         {/* HEADER SECTION */}
         <div className="referral-header">
           <div className="referral-header-content">
             <div className="logo-container" style={{ marginBottom: "15px" }}>
-              <div className="logo-symbol" style={{ animation: "float 6s ease-in-out infinite" }}>
+              <div className="logo-symbol">
                 <Icon icon="mdi:account-group" width="30" />
               </div>
               <h5 className="logo-text" style={{ fontSize: "1.2rem" }}>REFERRAL PROGRAM</h5>
@@ -121,161 +216,51 @@ const Referral = () => {
             </p>
           </div>
 
-          {/* =========================
-          REFERRAL STATS (4 GROUPS)
-          ========================= */}
+          {/* REFERRAL STATS */}
           <div className="referral-stats-grid">
-            {/* TODAY */}
-            <div className="stat-group">
-              <h4 className="stat-group-title">Today</h4>
-              <div className="stat-row-container">
-                <div className="stat-item">
-                  <span className="stat-label">Number of Invitations</span>
-                  <strong className="stat-value">{data.stats.today.referrals}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Count</span>
-                  <strong className="stat-value">{data.stats.today.successful}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.today.first_deposit_amount).toLocaleString()}
-                  </strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Total Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.today.total_deposit_amount).toLocaleString()}
-                  </strong>
-                </div>
-              </div>
-            </div>
-
-            {/* YESTERDAY */}
-            <div className="stat-group">
-              <h4 className="stat-group-title">Yesterday</h4>
-              <div className="stat-row-container">
-                <div className="stat-item">
-                  <span className="stat-label">Number of Invitations</span>
-                  <strong className="stat-value">{data.stats.yesterday.referrals}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Count</span>
-                  <strong className="stat-value">{data.stats.yesterday.successful}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.yesterday.first_deposit_amount).toLocaleString()}
-                  </strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Total Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.yesterday.total_deposit_amount).toLocaleString()}
-                  </strong>
+            {['today', 'yesterday', 'this_week', 'total'].map((period) => (
+              <div key={period} className={`stat-group ${period === 'total' ? 'total' : ''}`}>
+                <h4 className="stat-group-title">
+                  {period === 'today' ? 'Today' : 
+                   period === 'yesterday' ? 'Yesterday' : 
+                   period === 'this_week' ? 'This Week' : 'All Time'}
+                </h4>
+                <div className="stat-row-container">
+                  <div className="grid-stat-item">
+                    <span className="grid-stat-label">Number of Invitations</span>
+                    <strong className="grid-stat-value">
+                      {data?.stats?.[period]?.referrals || 0}
+                    </strong>
+                  </div>
+                  <div className="grid-stat-item">
+                    <span className="grid-stat-label">First Time Recharge Count</span>
+                    <strong className="grid-stat-value">
+                      {data?.stats?.[period]?.successful || 0}
+                    </strong>
+                  </div>
+                  <div className="grid-stat-item">
+                    <span className="grid-stat-label">First Time Recharge Amount</span>
+                    <strong className="grid-stat-value">
+                      ₦{Number(data?.stats?.[period]?.first_deposit_amount || 0).toLocaleString()}
+                    </strong>
+                  </div>
+                  <div className="grid-stat-item">
+                    <span className="grid-stat-label">Total Recharge Amount</span>
+                    <strong className="grid-stat-value">
+                      ₦{Number(data?.stats?.[period]?.total_deposit_amount || 0).toLocaleString()}
+                    </strong>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* THIS WEEK */}
-            <div className="stat-group">
-              <h4 className="stat-group-title">This Week</h4>
-              <div className="stat-row-container">
-                <div className="stat-item">
-                  <span className="stat-label">Number of Invitations</span>
-                  <strong className="stat-value">{data.stats.this_week.referrals}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Count</span>
-                  <strong className="stat-value">{data.stats.this_week.successful}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.this_week.first_deposit_amount).toLocaleString()}
-                  </strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Total Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.this_week.total_deposit_amount).toLocaleString()}
-                  </strong>
-                </div>
-              </div>
-            </div>
-
-            {/* ALL TIME */}
-            <div className="stat-group total">
-              <h4 className="stat-group-title">All Time</h4>
-              <div className="stat-row-container">
-                <div className="stat-item">
-                  <span className="stat-label">Number of Invitations</span>
-                  <strong className="stat-value">{data.stats.total.referrals}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Count</span>
-                  <strong className="stat-value">{data.stats.total.successful}</strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">First Time Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.total.first_deposit_amount).toLocaleString()}
-                  </strong>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Total Recharge Amount</span>
-                  <strong className="stat-value">
-                    ₦{Number(data.stats.total.total_deposit_amount).toLocaleString()}
-                  </strong>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* MAIN CONTENT - INDEPENDENT SECTIONS */}
+        {/* MAIN CONTENT */}
         <div className="referral-layout">
-          
-
-          {/* TWO-COLUMN LAYOUT FOR OTHER SECTIONS */}
           <div className="two-column-layout">
-            {/* LEFT COLUMN: SHARE & PROMOTE */}
+            {/* LEFT COLUMN */}
             <div className="column-left">
-              {/* Mobile Stats - Appear in a row under ref cards */}
-              <div className="mobile-stats-container" style={{ display: 'none' }}>
-                <div className="referral-stats-card mobile-stats">
-                  <div className="stat-item">
-                    <div className="stat-icon" style={{ background: "rgba(255, 215, 0, 0.1)" }}>
-                      <Icon icon="mdi:account-multiple" color="var(--veltora-gold)" width="20" />
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-value">{data.total_referrals || 0}</div>
-                      <div className="stat-label">Total</div>
-                    </div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-icon" style={{ background: "rgba(76, 175, 80, 0.1)" }}>
-                      <Icon icon="mdi:check-circle" color="#4CAF50" width="20" />
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-value">{data.successful_referrals || 0}</div>
-                      <div className="stat-label">Successful</div>
-                    </div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-icon" style={{ background: "rgba(255, 152, 0, 0.1)" }}>
-                      <Icon icon="mdi:clock" color="#FF9800" width="20" />
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-value">{data.pending_referrals || 0}</div>
-                      <div className="stat-label">Pending</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* YOUR REFERRAL LINK CARD */}
               <div className="auth-card" style={{ marginBottom: "25px" }}>
                 <div className="referral-link-header">
@@ -293,22 +278,24 @@ const Referral = () => {
                     <span className="input-icon">🔗</span>
                     <input
                       type="text"
-                      value={data.referral_link}
+                      value={data?.referral_link || ''}
                       readOnly
                       className="referral-link-input"
+                      id="referral-link-input"
                     />
                   </div>
                   <button 
+                    ref={linkButtonRef}
                     className="copy-button"
-                    onClick={copyLink}
-                    style={{ minWidth: "120px" }}
+                    id="copy-link-button"
+                    type="button"
                   >
-                    <Icon icon={copied ? "mdi:check" : "mdi:content-copy"} width="18" />
-                    {copied ? "Copied!" : "Copy Link"}
+                    <Icon icon="mdi:content-copy" width="18" />
+                    Copy Link
                   </button>
                 </div>
 
-                {/* REFERRAL CODE ONLY */}
+                {/* REFERRAL CODE */}
                 <div className="referral-code-section">
                   <h4 style={{ color: "rgba(255, 255, 255, 0.8)", marginBottom: "15px" }}>
                     <Icon icon="mdi:tag" style={{ marginRight: "8px" }} />
@@ -316,13 +303,15 @@ const Referral = () => {
                   </h4>
                   <div className="referral-code-box">
                     <div className="referral-code-display">
-                      <span className="code-text">{data.referral_code}</span>
+                      <span className="code-text" id="referral-code-text">{data?.referral_code || ''}</span>
                     </div>
                     <button 
+                      ref={codeButtonRef}
                       className="copy-button secondary"
-                      onClick={copyCode}
+                      id="copy-code-button"
+                      type="button"
                     >
-                      <Icon icon={copied ? "mdi:check" : "mdi:content-copy"} width="16" />
+                      <Icon icon="mdi:content-copy" width="16" />
                       Copy Code
                     </button>
                   </div>
@@ -340,45 +329,17 @@ const Referral = () => {
                 </p>
 
                 <div className="social-share-grid">
-                  <button 
-                    className="social-share-btn whatsapp"
-                    onClick={() => shareToPlatform("whatsapp")}
-                  >
-                    <Icon icon="mdi:whatsapp" width="28" />
-                    <span>WhatsApp</span>
-                  </button>
-
-                  <button 
-                    className="social-share-btn telegram"
-                    onClick={() => shareToPlatform("telegram")}
-                  >
-                    <Icon icon="mdi:telegram" width="28" />
-                    <span>Telegram</span>
-                  </button>
-
-                  <button 
-                    className="social-share-btn facebook"
-                    onClick={() => shareToPlatform("facebook")}
-                  >
-                    <Icon icon="mdi:facebook" width="28" />
-                    <span>Facebook</span>
-                  </button>
-
-                  <button 
-                    className="social-share-btn twitter"
-                    onClick={() => shareToPlatform("twitter")}
-                  >
-                    <Icon icon="mdi:twitter" width="28" />
-                    <span>Twitter</span>
-                  </button>
-
-                  <button 
-                    className="social-share-btn email"
-                    onClick={() => shareToPlatform("email")}
-                  >
-                    <Icon icon="mdi:email" width="28" />
-                    <span>Email</span>
-                  </button>
+                  {['whatsapp', 'telegram', 'facebook', 'twitter', 'email'].map((platform) => (
+                    <button 
+                      key={platform}
+                      className={`social-share-btn ${platform}`}
+                      onClick={() => shareToPlatform(platform)}
+                      type="button"
+                    >
+                      <Icon icon={`mdi:${platform}`} width="28" />
+                      <span>{platform.charAt(0).toUpperCase() + platform.slice(1)}</span>
+                    </button>
+                  ))}
                 </div>
 
                 <div className="copy-share-text-section">
@@ -387,12 +348,14 @@ const Referral = () => {
                     Copy Ready-Made Message
                   </h4>
                   <div className="share-text-preview">
-                    <p>{shareText.substring(0, 200)}...</p>
+                    <p>{shareText ? shareText.substring(0, 200) + '...' : ''}</p>
                   </div>
                   <button 
+                    ref={messageButtonRef}
                     className="copy-button"
-                    onClick={copyShareText}
+                    id="copy-message-button"
                     style={{ width: "100%", marginTop: "15px" }}
+                    type="button"
                   >
                     <Icon icon="mdi:content-copy" width="16" style={{ marginRight: "8px" }} />
                     Copy Full Message
@@ -401,9 +364,8 @@ const Referral = () => {
               </div>
             </div>
 
-            {/* RIGHT COLUMN: PROMOTION */}
+            {/* RIGHT COLUMN */}
             <div className="column-right">
-              {/* PROMOTION CONTENT CARD */}
               <div className="auth-card promotion-card">
                 <h3 style={{ color: "var(--veltora-gold)", marginBottom: "20px" }}>
                   <Icon icon="mdi:bullhorn" style={{ marginRight: "10px" }} />
@@ -430,7 +392,7 @@ const Referral = () => {
                       <p>You earn for every friend who signs up and becomes active!</p>
                     </div>
                     <div className="promo-highlight">
-                      YOUR CODE: <strong>{data.referral_code}</strong>
+                      YOUR CODE: <strong>{data?.referral_code || ''}</strong>
                     </div>
                   </div>
 
@@ -450,23 +412,15 @@ const Referral = () => {
                     🎮 Ready to Start Earning?
                   </h4>
                   <p style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: "0.95rem" }}>
-                    Share this link: <strong>{data.referral_link}</strong>
+                    Share this link: <strong>{data?.referral_link || ''}</strong>
                     <br />
-                    Or share this code: <strong className="highlight-code">{data.referral_code}</strong>
+                    Or share this code: <strong className="highlight-code">{data?.referral_code || ''}</strong>
                   </p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* COPY SUCCESS TOAST */}
-        {copied && (
-          <div className="copy-success-toast">
-            <Icon icon="mdi:check-circle" width="20" style={{ marginRight: "8px" }} />
-            Copied to clipboard!
-          </div>
-        )}
       </div>
     </div>
   );

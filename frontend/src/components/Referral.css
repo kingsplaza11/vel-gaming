@@ -4,6 +4,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
+  z-index: 99999;
 }
 
 .referral-header {
@@ -30,23 +31,23 @@
     margin-top: 20px;
   }
   
-  .stat-item {
+  .stats-card-item {
     padding: 15px 12px;
     flex-direction: column;
     text-align: center;
     gap: 12px;
   }
   
-  .stat-icon {
+  .stats-card-icon {
     width: 50px;
     height: 50px;
   }
   
-  .stat-value {
+  .stats-card-value {
     font-size: 1.4rem;
   }
   
-  .stat-label {
+  .stats-card-label {
     font-size: 0.75rem;
   }
 }
@@ -57,30 +58,31 @@
     gap: 8px;
   }
   
-  .stat-item {
+  .stats-card-item {
     padding: 12px 8px;
   }
   
-  .stat-icon {
+  .stats-card-icon {
     width: 40px;
     height: 40px;
   }
   
-  .stat-icon svg {
+  .stats-card-icon svg {
     width: 20px;
     height: 20px;
   }
   
-  .stat-value {
+  .stats-card-value {
     font-size: 1.2rem;
   }
   
-  .stat-label {
+  .stats-card-label {
     font-size: 0.7rem;
   }
 }
 
-.stat-item {
+/* Stats Card Item - Renamed to avoid conflict */
+.stats-card-item {
   background: rgba(15, 15, 20, 0.85);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 215, 0, 0.2);
@@ -92,13 +94,13 @@
   transition: all 0.3s ease;
 }
 
-.stat-item:hover {
+.stats-card-item:hover {
   transform: translateY(-3px);
   border-color: var(--veltora-gold);
   box-shadow: 0 10px 30px rgba(255, 215, 0, 0.15);
 }
 
-.stat-icon {
+.stats-card-icon {
   width: 60px;
   height: 60px;
   border-radius: 12px;
@@ -107,18 +109,18 @@
   justify-content: center;
 }
 
-.stat-info {
+.stats-card-info {
   flex: 1;
 }
 
-.stat-value {
+.stats-card-value {
   font-size: 1.8rem;
   font-weight: 800;
   color: var(--veltora-light);
   margin-bottom: 5px;
 }
 
-.stat-label {
+.stats-card-label {
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
@@ -140,7 +142,7 @@
 /* Two Column Layout - Adjust for Desktop Width */
 .two-column-layout {
   display: grid;
-  grid-template-columns: 1fr 1.2fr; /* Right column slightly wider */
+  grid-template-columns: 1fr 1.2fr;
   gap: 30px;
   margin-top: 20px;
 }
@@ -193,7 +195,7 @@
 .referrals-table-container {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 20px;
   border-radius: 10px;
 }
@@ -222,7 +224,7 @@
   
   .mobile-table {
     display: table;
-    min-width: 850px; /* Force horizontal scroll on mobile */
+    min-width: 850px;
   }
   
   .referrals-table-container {
@@ -426,10 +428,9 @@
   
   .referrals-table {
     width: 100%;
-    table-layout: fixed; /* Ensure consistent column widths */
+    table-layout: fixed;
   }
   
-  /* Adjust column widths for desktop */
   .table-header-row th:nth-child(1),
   .table-body-row td:nth-child(1) {
     width: 220px;
@@ -492,7 +493,6 @@
     }
   }
   
-  /* Mobile Stats - Make them appear in a row */
   .referral-stats-card.mobile-stats {
     display: flex;
     flex-direction: row;
@@ -502,7 +502,7 @@
     padding: 0 10px;
   }
   
-  .referral-stats-card.mobile-stats .stat-item {
+  .referral-stats-card.mobile-stats .stats-card-item {
     flex: 1;
     padding: 12px 8px;
     flex-direction: column;
@@ -510,16 +510,16 @@
     gap: 8px;
   }
   
-  .referral-stats-card.mobile-stats .stat-icon {
+  .referral-stats-card.mobile-stats .stats-card-icon {
     width: 40px;
     height: 40px;
   }
   
-  .referral-stats-card.mobile-stats .stat-value {
+  .referral-stats-card.mobile-stats .stats-card-value {
     font-size: 1.3rem;
   }
   
-  .referral-stats-card.mobile-stats .stat-label {
+  .referral-stats-card.mobile-stats .stats-card-label {
     font-size: 0.7rem;
   }
 }
@@ -618,82 +618,124 @@
   }
 }
 
-.referral-link-box .input-container {
+.input-container {
   flex: 1;
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .referral-link-input {
+  width: 100%;
+  padding: 12px 12px 12px 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 10px;
+  color: white;
   font-size: 0.9rem;
   font-family: 'Courier New', monospace;
-  background: rgba(255, 255, 255, 0.05) !important;
 }
 
+.referral-link-input:focus {
+  outline: none;
+  border-color: var(--veltora-gold);
+}
+
+/* Copy Button - FIXED */
 .copy-button {
   background: linear-gradient(135deg, var(--veltora-gold), var(--veltora-gold-light));
   color: var(--veltora-dark);
   border: none;
   padding: 12px 20px;
   border-radius: 10px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-width: 100px;
+  min-width: 110px;
+  position: relative;
+  z-index: 100;
+  opacity: 1 !important;
 }
 
-.copy-button:hover {
+.copy-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+}
+
+.copy-button:active {
+  transform: scale(0.98);
 }
 
 .copy-button.secondary {
-  background: rgba(255, 215, 0, 0.15);
+  background: rgba(255, 215, 0, 0.1);
   color: var(--veltora-gold);
   border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
-.copy-button.secondary:hover {
-  background: rgba(255, 215, 0, 0.25);
+.copy-button.secondary:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.copy-button.full-width {
+  width: 100%;
+}
+
+/* Ensure all clickable elements work */
+.social-share-btn,
+.referral-code-box button,
+.copy-button {
+  position: relative;
+  z-index: 10;
+}
+
+/* Fix any parent containers that might block clicks */
+.referral-link-box,
+.referral-code-box,
+.auth-card,
+.column-left,
+.column-right,
+.referral-page {
+  pointer-events: auto !important;
 }
 
 /* Referral Code */
 .referral-code-section {
-  margin-top: 25px;
-  padding-top: 25px;
+  margin-top: 20px;
+  padding-top: 20px;
   border-top: 1px solid rgba(255, 215, 0, 0.1);
 }
 
 .referral-code-box {
   display: flex;
-  gap: 15px;
+  gap: 12px;
   align-items: center;
-}
-
-@media (max-width: 768px) {
-  .referral-code-box {
-    flex-direction: column;
-  }
 }
 
 .referral-code-display {
   flex: 1;
-  background: rgba(255, 215, 0, 0.1);
-  border: 2px solid rgba(255, 215, 0, 0.3);
-  border-radius: 12px;
-  padding: 18px 20px;
+  background: rgba(255, 215, 0, 0.08);
+  border: 2px solid rgba(255, 215, 0, 0.2);
+  border-radius: 10px;
+  padding: 12px 15px;
   text-align: center;
 }
 
 .code-text {
   font-family: 'Courier New', monospace;
-  font-size: 1.3rem;
-  font-weight: 800;
+  font-size: 1.2rem;
+  font-weight: 700;
   color: var(--veltora-gold-light);
-  letter-spacing: 2px;
+  letter-spacing: 1px;
 }
 
 /* Social Sharing */
@@ -879,9 +921,11 @@
   display: flex;
   align-items: center;
   animation: slideUp 0.3s ease;
-  z-index: 1000;
+  z-index: 9999 !important;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 
 @media (max-width: 768px) {
@@ -925,7 +969,7 @@
 }
 
 /* =========================
-   REFERRAL STATS GRID - EACH GROUP AS A ROW WITH 4 COLUMNS
+   REFERRAL STATS GRID - NEW NAMES TO AVOID CONFLICTS
    ========================= */
 
 .referral-stats-grid {
@@ -969,15 +1013,15 @@
   border-bottom: 1px solid rgba(255, 215, 0, 0.2);
 }
 
-/* Each row has 4 columns (Referrals, First Time Recharges, First Time Amount, Total Amount) */
+/* Each row has 4 columns - USING NEW CLASS NAMES */
 .stat-row-container {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
-/* Individual stat item styling */
-.stat-item {
+/* Individual grid stat item - RENAMED to avoid conflict */
+.grid-stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -989,12 +1033,12 @@
   min-height: 90px;
 }
 
-.stat-item:hover {
+.grid-stat-item:hover {
   background: rgba(255, 215, 0, 0.05);
   border-color: rgba(255, 215, 0, 0.2);
 }
 
-.stat-label {
+.grid-stat-label {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85rem;
   margin-bottom: 8px;
@@ -1003,7 +1047,7 @@
   width: 100%;
 }
 
-.stat-value {
+.grid-stat-value {
   color: white;
   font-size: 1.2rem;
   font-weight: 700;
@@ -1011,21 +1055,21 @@
   width: 100%;
 }
 
-/* Specific styling for different stat items */
-.stat-item:nth-child(1) .stat-value { /* Invitations column */
-  color: #4dabf7; /* Light blue */
+/* Specific styling for different grid stat items */
+.grid-stat-item:nth-child(1) .grid-stat-value {
+  color: #4dabf7;
 }
 
-.stat-item:nth-child(2) .stat-value { /* First Time Recharges column */
-  color: #4CAF50; /* Green */
+.grid-stat-item:nth-child(2) .grid-stat-value {
+  color: #4CAF50;
 }
 
-.stat-item:nth-child(3) .stat-value { /* First Time Recharge Amount column */
-  color: #ffc107; /* Amber */
+.grid-stat-item:nth-child(3) .grid-stat-value {
+  color: #ffc107;
 }
 
-.stat-item:nth-child(4) .stat-value { /* Total Recharge Amount column */
-  color: var(--veltora-gold); /* Gold */
+.grid-stat-item:nth-child(4) .grid-stat-value {
+  color: var(--veltora-gold);
   font-size: 1.3rem;
 }
 
@@ -1035,21 +1079,21 @@
     gap: 10px;
   }
   
-  .stat-item {
+  .grid-stat-item {
     padding: 12px 8px;
     min-height: 85px;
   }
   
-  .stat-label {
+  .grid-stat-label {
     font-size: 0.82rem;
     margin-bottom: 6px;
   }
   
-  .stat-value {
+  .grid-stat-value {
     font-size: 1.1rem;
   }
   
-  .stat-item:nth-child(4) .stat-value {
+  .grid-stat-item:nth-child(4) .grid-stat-value {
     font-size: 1.2rem;
   }
 }
@@ -1075,42 +1119,40 @@
     gap: 12px;
   }
   
-  .stat-item {
+  .grid-stat-item {
     padding: 12px 8px;
     min-height: 80px;
   }
   
-  .stat-label {
+  .grid-stat-label {
     font-size: 0.8rem;
   }
   
-  .stat-value {
+  .grid-stat-value {
     font-size: 1rem;
   }
   
-  /* Adjust specific columns for 2-column layout */
-  .stat-item:nth-child(3) .stat-value {
+  .grid-stat-item:nth-child(3) .grid-stat-value {
     font-size: 1rem;
   }
   
-  .stat-item:nth-child(4) .stat-value {
+  .grid-stat-item:nth-child(4) .grid-stat-value {
     font-size: 1.1rem;
   }
   
-  /* Update colors for 2-column layout */
-  .stat-item:nth-child(1) .stat-value {
+  .grid-stat-item:nth-child(1) .grid-stat-value {
     color: #4dabf7;
   }
   
-  .stat-item:nth-child(2) .stat-value {
+  .grid-stat-item:nth-child(2) .grid-stat-value {
     color: #4CAF50;
   }
   
-  .stat-item:nth-child(3) .stat-value {
+  .grid-stat-item:nth-child(3) .grid-stat-value {
     color: #ffc107;
   }
   
-  .stat-item:nth-child(4) .stat-value {
+  .grid-stat-item:nth-child(4) .grid-stat-value {
     color: var(--veltora-gold);
   }
 }
@@ -1126,21 +1168,21 @@
     gap: 10px;
   }
   
-  .stat-item {
+  .grid-stat-item {
     padding: 10px 6px;
     min-height: 75px;
   }
   
-  .stat-label {
+  .grid-stat-label {
     font-size: 0.75rem;
     margin-bottom: 5px;
   }
   
-  .stat-value {
+  .grid-stat-value {
     font-size: 0.9rem;
   }
   
-  .stat-item:nth-child(4) .stat-value {
+  .grid-stat-item:nth-child(4) .grid-stat-value {
     font-size: 1rem;
   }
 }
@@ -1152,7 +1194,7 @@
     gap: 10px;
   }
   
-  .stat-item {
+  .grid-stat-item {
     flex-direction: row;
     justify-content: space-between;
     padding: 12px 15px;
@@ -1160,7 +1202,7 @@
     align-items: center;
   }
   
-  .stat-label {
+  .grid-stat-label {
     margin-bottom: 0;
     text-align: left;
     font-size: 0.8rem;
@@ -1168,19 +1210,19 @@
     flex: 1;
   }
   
-  .stat-value {
+  .grid-stat-value {
     text-align: right;
     font-size: 0.9rem;
     width: auto;
     margin-left: 10px;
   }
   
-  .stat-item:nth-child(4) .stat-value {
+  .grid-stat-item:nth-child(4) .grid-stat-value {
     font-size: 1rem;
   }
 }
 
-/* Optional: Add a subtle animation for stat items */
+/* Animation for grid stat items */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -1192,11 +1234,12 @@
   }
 }
 
-.stat-item {
+.grid-stat-item {
   animation: fadeInUp 0.3s ease-out forwards;
 }
 
-.stat-item:nth-child(1) { animation-delay: 0.1s; }
-.stat-item:nth-child(2) { animation-delay: 0.2s; }
-.stat-item:nth-child(3) { animation-delay: 0.3s; }
-.stat-item:nth-child(4) { animation-delay: 0.4s; }
+.grid-stat-item:nth-child(1) { animation-delay: 0.1s; }
+.grid-stat-item:nth-child(2) { animation-delay: 0.2s; }
+.grid-stat-item:nth-child(3) { animation-delay: 0.3s; }
+.grid-stat-item:nth-child(4) { animation-delay: 0.4s; }
+

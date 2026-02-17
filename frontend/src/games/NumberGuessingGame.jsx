@@ -190,11 +190,13 @@ const NumberGuessingGame = ({ user }) => {
 
   const playWrongGuessSound = (proximity) => {
     const proximitySounds = {
-      'Very Hot': 700, // High pitch for hot
-      'Hot': 600,
-      'Warm': 500,
-      'Cool': 400,
-      'Cold': 300  // Low pitch for cold
+      'SO CLOSE! 🎉': 700,
+      'Almost There! 🏃': 600,
+      'Getting Warm 🌡️': 500,
+      'Not Bad 👍': 400,
+      'Try Again 🔄': 300,
+      'Nope 👎': 200,
+      'Not Even Close 😅': 100
     };
     
     const baseFreq = proximitySounds[proximity] || 400;
@@ -420,7 +422,7 @@ const NumberGuessingGame = ({ user }) => {
           playWrongGuessSound(proximity);
         }
         
-        setFeedback(`${res.data.hint.toUpperCase()} - ${res.data.proximity_hint}`);
+        setFeedback(`${res.data.proximity_hint}`);
         setProximityHint(res.data.proximity_hint);
       }
 

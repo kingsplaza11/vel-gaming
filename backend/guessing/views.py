@@ -239,8 +239,6 @@ def make_guess(request):
 
         game.save()
 
-        # Provide hint
-        hint = "higher" if guess < game.target_number else "lower"
         
         # Calculate proximity hint (hot/cold)
         difference = abs(guess - game.target_number)
@@ -261,7 +259,6 @@ def make_guess(request):
         return Response({
             "status": "playing",
             "correct": False,
-            "hint": hint,
             "proximity_hint": proximity_hint,
             "difference": difference,
             "attempts": game.attempts,
