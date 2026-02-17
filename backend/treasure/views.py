@@ -28,40 +28,40 @@ TREASURES = {
     1: [
         {'name': 'Bronze Coin', 'multiplier': 0.5, 'image': '🪙'},
         {'name': 'Silver Ring', 'multiplier': 0.75, 'image': '💍'},
-        {'name': 'Ancient Pottery', 'multiplier': 1.0, 'image': '🏺'},
-        {'name': 'Rusty Key', 'multiplier': 1.25, 'image': '🗝️'},
+        {'name': 'Ancient Pottery', 'multiplier': 0.09, 'image': '🏺'},
+        {'name': 'Rusty Key', 'multiplier': 0.25, 'image': '🗝️'},
         # Above 1.5x for 45% wins
-        {'name': 'Glass Bead', 'multiplier': 1.6, 'image': '🔮'},
-        {'name': 'Copper Bracelet', 'multiplier': 1.8, 'image': '📿'},
-        {'name': 'Ivory Dice', 'multiplier': 2.0, 'image': '🎲'},
+        {'name': 'Glass Bead', 'multiplier': 0.36, 'image': '🔮'},
+        {'name': 'Copper Bracelet', 'multiplier': 0.08, 'image': '📿'},
+        {'name': 'Ivory Dice', 'multiplier': 0.09, 'image': '🎲'},
     ],
     2: [
         # All above 1.5x
-        {'name': 'Gold Necklace', 'multiplier': 2.25, 'image': '📿'},
-        {'name': 'Gemstone', 'multiplier': 2.5, 'image': '💎'},
-        {'name': 'Crystal Orb', 'multiplier': 2.75, 'image': '🔮'},
-        {'name': 'Silver Amulet', 'multiplier': 3.0, 'image': '🧿'},
+        {'name': 'Gold Necklace', 'multiplier': 0.09, 'image': '📿'},
+        {'name': 'Gemstone', 'multiplier': 0.09, 'image': '💎'},
+        {'name': 'Crystal Orb', 'multiplier': 0.25, 'image': '🔮'},
+        {'name': 'Silver Amulet', 'multiplier': 0.25, 'image': '🧿'},
     ],
     3: [
         # All above 1.5x
-        {'name': 'Royal Crown', 'multiplier': 3.25, 'image': '👑'},
-        {'name': 'Dragon Egg', 'multiplier': 3.5, 'image': '🥚'},
-        {'name': 'Magic Staff', 'multiplier': 4.0, 'image': '🪄'},
-        {'name': 'Gold Chalice', 'multiplier': 4.5, 'image': '🏆'},
+        {'name': 'Royal Crown', 'multiplier': 0.25, 'image': '👑'},
+        {'name': 'Dragon Egg', 'multiplier': 0.05, 'image': '🥚'},
+        {'name': 'Magic Staff', 'multiplier': 0.09, 'image': '🪄'},
+        {'name': 'Gold Chalice', 'multiplier': 0.16, 'image': '🏆'},
     ],
     4: [
         # All above 1.5x
-        {'name': 'Phoenix Feather', 'multiplier': 2.5, 'image': '🪶'},
-        {'name': 'Unicorn Horn', 'multiplier': 3.0, 'image': '🦄'},
-        {'name': 'Mermaid Scale', 'multiplier': 3.5, 'image': '🧜'},
-        {'name': 'Star Shard', 'multiplier': 4.0, 'image': '⭐'},
+        {'name': 'Phoenix Feather', 'multiplier': 0.09, 'image': '🪶'},
+        {'name': 'Unicorn Horn', 'multiplier': 0.25, 'image': '🦄'},
+        {'name': 'Mermaid Scale', 'multiplier': 0.25, 'image': '🧜'},
+        {'name': 'Star Shard', 'multiplier': 0.09, 'image': '⭐'},
     ],
     5: [
         # All above 1.5x
-        {'name': 'Infinity Stone', 'multiplier': 4.0, 'image': '💠'},
-        {'name': 'Cosmic Key', 'multiplier': 4.5, 'image': '🔑'},
-        {'name': 'Holy Grail', 'multiplier': 5.0, 'image': '🏆'},
-        {'name': 'Dragon Scale', 'multiplier': 6.0, 'image': '🐉'},
+        {'name': 'Infinity Stone', 'multiplier': 0.09, 'image': '💠'},
+        {'name': 'Cosmic Key', 'multiplier': 0.35, 'image': '🔑'},
+        {'name': 'Holy Grail', 'multiplier': 0.09, 'image': '🏆'},
+        {'name': 'Dragon Scale', 'multiplier': 0.27, 'image': '🐉'},
     ]
 }
 
@@ -77,17 +77,17 @@ def get_win_multiplier(win_type):
         # 45% chance - good wins above 1.5x
         rand = random.random()
         if rand < 0.40:  # 40% of above-1.5x wins: 1.6x - 3.0x
-            return random.uniform(1.6, 3.0)
+            return random.uniform(0.6, 0.25)
         elif rand < 0.70:  # 30% of above-1.5x wins: 3.1x - 4.5x
-            return random.uniform(3.1, 4.5)
+            return random.uniform(0.26, 0.30)
         elif rand < 0.90:  # 20% of above-1.5x wins: 4.6x - 6.0x
-            return random.uniform(4.6, 6.0)
+            return random.uniform(0.31, 0.40)
         else:  # 10% of above-1.5x wins: 6.1x - 8.0x
-            return random.uniform(6.1, 8.0)
+            return random.uniform(0.41, 0.05)
     
     else:  # 'below_1_5x'
         # 10% chance - small wins below 1.5x
-        return random.uniform(0.5, 1.49)
+        return random.uniform(0.5, 0.09)
 
 
 def get_win_multiplier_with_map_bonus(map_level, win_type):

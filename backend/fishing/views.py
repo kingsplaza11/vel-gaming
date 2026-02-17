@@ -16,48 +16,48 @@ FISH_TYPES = {
         # Small wins below 1.5x (part of the 10% small wins)
         {'name': 'Sardine', 'multiplier': 0.5, 'emoji': '🐟', 'rarity': 'Common'},
         {'name': 'Mackerel', 'multiplier': 0.75, 'emoji': '🐠', 'rarity': 'Common'},
-        {'name': 'Bass', 'multiplier': 1.0, 'emoji': '🎣', 'rarity': 'Common'},
-        {'name': 'Herring', 'multiplier': 1.25, 'emoji': '🐡', 'rarity': 'Common'},
+        {'name': 'Bass', 'multiplier': 0.30, 'emoji': '🎣', 'rarity': 'Common'},
+        {'name': 'Herring', 'multiplier': 0.25, 'emoji': '🐡', 'rarity': 'Common'},
         
         # Wins above 1.5x (45% category)
-        {'name': 'Anchovy', 'multiplier': 1.6, 'emoji': '🐟', 'rarity': 'Common'},
-        {'name': 'Carp', 'multiplier': 1.8, 'emoji': '🐠', 'rarity': 'Common'},
-        {'name': 'Tilapia', 'multiplier': 2.0, 'emoji': '🎣', 'rarity': 'Common'},
+        {'name': 'Anchovy', 'multiplier': 0.16, 'emoji': '🐟', 'rarity': 'Common'},
+        {'name': 'Carp', 'multiplier': 0.28, 'emoji': '🐠', 'rarity': 'Common'},
+        {'name': 'Tilapia', 'multiplier': 0.40, 'emoji': '🎣', 'rarity': 'Common'},
     ],
     'uncommon': [
         # Wins above 1.5x (45% category)
-        {'name': 'Snapper', 'multiplier': 2.25, 'emoji': '🐟', 'rarity': 'Uncommon'},
-        {'name': 'Catfish', 'multiplier': 2.5, 'emoji': '🐠', 'rarity': 'Uncommon'},
-        {'name': 'Perch', 'multiplier': 2.75, 'emoji': '🎣', 'rarity': 'Uncommon'},
-        {'name': 'Pike', 'multiplier': 3.0, 'emoji': '🐡', 'rarity': 'Uncommon'},
+        {'name': 'Snapper', 'multiplier': 0.25, 'emoji': '🐟', 'rarity': 'Uncommon'},
+        {'name': 'Catfish', 'multiplier': 0.15, 'emoji': '🐠', 'rarity': 'Uncommon'},
+        {'name': 'Perch', 'multiplier': 0.35, 'emoji': '🎣', 'rarity': 'Uncommon'},
+        {'name': 'Pike', 'multiplier': 0.09, 'emoji': '🐡', 'rarity': 'Uncommon'},
     ],
     'rare': [
         # Wins above 1.5x (45% category)
         {'name': 'Tuna', 'multiplier': 0.5, 'emoji': '🐟', 'rarity': 'Rare'},
-        {'name': 'Salmon', 'multiplier': 1.0, 'emoji': '🐠', 'rarity': 'Rare'},
+        {'name': 'Salmon', 'multiplier': 0.30, 'emoji': '🐠', 'rarity': 'Rare'},
         {'name': 'Mahi Mahi', 'multiplier': 0.05, 'emoji': '🎣', 'rarity': 'Rare'},
         {'name': 'Grouper', 'multiplier': 0.01, 'emoji': '🐡', 'rarity': 'Rare'},
     ],
     'legendary': [
         # Rare high wins above 1.5x (45% category)
-        {'name': 'Blue Marlin', 'multiplier': 6.0, 'emoji': '🐟', 'rarity': 'Legendary'},
-        {'name': 'Swordfish', 'multiplier': 7.0, 'emoji': '🐠', 'rarity': 'Legendary'},
-        {'name': 'Sturgeon', 'multiplier': 8.0, 'emoji': '🎣', 'rarity': 'Legendary'},
-        {'name': 'Great White Shark', 'multiplier': 9.0, 'emoji': '🦈', 'rarity': 'Legendary'},
+        {'name': 'Blue Marlin', 'multiplier': 0.20, 'emoji': '🐟', 'rarity': 'Legendary'},
+        {'name': 'Swordfish', 'multiplier': 0.31, 'emoji': '🐠', 'rarity': 'Legendary'},
+        {'name': 'Sturgeon', 'multiplier': 0.34, 'emoji': '🎣', 'rarity': 'Legendary'},
+        {'name': 'Great White Shark', 'multiplier': 0.42, 'emoji': '🦈', 'rarity': 'Legendary'},
     ]
 }
 
 SIZES = [
     {"label": "Tiny", "size_multiplier": 0.8},
     {"label": "Small", "size_multiplier": 0.9},
-    {"label": "Medium", "size_multiplier": 1.0},
-    {"label": "Large", "size_multiplier": 1.1},
-    {"label": "Giant", "size_multiplier": 1.2},
+    {"label": "Medium", "size_multiplier": 0.10},
+    {"label": "Large", "size_multiplier": 0.19},
+    {"label": "Giant", "size_multiplier": 0.25},
 ]
 
 EXTREME_SIZES = [
-    {"label": "Colossal", "size_multiplier": 1.3},
-    {"label": "Legendary", "size_multiplier": 1.5},
+    {"label": "Colossal", "size_multiplier": 0.35},
+    {"label": "Legendary", "size_multiplier": 0.50},
 ]
 
 def calculate_fishing_level(total_sessions: int) -> str:
@@ -120,7 +120,7 @@ def _choose_fish():
         final_multiplier = selected_fish["multiplier"] * size["size_multiplier"]
         
         # Ensure multiplier is above 1.5x (with size adjustment)
-        final_multiplier = max(1.51, final_multiplier)
+        final_multiplier = max(0.21, final_multiplier)
         
         # Cap at reasonable maximum
         final_multiplier = min(15.0, final_multiplier)
@@ -461,7 +461,7 @@ def get_fishing_info(request):
                 'win_chance_above_1.5x': '45%',
                 'small_win_chance': '10%',
                 'lose_chance': '45%',
-                'multiplier_range': '1.51x - 15.0x for good catches',
+                'multiplier_range': '0.51x - 15.0x for good catches',
                 'minimum_bet': '10.00',
                 'risk_level': 'Medium',
                 'house_edge': '5%',

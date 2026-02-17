@@ -62,11 +62,11 @@ class FortuneMouseEngine:
             small_multiplier_choices = [
                 Decimal("0.05"), Decimal("0.10"), Decimal("0.15"), 
                 Decimal("0.20"), Decimal("0.25"), Decimal("0.30"),
-                Decimal("0.35"), Decimal("0.40"), Decimal("0.45"),
-                Decimal("0.50"), Decimal("0.60"), Decimal("0.70"),
-                Decimal("0.80"), Decimal("0.90"), Decimal("1.00"),
-                Decimal("1.10"), Decimal("1.20"), Decimal("1.30"),
-                Decimal("1.40"), Decimal("1.49")  # Strictly below 1.5x
+                Decimal("0.35"), Decimal("0.40"), Decimal("0.43"),
+                Decimal("0.21"), Decimal("0.33"), Decimal("0.26"),
+                Decimal("0.34"), Decimal("0.24"), Decimal("0.09"),
+                Decimal("0.07"), Decimal("0.20"), Decimal("0.30"),
+                Decimal("0.36"), Decimal("0.49")  # Strictly below 1.5x
             ]
             # Weights favoring smaller multipliers (0.05-0.50 range)
             weights = [
@@ -117,11 +117,11 @@ class FortuneTigerEngine:
             small_multiplier_choices = [
                 Decimal("0.05"), Decimal("0.10"), Decimal("0.15"), 
                 Decimal("0.20"), Decimal("0.25"), Decimal("0.30"),
-                Decimal("0.35"), Decimal("0.40"), Decimal("0.45"),
-                Decimal("0.50"), Decimal("0.60"), Decimal("0.70"),
-                Decimal("0.80"), Decimal("0.90"), Decimal("1.00"),
-                Decimal("1.10"), Decimal("1.20"), Decimal("1.30"),
-                Decimal("1.40"), Decimal("1.49")  # Strictly below 1.5x
+                Decimal("0.35"), Decimal("0.40"), Decimal("0.41"),
+                Decimal("0.25"), Decimal("0.32"), Decimal("0.27"),
+                Decimal("0.34"), Decimal("0.31"), Decimal("0.09"),
+                Decimal("0.10"), Decimal("0.20"), Decimal("0.31"),
+                Decimal("0.42"), Decimal("0.29")  # Strictly below 1.5x
             ]
             # Weights for Tiger - slightly more aggressive than Mouse but still below 1.5x
             weights = [
@@ -174,11 +174,11 @@ class FortuneRabbitEngine:
             small_multiplier_choices = [
                 Decimal("0.10"), Decimal("0.15"), Decimal("0.20"), 
                 Decimal("0.25"), Decimal("0.30"), Decimal("0.35"),
-                Decimal("0.40"), Decimal("0.45"), Decimal("0.50"),
-                Decimal("0.60"), Decimal("0.70"), Decimal("0.80"),
-                Decimal("0.90"), Decimal("1.00"), Decimal("1.10"),
-                Decimal("1.20"), Decimal("1.30"), Decimal("1.40"),
-                Decimal("1.49")  # Strictly below 1.5x
+                Decimal("0.31"), Decimal("0.23"), Decimal("0.08"),
+                Decimal("0.21"), Decimal("0.38"), Decimal("0.60"),
+                Decimal("0.24"), Decimal("0.09"), Decimal("0.10"),
+                Decimal("0.20"), Decimal("0.33"), Decimal("0.43"),
+                Decimal("0.14")  # Strictly below 1.5x
             ]
             
             if has_carrot_bonus and roll < 0.20:  # 20% of wins get carrot bonus on 3rd steps

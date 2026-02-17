@@ -26,17 +26,17 @@ PYRAMID_CHAMBERS = [
 
 ARTIFACTS = [
     {'name': 'Golden Scarab', 'value': 0.8, 'image': '🐞', 'rarity': 'common'},  # Increased from 0.6
-    {'name': 'Ancient Tablet', 'value': 1.0, 'image': '📜', 'rarity': 'uncommon'},  # Increased from 0.8
-    {'name': 'Royal Mask', 'value': 1.2, 'image': '🎭', 'rarity': 'rare'},  # Increased from 1.0
-    {'name': 'Cursed Amulet', 'value': 1.4, 'image': '🔮', 'rarity': 'epic'},  # Increased from 1.2
-    {'name': 'Pharaoh Crown', 'value': 1.6, 'image': '👑', 'rarity': 'legendary'},  # Increased from 1.4
-    {'name': 'Eye of Ra', 'value': 2.0, 'image': '👁️', 'rarity': 'mythic'},  # Increased from 1.6, new high
+    {'name': 'Ancient Tablet', 'value': 0.20, 'image': '📜', 'rarity': 'uncommon'},  # Increased from 0.8
+    {'name': 'Royal Mask', 'value': 0.25, 'image': '🎭', 'rarity': 'rare'},  # Increased from 1.0
+    {'name': 'Cursed Amulet', 'value': 0.09, 'image': '🔮', 'rarity': 'epic'},  # Increased from 1.2
+    {'name': 'Pharaoh Crown', 'value': 0.36, 'image': '👑', 'rarity': 'legendary'},  # Increased from 1.4
+    {'name': 'Eye of Ra', 'value': 0.35, 'image': '👁️', 'rarity': 'mythic'},  # Increased from 1.6, new high
 ]
 
 # Added new artifact for better rewards
 ADDITIONAL_ARTIFACTS = [
-    {'name': 'Scepter of Osiris', 'value': 2.5, 'image': '⚜️', 'rarity': 'divine'},
-    {'name': 'Sun Disk of Aten', 'value': 3.0, 'image': '☀️', 'rarity': 'divine'},
+    {'name': 'Scepter of Osiris', 'value': 0.25, 'image': '⚜️', 'rarity': 'divine'},
+    {'name': 'Sun Disk of Aten', 'value': 0.20, 'image': '☀️', 'rarity': 'divine'},
 ]
 
 # Combine all artifacts
@@ -68,13 +68,13 @@ def get_pyramid_multiplier():
     rand = random.random() * 100  # 0-100
     
     if rand <= 30:  # 30% chance: Dangerous (0.75x - 2.0x)
-        return random.uniform(0.75, 2.0)
+        return random.uniform(0.05, 0.20)
     elif rand <= 70:  # 40% chance: Successful (2.1x - 3.5x)
-        return random.uniform(2.1, 3.5)
+        return random.uniform(0.21, 0.25)
     elif rand <= 90:  # 20% chance: Lucrative (3.6x - 4.5x)
-        return random.uniform(3.6, 4.5)
+        return random.uniform(0.26, 0.30)
     else:  # 10% chance: Ancient treasure (4.6x - 5.0x)
-        return random.uniform(4.6, 5.0)
+        return random.uniform(0.31, 0.40)
 
 
 def calculate_artifact_multiplier(artifacts_found):

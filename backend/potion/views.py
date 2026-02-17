@@ -24,10 +24,10 @@ POTION_TYPES = {
 
 INGREDIENTS = [
     {"name": "Moon Dust", "emoji": "🌙", "rarity": "common", "power": 0.6},
-    {"name": "Dragon Scale", "emoji": "🐉", "rarity": "rare", "power": 1.0},
-    {"name": "Crystal Shard", "emoji": "💎", "rarity": "epic", "power": 1.4},
-    {"name": "Phoenix Feather", "emoji": "🪶", "rarity": "legendary", "power": 1.8},
-    {"name": "Unicorn Tear", "emoji": "🦄", "rarity": "mythic", "power": 2.2},
+    {"name": "Dragon Scale", "emoji": "🐉", "rarity": "rare", "power": 0.30},
+    {"name": "Crystal Shard", "emoji": "💎", "rarity": "epic", "power": 0.24},
+    {"name": "Phoenix Feather", "emoji": "🪶", "rarity": "legendary", "power": 0.38},
+    {"name": "Unicorn Tear", "emoji": "🦄", "rarity": "mythic", "power": 0.29},
 ]
 
 BAD_INGREDIENTS = [
@@ -49,13 +49,13 @@ def get_brew_multiplier():
     rand = random.random() * 100  # 0-100
     
     if rand <= 40:  # 40% chance: Small potions (0.5x - 1.5x)
-        return random.uniform(0.5, 1.5)
+        return random.uniform(0.5, 0.25)
     elif rand <= 80:  # 40% chance: Good potions (1.6x - 2.5x)
-        return random.uniform(1.6, 2.5)
+        return random.uniform(0.25, 0.29)
     elif rand <= 95:  # 15% chance: Great potions (2.6x - 3.0x)
-        return random.uniform(2.6, 3.0)
+        return random.uniform(0.30, 0.35)
     else:  # 5% chance: Perfect potions (3.1x - 3.5x)
-        return random.uniform(3.1, 3.5)
+        return random.uniform(0.36, 0.45)
 
 
 def calculate_ingredient_effect(ingredients_used, potion_type):

@@ -63,6 +63,8 @@ const MinesweeperGame = ({ user }) => {
   const [clickedMine, setClickedMine] = useState(null);
   const [currentMultiplier, setCurrentMultiplier] = useState(1.0);
   const [isSoundMuted, setIsSoundMuted] = useState(false);
+  // NEW STATE: track number of revealed safe cells
+  const [revealedSafeCount, setRevealedSafeCount] = useState(0);
   
   // Refs
   const soundInitRef = useRef(false);
@@ -158,6 +160,8 @@ const MinesweeperGame = ({ user }) => {
     setShowWinModal(false);
     setShowLossModal(false);
     setIsProcessing(false);
+    // Reset revealed safe count
+    setRevealedSafeCount(0);
     
     if (refreshWallet) {
       await refreshWallet();
@@ -211,6 +215,8 @@ const MinesweeperGame = ({ user }) => {
       setRevealedCells([]);
       setClickedMine(null);
       setCurrentMultiplier(1.0);
+      // Reset revealed safe count on new game
+      setRevealedSafeCount(0);
       const safeCells = gridSize * gridSize - minesCount;
       setSafeCellsLeft(safeCells);
 
@@ -330,15 +336,21 @@ const MinesweeperGame = ({ user }) => {
         return;
       }
       
+      // Count new safe cells being revealed
+      let newSafeCount = 0;
       allRevealed.forEach(([r, c]) => {
         if (newGrid[r] && newGrid[r][c] && !newGrid[r][c].revealed) {
           newGrid[r][c].revealed = true;
           newGrid[r][c].isMine = false;
+          newSafeCount++;
         }
       });
       
       console.log("Setting new grid:", newGrid);
       setGrid(newGrid);
+      
+      // Update the revealed safe count
+      setRevealedSafeCount(prevCount => prevCount + newSafeCount);
       
       // Play safe reveal sound
       playSafeReveal();
@@ -495,23 +507,6 @@ const MinesweeperGame = ({ user }) => {
         >
           ← Back
         </button>
-        
-        <div className="balance-details">
-          {walletLoading ? (
-            <div className="balance-loading">
-              <div className="loading-spinner-small"></div>
-              <span>Loading...</span>
-            </div>
-          ) : (
-            <>
-              <div className="balance-total">{formatNGN(combinedBalance)}</div>
-              <div className="balance-breakdown">
-                <span className="balance-main">Main: {formatNGN(wallet?.balance || 0)}</span>
-                <span className="balance-spot">Spot: {formatNGN(spotBalance)}</span>
-              </div>
-            </>
-          )}
-        </div>
       </header>
 
       {/* STAKE MODAL */}
@@ -729,19 +724,33 @@ const MinesweeperGame = ({ user }) => {
       </div>
     </div>
 
-      {/* CASH OUT BUTTON */}
+      {/* CASH OUT BUTTON - UPDATED WITH DISABLE CONDITION */}
       {gameState === "playing" && (
         <div className="action-buttons">
           <button 
-            className="cashout-btn animated-pulse-glow" 
+            className={`cashout-btn ${revealedSafeCount >= 2 ? 'animated-pulse-glow' : ''}`} 
             onClick={() => {
               console.log("💰 Cashout button clicked");
               cashOut();
             }}
-            disabled={isProcessing}
+            disabled={isProcessing || revealedSafeCount < 2}
+            style={{
+              opacity: (isProcessing || revealedSafeCount < 2) ? 0.5 : 1,
+              cursor: (isProcessing || revealedSafeCount < 2) ? 'not-allowed' : 'pointer'
+            }}
           >
             {isProcessing ? "PROCESSING..." : "💰 CASH OUT"}
           </button>
+          {revealedSafeCount < 2 && (
+            <div className="cashout-hint" style={{
+              fontSize: '12px',
+              color: '#ffd700',
+              marginTop: '5px',
+              textAlign: 'center'
+            }}>
+              Reveal at least {2 - revealedSafeCount} more safe cell{2 - revealedSafeCount !== 1 ? 's' : ''} to cash out
+            </div>
+          )}
         </div>
       )}
     </div>

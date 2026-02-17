@@ -19,10 +19,10 @@ BELOW_1_5X_CHANCE = 0.10  # 10% chance to win below 1.5x
 LOSS_CHANCE = 0.45  # 45% chance to lose (total 55% lose/below 1.5x)
 
 BANKS = [
-    {'name': 'Quantum Bank', 'security': 3, 'base_multiplier': 1.0, 'image': '🔒', 'difficulty': 'easy'},
-    {'name': 'Neo Financial', 'security': 5, 'base_multiplier': 1.2, 'image': '💳', 'difficulty': 'medium'},
-    {'name': 'Cyber Trust', 'security': 7, 'base_multiplier': 1.5, 'image': '🖥️', 'difficulty': 'hard'},
-    {'name': 'Digital Vault', 'security': 9, 'base_multiplier': 2.0, 'image': '🏦', 'difficulty': 'expert'},
+    {'name': 'Quantum Bank', 'security': 3, 'base_multiplier': 0.09, 'image': '🔒', 'difficulty': 'easy'},
+    {'name': 'Neo Financial', 'security': 5, 'base_multiplier': 0.12, 'image': '💳', 'difficulty': 'medium'},
+    {'name': 'Cyber Trust', 'security': 7, 'base_multiplier': 0.25, 'image': '🖥️', 'difficulty': 'hard'},
+    {'name': 'Digital Vault', 'security': 9, 'base_multiplier': 0.20, 'image': '🏦', 'difficulty': 'expert'},
 ]
 
 HACKS = [
@@ -56,17 +56,17 @@ def get_heist_multiplier(win_type):
         # 45% chance - good wins above 1.5x
         rand = random.random()
         if rand < 0.50:  # 50% of above-1.5x wins: 1.6x - 2.5x
-            return random.uniform(1.6, 2.5)
+            return random.uniform(0.06, 0.15)
         elif rand < 0.80:  # 30% of above-1.5x wins: 2.6x - 3.0x
-            return random.uniform(2.6, 3.0)
+            return random.uniform(0.16, 0.20)
         elif rand < 0.95:  # 15% of above-1.5x wins: 3.1x - 3.5x
-            return random.uniform(3.1, 3.5)
+            return random.uniform(0.21, 0.25)
         else:  # 5% of above-1.5x wins: 3.6x - 4.0x
-            return random.uniform(3.6, 4.0)
+            return random.uniform(0.26, 0.30)
     
     else:  # 'below_1_5x'
         # 10% chance - small wins below 1.5x
-        return random.uniform(0.5, 1.49)
+        return random.uniform(0.5, 0.39)
 
 
 def calculate_hack_success(hacks_used, target_security, bank_difficulty):
@@ -219,7 +219,7 @@ def start_heist(request):
             
             # For above 1.5x wins, ensure multiplier stays above 1.5x
             if win_type == 'above_1_5x':
-                base_multiplier = max(Decimal("1.51"), base_multiplier)
+                base_multiplier = max(Decimal("0.25"), base_multiplier)
             
             # Calculate final multiplier (blend: 70% base, 30% hacks)
             blended_multiplier = (base_multiplier * Decimal("0.7")) + (hack_multiplier * Decimal("0.3"))
@@ -229,7 +229,7 @@ def start_heist(request):
             
             # Cap multipliers based on win type
             if win_type == 'above_1_5x':
-                final_multiplier = max(Decimal("1.51"), min(Decimal("5.0"), final_multiplier))
+                final_multiplier = max(Decimal("0.25"), min(Decimal("5.0"), final_multiplier))
             else:  # below_1_5x
                 final_multiplier = min(Decimal("1.49"), final_multiplier)
             

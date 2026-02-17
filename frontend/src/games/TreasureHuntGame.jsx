@@ -387,29 +387,6 @@ const TreasureHuntGame = ({ user }) => {
           </div>
         </div>
 
-        <div className="balance-pill">
-          {walletLoading ? (
-            <div className="balance-loading-inline">
-              <span className="loading-spinner-small" />
-              Loading...
-            </div>
-          ) : (
-            <div className="balance-details">
-              <div className="balance-total">
-                {formatNaira(combinedBalance)}
-              </div>
-              <div className="balance-breakdown">
-                <span className="balance-main">
-                  Main: {formatNaira(combinedBalance - spotBalance)}
-                </span>
-                <span className="balance-spot">
-                  Spot: {formatNaira(spotBalance)}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
         <button 
           className="audio-control-btn"
           onClick={toggleMute}
