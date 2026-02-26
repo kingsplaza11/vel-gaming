@@ -78,3 +78,24 @@ class WithdrawalRequest(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+
+# Add this to your wallets/models.py
+
+class UnmatchedWebhook(models.Model):
+    reference = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    amount = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    payload = models.JSONField(default=dict)
+    gateway = models.CharField(max_length=50, default='otpay')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    processed = models.BooleanField(default=False, db_index=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['gateway', 'processed', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"Unmatched {self.gateway} webhook: {self.reference or 'no-ref'} - {self.created_at}"

@@ -7,9 +7,9 @@ SECRET_KEY = 'django-insecure-#tj4@qox5@d0--!&c-*h4l5xl4d7iegzj+5dv1rdo*&p&7!&!&
 
 DEBUG = True
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
-
+ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
@@ -203,6 +203,24 @@ EMAIL_SUBJECT_PREFIX = '[Veltora Games] '
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour
+
+# settings.py
+
+# OTPay Configuration
+# settings.py
+
+# OTPay Configuration
+OTPAY_API_KEY = "APIKEY-SBPIAOCP0L1PSQBSMBP2JWMLZTJQNRIJ"  # Get from OTPay dashboard
+OTPAY_SECRET_KEY = "SECKEY-D4D6MVY8CMILYI0EF90YXTISPGLVHFACYF5HINCEHDIPRP9FMLNMODCEMFLPJYP7"  # Get from OTPay dashboard
+OTPAY_BUSINESS_CODE = "BVBQSBGWKCBG6LNWBB6MM7LRSM2LQQR4"  # Get from OTPay dashboard
+OTPAY_BASE_URL = "https://otpay.ng/api/v1"
+OTPAY_TIMEOUT = 30
+
+OTPAY_CALLBACK_URL = "https://cnd9sp31-8001.uks1.devtunnels.ms/payment/callback"
+OTPAY_WEBHOOK_SECRET = "your_webhook_secret"  # If OTPay provides one
+
+# Keep Paystack keys temporarily during migration if needed
+# PAYSTACK_SECRET_KEY = "your_paystack_key"
 
 # Frontend URLs
 FRONTEND_URL = 'https://veltrogames.com'  # Your React app URL

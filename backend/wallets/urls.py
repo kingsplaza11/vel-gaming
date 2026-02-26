@@ -1,14 +1,25 @@
+# wallets/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views.wallet import WalletViewSet, wallet_transactions
-from .views.webhook import paystack_webhook
+from .webhooks import otpay_webhook, otpay_webhook_debug
 
 router = DefaultRouter()
-router.register(r'', WalletViewSet, basename='wallet')  # This creates endpoints under /api/wallet/
+router.register(r'', WalletViewSet, basename='wallet')
 
+# Create individual views for each action
+check_status_view = WalletViewSet.as_view({
+    'get': 'check_payment_status'
+})
 urlpatterns = [
-    path('', include(router.urls)),  # All wallet endpoints are under /api/wallet/
-    path('webhook/paystack/', paystack_webhook, name='paystack-webhook'),
-    path("transactions/", wallet_transactions),
+    # Include all router URLs
+    path('', include(router.urls)),
     
+    # Explicitly add all endpoints
+    path('check-payment-status/', check_status_view, name='wallet-check-status'),
+    
+    # Other endpoints
+    path("transactions/", wallet_transactions),
+    path('webhook/otpay/', otpay_webhook, name='otpay-webhook'),
+    path('webhook/otpay-debug/', otpay_webhook_debug, name='otpay-webhook-debug'),
 ]
