@@ -19,6 +19,7 @@ from ..wallet import (
     WalletSerializer,
     WalletTransactionSerializer,
 )
+import random
 from ..paystack import PaystackService
 from ..otpay_service import OTPayService
 from django.core.mail import EmailMultiAlternatives
@@ -212,8 +213,7 @@ class WalletViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # CRITICAL: Check for existing PENDING transactions
-        # Auto-expire old ones first
+        # Check for existing PENDING transactions
         time_threshold = timezone.now() - timedelta(minutes=30)
         
         expired_pending = WalletTransaction.objects.filter(
@@ -229,7 +229,6 @@ class WalletViewSet(viewsets.GenericViewSet):
             tx.meta['expired_reason'] = 'Auto-expired before new deposit'
             tx.save(update_fields=['meta'])
         
-        # Now check for active pending transactions
         pending_count = WalletTransaction.objects.filter(
             user=request.user,
             tx_type=WalletTransaction.CREDIT,
@@ -258,124 +257,153 @@ class WalletViewSet(viewsets.GenericViewSet):
         phone = getattr(user, 'phone', '') or '08000000000'
         full_name = f"{user.first_name} {user.last_name}".strip() or user.username
 
-        # Generate unique reference
-        reference = f"VA_{uuid.uuid4().hex[:12].upper()}"
+        # Generate unique references
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
+        unique_id = uuid.uuid4().hex[:16].upper()
+        transaction_ref = f"TXN_{timestamp}_{unique_id}"
+        account_ref = f"VA_{timestamp}_{uuid.uuid4().hex[:8].upper()}"
 
         try:
             # Initialize OTPay service
             otpay = OTPayService()
             
-            logger.info(f"Creating virtual account for user {user.id} with amount {amount}")
+            # Try up to 3 times with increasingly unique parameters
+            max_attempts = 3
+            new_account = None
+            otpay_response = None
+            accounts_tried = []
             
-            # Create virtual account with OTPay
-            response = otpay.create_virtual_account(
-                phone=phone,
-                email=email,
-                name=full_name,
-                bank_codes=[100033]  # Default to Palmpay
-            )
+            for attempt in range(max_attempts):
+                # Make each attempt more unique
+                attempt_suffix = f"ATT{attempt+1}_{uuid.uuid4().hex[:6]}"
+                attempt_ref = f"{transaction_ref}_{attempt_suffix}"
+                
+                logger.info(f"=== ATTEMPT {attempt+1} of {max_attempts} ===")
+                logger.info(f"Attempt reference: {attempt_ref}")
+                
+                # Create virtual account with attempt-specific parameters
+                response = otpay.create_virtual_account(
+                    phone=phone,
+                    email=email,
+                    name=full_name,
+                    transaction_reference=attempt_ref
+                )
 
-            logger.info(f"OTPay response: {response}")
-
-            # Check if response is successful
-            if not response.get("status", False):
-                # If we have data even with status False, try to use it
-                data = response.get("data", {})
-                if data and data.get("accounts"):
+                if response.get("status", False) or response.get("data", {}).get("accounts"):
+                    data = response.get("data", {})
                     accounts = data.get("accounts", [])
+                    
                     if accounts:
                         account = accounts[0]
+                        account_number = account.get("number")
                         
-                        # Create transaction record
-                        wallet_tx = WalletTransaction.objects.create(
-                            user=request.user,
-                            amount=amount,
-                            tx_type=WalletTransaction.CREDIT,
-                            reference=reference,
-                            meta={
-                                "status": "pending",
-                                "gateway": "otpay",
-                                "virtual_account": {
-                                    "account_number": account.get("number"),
-                                    "account_name": account.get("name"),
-                                    "bank_name": account.get("bank"),
-                                    "reference": account.get("ref"),
-                                },
-                                "otpay_response": data,
-                                "created_at": str(timezone.now()),
-                                "expires_at": str(timezone.now() + timedelta(minutes=30))
-                            },
-                        )
-
-                        return Response(
-                            {
-                                "status": True,
-                                "message": "Virtual account created successfully",
-                                "reference": reference,
-                                "virtual_account": {
-                                    "account_number": account.get("number"),
-                                    "account_name": account.get("name"),
-                                    "bank_name": account.get("bank"),
-                                },
-                                "amount": str(amount),
-                            },
-                            status=status.HTTP_201_CREATED
-                        )
+                        # Track this account
+                        accounts_tried.append({
+                            "attempt": attempt + 1,
+                            "account_number": account_number,
+                            "bank": account.get("bank")
+                        })
+                        
+                        # STRICT VERIFICATION: Check if this account number has been used in ANY transaction
+                        existing_account = WalletTransaction.objects.filter(
+                            meta__virtual_account__account_number=account_number
+                        ).exists()
+                        
+                        # Also check if it's been used in pending or completed transactions
+                        used_in_pending = WalletTransaction.objects.filter(
+                            meta__virtual_account__account_number=account_number,
+                            meta__status='pending'
+                        ).exists()
+                        
+                        used_in_completed = WalletTransaction.objects.filter(
+                            meta__virtual_account__account_number=account_number,
+                            meta__status='completed'
+                        ).exists()
+                        
+                        logger.info(f"Attempt {attempt+1} returned account: {account_number}")
+                        logger.info(f"  - Used before: {existing_account}")
+                        logger.info(f"  - Used in pending: {used_in_pending}")
+                        logger.info(f"  - Used in completed: {used_in_completed}")
+                        
+                        if not existing_account and not used_in_pending and not used_in_completed:
+                            # This is a truly brand new account
+                            new_account = account
+                            otpay_response = response
+                            logger.info(f"✅ SUCCESS: Found NEW account on attempt {attempt+1}")
+                            break
+                        else:
+                            logger.warning(f"❌ Account {account_number} already exists in system. Retrying...")
+                    else:
+                        logger.warning(f"Attempt {attempt+1} returned no accounts")
+                else:
+                    logger.warning(f"Attempt {attempt+1} failed: {response.get('message')}")
+            
+            # If we still don't have a new account after all attempts
+            if not new_account:
+                logger.error("All attempts failed to create a new unique account")
+                logger.error(f"Accounts tried: {accounts_tried}")
                 
                 return Response(
                     {
-                        "status": False, 
-                        "message": response.get("message", "Failed to create virtual account")
+                        "status": False,
+                        "message": "Unable to create a new virtual account. All generated accounts already exist in our system. Please try again in a few minutes.",
+                        "debug": {
+                            "attempts": max_attempts,
+                            "accounts_tried": accounts_tried
+                        }
                     },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Extract account details from response
-            data = response.get("data", {})
-            accounts = data.get("accounts", [])
-            
-            if not accounts:
-                logger.error("No accounts in response")
-                return Response(
-                    {"status": False, "message": "No virtual account created"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            # Use the first account
-            account = accounts[0]
-            
-            # Create transaction record with pending status
+            # Create transaction record with the verified NEW account
             wallet_tx = WalletTransaction.objects.create(
                 user=request.user,
                 amount=amount,
                 tx_type=WalletTransaction.CREDIT,
-                reference=reference,
+                reference=account_ref,
                 meta={
                     "status": "pending",
                     "gateway": "otpay",
+                    "transaction_reference": transaction_ref,
+                    "successful_attempt": attempt + 1,
+                    "total_attempts": max_attempts,
+                    "accounts_tried": accounts_tried,
                     "virtual_account": {
-                        "account_number": account.get("number"),
-                        "account_name": account.get("name"),
-                        "bank_name": account.get("bank"),
-                        "reference": account.get("ref"),
+                        "account_number": new_account.get("number"),
+                        "account_name": new_account.get("name"),
+                        "bank_name": new_account.get("bank"),
+                        "bank_code": new_account.get("bank_code", "100033"),
+                        "reference": new_account.get("ref"),
                     },
-                    "otpay_response": data,
+                    "otpay_response": otpay_response.get("data", {}),
                     "created_at": str(timezone.now()),
-                    "expires_at": str(timezone.now() + timedelta(minutes=30))
+                    "expires_at": str(timezone.now() + timedelta(minutes=30)),
+                    "bank_used": "Palmpay",
+                    "is_new_account": True,
+                    "account_verified_new": True,
+                    "account_created_at": str(timezone.now())
                 },
             )
 
             return Response(
                 {
                     "status": True,
-                    "message": "Virtual account created successfully",
-                    "reference": reference,
+                    "message": f"New virtual account created successfully with Palmpay (created on attempt {attempt+1})",
+                    "reference": account_ref,
+                    "transaction_reference": transaction_ref,
                     "virtual_account": {
-                        "account_number": account.get("number"),
-                        "account_name": account.get("name"),
-                        "bank_name": account.get("bank"),
+                        "account_number": new_account.get("number"),
+                        "account_name": new_account.get("name"),
+                        "bank_name": new_account.get("bank"),
                     },
                     "amount": str(amount),
+                    "note": "This is a brand new account created specifically for this transaction. Please make payment to this account only.",
+                    "expires_at": str(timezone.now() + timedelta(minutes=30)),
+                    "attempts": {
+                        "successful": attempt + 1,
+                        "total": max_attempts,
+                        "accounts_tried": accounts_tried
+                    }
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -386,7 +414,7 @@ class WalletViewSet(viewsets.GenericViewSet):
                 {"status": False, "message": f"An error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
+            
     # ---------------------------------------------------
     # CHECK PAYMENT STATUS
     # ---------------------------------------------------

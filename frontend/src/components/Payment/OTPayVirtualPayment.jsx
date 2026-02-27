@@ -38,7 +38,7 @@ import PendingIcon from '@mui/icons-material/Pending';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import InfoIcon from '@mui/icons-material/Info';
 
-const MIN_AMOUNT = 100;
+const MIN_AMOUNT = 3000;
 const MAX_AMOUNT = 10000000;
 
 const OTPayVirtualPayment = ({ user, onSuccess }) => {

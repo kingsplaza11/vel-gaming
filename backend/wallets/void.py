@@ -1,622 +1,407 @@
-import uuid
+# wallets/otpay_service.py
+import requests
+import hmac
+import hashlib
 import logging
-from decimal import Decimal
+import re
 import json
-from django.db import transaction as db_transaction
+from decimal import Decimal
 from django.conf import settings
-from django.utils import timezone
-from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-from ..models import Wallet, WalletTransaction, WithdrawalRequest
-from ..wallet import (
-    FundWalletSerializer,
-    WithdrawalSerializer,
-    WalletSerializer,
-    WalletTransactionSerializer,
-)
-from ..paystack import PaystackService
-from ..otpay_service import OTPayService
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# utils/email_service.py
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
-from django.conf import settings
-import logging
-
-
-def send_withdrawal_confirmation_email(user, withdrawal_request, wallet_transaction):
+class OTPayService:
     """
-    Send confirmation email to user after withdrawal request submission
+    OT-PAY API Integration
+    Based on documentation: https://otpay.ng/api/v1/
     """
-    try:
-        subject = f"Withdrawal Request Submitted - Reference: {withdrawal_request.reference}"
+    
+    def __init__(self):
+        self.base_url = "https://otpay.ng/api/v1"
+        self.api_key = getattr(settings, 'OTPAY_API_KEY', None)
+        self.secret_key = getattr(settings, 'OTPAY_SECRET_KEY', None)
+        self.business_code = getattr(settings, 'OTPAY_BUSINESS_CODE', None)
         
-        # Email context data
-        context = {
-            'user': user,
-            'withdrawal': withdrawal_request,
-            'transaction': wallet_transaction,
-            'amount': withdrawal_request.amount,
-            'processing_fee': withdrawal_request.processing_fee,
-            'net_amount': withdrawal_request.amount - withdrawal_request.processing_fee,
-            'reference': withdrawal_request.reference,
-            'account_name': withdrawal_request.account_name,
-            'bank_name': withdrawal_request.bank_name,
-            'account_number': withdrawal_request.account_number,
-            'estimated_time': '24-48 hours',
-            'support_email': 'support@veltrogames.com',
-            'support_whatsapp': '+1 (825) 572-0351',
-        }
+        # Increase timeout values
+        self.connect_timeout = getattr(settings, 'OTPAY_CONNECT_TIMEOUT', 15)
+        self.read_timeout = getattr(settings, 'OTPAY_READ_TIMEOUT', 45)
+        self.max_retries = getattr(settings, 'OTPAY_MAX_RETRIES', 2)
         
-        # Render HTML template
-        html_content = render_to_string('emails/withdrawal_confirmation.html', context)
+        # Create session with retry strategy
+        self.session = self._create_session()
         
-        # Create plain text version
-        text_content = strip_tags(html_content)
+        logger.info(f"OTPay Service initialized with base_url: {self.base_url}")
+        logger.info(f"Timeouts - Connect: {self.connect_timeout}s, Read: {self.read_timeout}s, Max Retries: {self.max_retries}")
         
-        # Create email
-        email = EmailMultiAlternatives(
-            subject=subject,
-            body=text_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[user.email],
-            reply_to=[settings.DEFAULT_REPLY_TO_EMAIL]
+        # Only check for required credentials
+        missing = []
+        if not self.api_key:
+            missing.append("OTPAY_API_KEY")
+        if not self.secret_key:
+            missing.append("OTPAY_SECRET_KEY")
+        if not self.business_code:
+            missing.append("OTPAY_BUSINESS_CODE")
+            
+        if missing:
+            error_msg = f"OTPay missing credentials: {', '.join(missing)}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+    
+    def _create_session(self):
+        """Create a requests session with retry strategy"""
+        session = requests.Session()
+        
+        # Define retry strategy
+        retry_strategy = Retry(
+            total=self.max_retries,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"],
+            backoff_factor=1,
+            raise_on_status=False
         )
         
-        # Attach HTML content
-        email.attach_alternative(html_content, "text/html")
+        # Create adapter with retry strategy and timeouts
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,
+            pool_maxsize=20
+        )
         
-        # Send email
-        email.send(fail_silently=False)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
         
-        logger.info(f"Withdrawal confirmation email sent to {user.email} for reference {withdrawal_request.reference}")
-        return True
+        return session
+    
+    def _headers(self):
+        """Generate headers for OTPay API requests"""
+        return {
+            "api-key": self.api_key,
+            "secret-key": self.secret_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Veltro-Games/1.0",
+            "Connection": "keep-alive"
+        }
+    
+    def _make_request(self, method, endpoint, **kwargs):
+        """
+        Make HTTP request with proper timeout handling
+        This is the missing method that was causing the error
+        """
+        url = f"{self.base_url}{endpoint}" if endpoint.startswith('/') else f"{self.base_url}/{endpoint}"
         
-    except Exception as e:
-        logger.error(f"Failed to send withdrawal confirmation email to {user.email}: {str(e)}")
-        return False
-
-
-class WalletViewSet(viewsets.GenericViewSet):
-    """
-    Wallet API:
-    - balance
-    - fund (Paystack)
-    - verify
-    - withdraw (manual / starter-safe)
-    - resolve-account
-    - transactions
-    """
-
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
-    permission_classes = [IsAuthenticated]
-    serializer_class = WalletSerializer
-
-    def get_queryset(self):
-        return Wallet.objects.filter(user=self.request.user)
-
-    # ---------------------------------------------------
-    # BALANCE
-    # ---------------------------------------------------
-    @action(detail=False, methods=["get"])
-    def balance(self, request):
-        wallet, _ = Wallet.objects.get_or_create(user=request.user)
-        return Response(self.get_serializer(wallet).data)
-
-    # ---------------------------------------------------
-    # FUND WALLET (PAYSTACK INITIALIZE)
-    # ---------------------------------------------------
-    # wallets/views/wallet.py - Update the fund method
-
-    @action(detail=False, methods=["post"])
-    def fund(self, request):
-        serializer = FundWalletSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        amount = serializer.validated_data["amount"]
-        email = serializer.validated_data.get("email") or request.user.email
-
-        if amount < Decimal("100.00"):
-            return Response(
-                {"status": False, "message": "Minimum deposit is ₦100"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Get user details
-        user = request.user
-        phone = getattr(user, 'phone', '') or '08000000000'
-        full_name = f"{user.first_name} {user.last_name}".strip() or user.username
-
-        # Generate unique reference
-        reference = f"VA_{uuid.uuid4().hex[:12].upper()}"
-
+        # Set default timeout if not provided
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = (self.connect_timeout, self.read_timeout)
+        
+        logger.info(f"Making {method} request to {url}")
+        logger.debug(f"Request kwargs: {kwargs}")
+        
         try:
-            # Initialize OTPay service
-            otpay = OTPayService()
+            response = self.session.request(method, url, **kwargs)
+            logger.info(f"Response received with status: {response.status_code}")
+            return response
+        except requests.exceptions.ConnectTimeout:
+            logger.error(f"Connection timeout to {url}")
+            raise
+        except requests.exceptions.ReadTimeout:
+            logger.error(f"Read timeout from {url}")
+            raise
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection error to {url}: {str(e)}")
+            raise
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error to {url}: {str(e)}")
+            raise
+    
+    def _extract_json(self, text):
+        """
+        Extract JSON from response text that might have a number prefix
+        Example: "22169497305{...}" -> {...}
+        """
+        # Try to find where JSON starts (first '{' or '[')
+        json_start = re.search(r'[{\[]', text)
+        if json_start:
+            json_str = text[json_start.start():]
+            logger.debug(f"Extracted JSON string: {json_str[:100]}...")
+            return json_str
+        return text
+    
+    def _handle_response(self, response):
+        """Handle API response consistently with better error handling"""
+        try:
+            raw_text = response.text
+            logger.debug(f"Raw response: {raw_text[:200]}")
             
-            logger.info(f"Creating virtual account for user {user.id} with amount {amount}")
+            # Extract JSON part if there's a number prefix
+            json_str = self._extract_json(raw_text)
             
-            # Create virtual account with OTPay
-            response = otpay.create_virtual_account(
-                phone=phone,
-                email=email,
-                name=full_name,
-                bank_codes=[100033]  # Default to Palmpay
-            )
-
-            logger.info(f"OTPay response: {response}")
-
-            if not response.get("status"):
-                error_msg = response.get("message", "Failed to create virtual account")
-                logger.error(f"OTPay virtual account creation failed: {error_msg}")
+            # Parse JSON
+            data = json.loads(json_str)
+            logger.debug(f"Parsed JSON data: {data}")
+            
+            # Check if response is successful (status code 200-299)
+            if 200 <= response.status_code < 300:
+                return {
+                    "status": data.get("status", False),
+                    "data": data,
+                    "message": data.get("desc", "Success"),
+                    "status_code": response.status_code,
+                }
+            else:
+                return {
+                    "status": False,
+                    "message": data.get("desc", f"Request failed with status {response.status_code}"),
+                    "data": data,
+                    "status_code": response.status_code,
+                }
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
+            logger.error(f"Raw text that failed: {response.text[:500]}")
+            
+            # Try one more time with more aggressive cleaning
+            try:
+                # Remove all non-JSON characters before the first '{' or '['
+                cleaned = re.sub(r'^[^{[]*', '', response.text)
+                data = json.loads(cleaned)
+                logger.info(f"Successfully parsed after cleaning: {data}")
                 
-                # Check if we have partial data even if status is False
-                data = response.get("data", {})
-                accounts = data.get("accounts", [])
-                
-                if accounts:
-                    # Sometimes OTPay returns success even if status is False
-                    account = accounts[0]
-                    
-                    # Create transaction record
-                    wallet_tx = WalletTransaction.objects.create(
-                        user=request.user,
-                        amount=amount,
-                        tx_type=WalletTransaction.CREDIT,
-                        reference=reference,
-                        meta={
-                            "status": "pending",
-                            "gateway": "otpay",
-                            "virtual_account": {
-                                "account_number": account.get("number"),
-                                "account_name": account.get("name"),
-                                "bank_name": account.get("bank"),
-                                "reference": account.get("ref"),
-                            },
-                            "otpay_response": data,
-                        },
-                    )
-
-                    return Response(
-                        {
-                            "status": True,
-                            "message": "Virtual account created successfully",
-                            "reference": reference,
-                            "virtual_account": {
-                                "account_number": account.get("number"),
-                                "account_name": account.get("name"),
-                                "bank_name": account.get("bank"),
-                            },
-                            "amount": str(amount),
-                        },
-                        status=status.HTTP_201_CREATED
-                    )
-                
-                return Response(
-                    {
-                        "status": False, 
-                        "message": error_msg
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Extract account details from response
-            data = response.get("data", {})
-            accounts = data.get("accounts", [])
-            
-            if not accounts:
-                logger.error("No accounts in response")
-                return Response(
-                    {"status": False, "message": "No virtual account created"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            
-            # Use the first account
-            account = accounts[0]
-            
-            # Create transaction record
-            wallet_tx = WalletTransaction.objects.create(
-                user=request.user,
-                amount=amount,
-                tx_type=WalletTransaction.CREDIT,
-                reference=reference,
-                meta={
-                    "status": "pending",
-                    "gateway": "otpay",
-                    "virtual_account": {
-                        "account_number": account.get("number"),
-                        "account_name": account.get("name"),
-                        "bank_name": account.get("bank"),
-                        "reference": account.get("ref"),
-                    },
-                    "otpay_response": data,
-                },
-            )
-
-            return Response(
-                {
-                    "status": True,
-                    "message": "Virtual account created successfully",
-                    "reference": reference,
-                    "virtual_account": {
-                        "account_number": account.get("number"),
-                        "account_name": account.get("name"),
-                        "bank_name": account.get("bank"),
-                    },
-                    "amount": str(amount),
-                },
-                status=status.HTTP_201_CREATED
-            )
-            
+                return {
+                    "status": data.get("status", False),
+                    "data": data,
+                    "message": data.get("desc", "Success"),
+                    "status_code": response.status_code,
+                }
+            except:
+                return {
+                    "status": False,
+                    "message": "Invalid response from OTPay",
+                    "raw": response.text[:500],
+                    "status_code": response.status_code
+                }
         except Exception as e:
-            logger.error(f"Error in fund endpoint: {str(e)}", exc_info=True)
-            return Response(
-                {"status": False, "message": f"An error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    # wallets/views/wallet.py - Add this new method
-
-    @action(detail=False, methods=["get"])
-    def check_payment_status(self, request):
-        """Check if a payment has been received for a reference"""
-        reference = request.query_params.get("reference")
-        
-        if not reference:
-            return Response(
-                {"status": False, "message": "Reference required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            logger.error(f"Unexpected error in response handling: {str(e)}")
+            return {
+                "status": False,
+                "message": f"Error processing response: {str(e)}",
+                "raw": response.text[:500],
+                "status_code": response.status_code
+            }
+    
+    def get_all_banks(self):
+        """
+        Get list of all banks
+        GET https://otpay.ng/api/v1/get_banks
+        """
         try:
-            wallet_tx = WalletTransaction.objects.get(
-                reference=reference,
-                user=request.user
+            response = self._make_request(
+                'GET',
+                '/get_banks',
+                headers=self._headers()
             )
-        except WalletTransaction.DoesNotExist:
-            return Response(
-                {"status": False, "message": "Transaction not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return self._handle_response(response)
+        except requests.exceptions.Timeout:
+            logger.error("OTPay get_banks timeout")
+            return {"status": False, "message": "Request timeout - please try again"}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"OTPay get_banks error: {str(e)}")
+            return {"status": False, "message": f"Connection error: {str(e)}"}
+    
+    def create_virtual_account(self, phone, email, name, bank_codes=None):
+        """
+        Create a virtual account for a user
+        POST https://otpay.ng/api/v1/create_virtual_account
         
-        # Check if transaction is completed (webhook would have updated this)
-        tx_status = wallet_tx.meta.get("status", "pending")
+        Args:
+            phone: User's phone number
+            email: User's email
+            name: User's name
+            bank_codes: List of bank codes (defaults to [100033] for Palmpay)
+        """
+        if bank_codes is None:
+            bank_codes = [100033]  # Default to Palmpay
         
-        status_map = {
-            "pending": "PENDING",
-            "completed": "COMPLETED",
-            "failed": "FAILED"
+        payload = {
+            "business_code": self.business_code,
+            "phone": phone,
+            "email": email,
+            "bank_code": bank_codes,
+            "name": name
         }
         
-        response_data = {
-            "status": tx_status == "completed",
-            "transaction_status": status_map.get(tx_status, "PENDING"),
-            "reference": reference,
-            "amount": str(wallet_tx.amount),
-        }
+        logger.info(f"Creating virtual account for {email}")
+        logger.debug(f"Payload: {payload}")
         
-        if tx_status == "completed":
-            wallet = Wallet.objects.get(user=request.user)
-            response_data.update({
-                "new_balance": float(wallet.balance),
-                "new_spot_balance": float(wallet.spot_balance),
-                "total_balance": float(wallet.balance + wallet.spot_balance),
-            })
-        
-        # Also check if there's an OTPay reference we can use
-        otpay_ref = wallet_tx.meta.get('otpay_reference')
-        if otpay_ref:
-            response_data['otpay_reference'] = otpay_ref
-        
-        return Response(response_data)
-
-    @action(detail=False, methods=["get", "post"])
-    def verify(self, request):
-        reference = request.data.get("reference") or request.query_params.get("reference")
-
-        if not reference:
-            return Response(
-                {"status": False, "message": "Reference required"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         try:
-            wallet_tx = WalletTransaction.objects.select_for_update().get(
-                reference=reference,
-                user=request.user,
+            response = self._make_request(
+                'POST',
+                '/create_virtual_account',
+                json=payload,
+                headers=self._headers()
             )
-        except WalletTransaction.DoesNotExist:
-            return Response(
-                {"status": False, "message": "Transaction not found"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Check if already completed
-        if wallet_tx.meta.get("status") == "completed":
-            wallet = Wallet.objects.get(user=request.user)
-            return Response(
-                {
-                    "status": True,
-                    "balance": float(wallet.balance),
-                    "spot_balance": float(wallet.spot_balance),
-                    "total_balance": float(wallet.balance + wallet.spot_balance),
-                    "already_completed": True
-                }
-            )
-
-        # Verify with OTPay
-        otpay = OTPayService()
-        verification = otpay.verify_transaction(reference)
-        
-        if not verification.get("status"):
-            wallet_tx.meta.update({"status": "failed", "verification_error": verification.get("message")})
-            wallet_tx.save(update_fields=["meta"])
-            return Response(
-                {"status": False, "message": "Verification failed"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        data = verification.get("data", {})
-        
-        # Check payment status - adjust based on OTPay's response format
-        payment_status = data.get("status", "").lower()
-        if payment_status != "success":
-            wallet_tx.meta.update({
-                "status": "failed", 
-                "otpay_status": payment_status,
-                "otpay_data": data
-            })
-            wallet_tx.save(update_fields=["meta"])
-            return Response(
-                {"status": False, "message": f"Payment {payment_status}"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Verify amount matches
-        if data.get("amount") != int(wallet_tx.amount * 100):
-            wallet_tx.meta.update({
-                "status": "failed", 
-                "reason": "amount_mismatch",
-                "otpay_data": data
-            })
-            wallet_tx.save(update_fields=["meta"])
-            return Response(
-                {"status": False, "message": "Amount mismatch"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Process successful payment
-        with db_transaction.atomic():
-            wallet, _ = Wallet.objects.select_for_update().get_or_create(user=request.user)
+            return self._handle_response(response)
             
-            # Split amount equally between balance and spot_balance
-            total_amount = wallet_tx.amount
-            half_amount = (total_amount / Decimal('2')).quantize(Decimal('0.01'))
-            
-            # Check if this is the first deposit
-            has_previous_successful_deposit = WalletTransaction.objects.filter(
-                user=request.user,
-                tx_type=WalletTransaction.CREDIT,
-                meta__status="completed"
-            ).exclude(id=wallet_tx.id).exists()
-            
-            wallet_tx.first_deposit = not has_previous_successful_deposit
-            
-            # Add to both balances
-            wallet.balance += half_amount
-            wallet.spot_balance += half_amount
-            wallet.save()
-
-            # Update transaction record
-            wallet_tx.meta.update({
-                "status": "completed",
-                "verified": True,
-                "gateway": "otpay",
-                "otpay_data": data,
-                "distribution": {
-                    "total_funded": str(total_amount),
-                    "to_balance": str(half_amount),
-                    "to_spot_balance": str(half_amount)
-                }
-            })
-            wallet_tx.save()
-
-        return Response(
-            {
-                "status": True,
-                "total_funded": float(total_amount),
-                "balance_added": float(half_amount),
-                "spot_balance_added": float(half_amount),
-                "new_balance": float(wallet.balance),
-                "new_spot_balance": float(wallet.spot_balance),
-                "total_balance": float(wallet.balance + wallet.spot_balance),
-                "first_deposit": wallet_tx.first_deposit
+        except requests.exceptions.Timeout as e:
+            logger.error(f"OTPay create_virtual_account timeout: {str(e)}")
+            return {
+                "status": False,
+                "message": "The request timed out. Please try again in a few moments.",
+                "timeout": True
             }
-        )
-    # ---------------------------------------------------
-    # 🔥 RESOLVE BANK ACCOUNT (AUTO NAME)
-    # ---------------------------------------------------
-    @action(detail=False, methods=["get"])
-    def resolve_account(self, request):
-        bank_code = request.query_params.get("bank_code")
-        account_number = request.query_params.get("account_number")
-
-        if not bank_code or not account_number:
-            return Response(
-                {"status": False, "message": "Bank code and account number required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if len(account_number) != 10:
-            return Response(
-                {"status": False, "message": "Account number must be 10 digits"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        paystack = PaystackService()
-        response = paystack.resolve_account_number(
-            account_number=account_number,
-            bank_code=bank_code,
-        )
-
-        if not response.get("status"):
-            return Response(
-                {"status": False, "message": "Unable to resolve account"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return Response(
-            {
-                "status": True,
-                "account_name": response["data"]["account_name"],
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"OTPay connection error: {str(e)}")
+            return {
+                "status": False,
+                "message": "Unable to connect to payment service. Please check your internet connection.",
+                "error": str(e)
             }
-        )
-
-    # ---------------------------------------------------
-    # WITHDRAW (Admin Approval System)
-    # ---------------------------------------------------
-    @action(detail=False, methods=["post"])
-    def withdraw(self, request):
-        serializer = WithdrawalSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        amount = serializer.validated_data["amount"]
-        account_number = serializer.validated_data["account_number"]
-        bank_code = serializer.validated_data["bank_code"]
-        bank_name = serializer.validated_data["bank_name"]
-        account_name = serializer.validated_data["account_name"]
-        
-        # Calculate processing fee and net amount
-        processing_fee = Decimal('50.00')
-        net_amount = amount - processing_fee
-
-        with db_transaction.atomic():
-            wallet = Wallet.objects.select_for_update().get(user=request.user)
-
-            # Check if user has sufficient spot balance
-            if wallet.spot_balance < amount:
-                return Response(
-                    {
-                        "status": False, 
-                        "message": f"Insufficient Bet Out balance. You have ₦{wallet.spot_balance}, need ₦{amount}"
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Generate unique references
-            withdrawal_ref = f"WTH{uuid.uuid4().hex[:8].upper()}"
-            transaction_ref = f"WTX{uuid.uuid4().hex[:8].upper()}"
-
-            # 1. Create withdrawal request
-            withdrawal_request = WithdrawalRequest.objects.create(
-                user=request.user,
-                amount=amount,
-                account_number=account_number,
-                bank_code=bank_code,
-                bank_name=bank_name,
-                account_name=account_name,
-                reference=withdrawal_ref,
-                status='SUCCESS',
-                processing_fee=processing_fee,
-                meta={
-                    "net_amount": str(net_amount),
-                    "user_email": request.user.email,
-                    "user_phone": getattr(request.user, 'phone', ''),
-                }
-            )
-
-            # 2. Deduct from spot balance
-            wallet.spot_balance -= amount
-            wallet.save()
-
-            # 3. Create wallet transaction record
-            wallet_transaction = WalletTransaction.objects.create(
-                user=request.user,
-                amount=amount,
-                tx_type=WalletTransaction.DEBIT,
-                reference=transaction_ref,
-                meta={
-                    "status": "pending_withdrawal",
-                    "withdrawal_reference": withdrawal_ref,
-                    "bank_code": bank_code,
-                    "bank_name": bank_name,
-                    "account_number": account_number,
-                    "account_name": account_name,
-                    "processing_fee": str(processing_fee),
-                    "net_amount": str(net_amount),
-                },
-            )
-
-        # Send confirmation email to user (outside transaction block)
-        try:
-            # Add site URL to context
-            site_url = settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'https://veltrogames.com'
-            
-            # Send email
-            email_sent = send_withdrawal_confirmation_email(
-                user=request.user,
-                withdrawal_request=withdrawal_request,
-                wallet_transaction=wallet_transaction
-            )
-            
-            if not email_sent:
-                # Log email sending failure but don't fail the withdrawal
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to send withdrawal confirmation email to {request.user.email}")
-                
         except Exception as e:
-            # Log error but don't fail the withdrawal
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error sending withdrawal confirmation email: {str(e)}")
+            logger.error(f"OTPay create_virtual_account error: {str(e)}")
+            return {
+                "status": False,
+                "message": "An unexpected error occurred. Please try again.",
+                "error": str(e)
+            }
+    
+    # wallets/otpay_service.py - Update the query_transaction method
 
-        return Response(
-            {
-                "status": True,
-                "message": "Withdrawal request submitted successfully! A confirmation email has been sent to your email address.",
-                "withdrawal_reference": withdrawal_ref,
-                "transaction_reference": transaction_ref,
-                "amount": str(amount),
-                "processing_fee": str(processing_fee),
-                "net_amount": str(net_amount),
-                "new_spot_balance": str(wallet.spot_balance),
-                "estimated_time": "24-48 hours (business days)",
-                "note": "Your withdrawal is pending admin approval. Please allow 24-48 hours for funds to reflect in your bank account.",
-                "email_sent": True
-            },
-            status=status.HTTP_201_CREATED
-        )
-
-    # ---------------------------------------------------
-    # TRANSACTIONS
-    # ---------------------------------------------------
-    @action(detail=False, methods=["get"])
-    def transactions(self, request):
-        txs = WalletTransaction.objects.filter(user=request.user).order_by("-created_at")
-        serializer = WalletTransactionSerializer(txs, many=True)
-        return Response(serializer.data)
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def wallet_transactions(request):
-    qs = WalletTransaction.objects.filter(user=request.user).order_by("-created_at")
-
-    data = [
-        {
-            "id": tx.id,
-            "amount": str(tx.amount),
-            "tx_type": tx.tx_type,
-            "reference": tx.reference,
-            "meta": tx.meta,
-            "created_at": tx.created_at,
+    def query_transaction(self, reference=None, account_number=None, amount=None, order_number=None):
+        """
+        Query transaction status from OTPay
+        POST https://otpay.ng/api/v1/query_transaction
+        
+        Args:
+            reference: Transaction reference (our internal reference)
+            account_number: Virtual account number
+            amount: Amount paid (in Naira)
+            order_number: OTPay order number (if available)
+        """
+        payload = {
+            "business_code": self.business_code,
         }
-        for tx in qs
-    ]
+        
+        # Try different parameter combinations based on what OTPay expects
+        if order_number:
+            payload["order_number"] = order_number
+        elif reference:
+            # If we have our reference, maybe it's stored in OTPay's system
+            payload["reference"] = reference
+        elif account_number and amount:
+            # Query by account and amount
+            payload["account_number"] = account_number
+            payload["amount"] = int(amount)
+        elif account_number:
+            # Query by account only
+            payload["account_number"] = account_number
+        
+        logger.info(f"Querying transaction with payload: {payload}")
+        
+        try:
+            response = self._make_request(
+                'POST',
+                '/query_transaction',
+                json=payload,
+                headers=self._headers()
+            )
+            return self._handle_response(response)
+        except requests.exceptions.Timeout:
+            logger.error("OTPay query_transaction timeout")
+            return {"status": False, "message": "Request timeout - please try again"}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"OTPay query_transaction error: {str(e)}")
+            return {"status": False, "message": f"Connection error: {str(e)}"}
 
-    return Response(data)
+    # Add this to OTPayService
+
+    def get_transaction_by_order(self, order_number):
+        """
+        Get transaction details by order number
+        This might be the correct endpoint based on the error message
+        """
+        payload = {
+            "business_code": self.business_code,
+            "order_number": order_number
+        }
+        
+        logger.info(f"Getting transaction by order: {order_number}")
+        
+        try:
+            response = self._make_request(
+                'POST',
+                '/get_transaction',  # Try different endpoint
+                json=payload,
+                headers=self._headers()
+            )
+            return self._handle_response(response)
+        except Exception as e:
+            logger.error(f"Error getting transaction by order: {str(e)}")
+            return {"status": False, "message": str(e)}
+    
+    def query_bank_account(self, bank_account_no, bank_code):
+        """
+        Query bank account details
+        POST https://otpay.ng/api/v1/query_bank_account
+        
+        Args:
+            bank_account_no: Account number to query
+            bank_code: Bank code
+        """
+        payload = {
+            "business_code": self.business_code,
+            "bank_account_no": bank_account_no,
+            "bank_code": bank_code
+        }
+        
+        logger.info(f"Querying bank account: {bank_account_no}")
+        
+        try:
+            response = self._make_request(
+                'POST',
+                '/query_bank_account',
+                json=payload,
+                headers=self._headers()
+            )
+            return self._handle_response(response)
+        except requests.exceptions.Timeout:
+            logger.error("OTPay query_bank_account timeout")
+            return {"status": False, "message": "Request timeout - please try again"}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"OTPay query_bank_account error: {str(e)}")
+            return {"status": False, "message": f"Connection error: {str(e)}"}
+    
+    def initiate_payout(self, bank_account_no, bank_code, amount):
+        """
+        Initiate a payout transaction
+        POST https://otpay.ng/api/v1/payout
+        
+        Args:
+            bank_account_no: Recipient's account number
+            bank_code: Recipient's bank code
+            amount: Amount to payout (in Naira, not kobo)
+        """
+        payload = {
+            "business_code": self.business_code,
+            "bank_account_no": bank_account_no,
+            "bank_code": bank_code,
+            "amount": int(amount)  # Amount in Naira
+        }
+        
+        logger.info(f"Initiating payout of ₦{amount} to {bank_account_no}")
+        
+        try:
+            response = self._make_request(
+                'POST',
+                '/payout',
+                json=payload,
+                headers=self._headers()
+            )
+            return self._handle_response(response)
+        except requests.exceptions.Timeout:
+            logger.error("OTPay payout timeout")
+            return {"status": False, "message": "Payout request timeout - please try again"}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"OTPay payout error: {str(e)}")
+            return {"status": False, "message": f"Connection error: {str(e)}"}
