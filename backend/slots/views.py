@@ -27,49 +27,51 @@ PAYLINES = [
     [2, 4, 6],  # Diagonal top-right to bottom-left
 ]
 
+# UPDATED: Multipliers are now all below 1.0 (less than stake)
 SYMBOL_MULTIPLIERS = {
-    'seven': {'2': 0.5, '3': 2.0, '4': 5.0},
-    'bar': {'2': 0.5, '3': 1.5, '4': 3.0},
-    'bell': {'2': 0.5, '3': 1.2, '4': 2.0},
-    'cherry': {'2': 0.5, '3': 1.0, '4': 1.5},
-    'orange': {'2': 0.3, '3': 0.8, '4': 1.2},
-    'lemon': {'2': 0.3, '3': 0.7, '4': 1.0},
-    'watermelon': {'2': 0.5, '3': 1.5, '4': 3.0},
-    'grapes': {'2': 0.5, '3': 1.2, '4': 2.0},
-    'plum': {'2': 0.3, '3': 0.8, '4': 1.2},
-    'diamond': {'2': 0.5, '3': 2.5, '4': 6.0},
-    'ruby': {'2': 0.5, '3': 2.0, '4': 4.0},
-    'emerald': {'2': 0.5, '3': 1.5, '4': 3.0},
-    'sapphire': {'2': 0.5, '3': 1.2, '4': 2.0},
-    'gold': {'2': 0.3, '3': 1.0, '4': 1.5},
-    'silver': {'2': 0.3, '3': 0.8, '4': 1.2},
-    'scarab': {'2': 0.5, '3': 2.0, '4': 5.0},
-    'pyramid': {'2': 0.5, '3': 1.5, '4': 3.0},
-    'sphinx': {'2': 0.5, '3': 1.2, '4': 2.0},
-    'ankh': {'2': 0.5, '3': 1.0, '4': 1.5},
-    'eye': {'2': 0.3, '3': 0.8, '4': 1.2},
-    'pharaoh': {'2': 0.3, '3': 0.7, '4': 1.0},
+    'seven': {'2': 0.2, '3': 0.5, '4': 0.8},
+    'bar': {'2': 0.15, '3': 0.4, '4': 0.7},
+    'bell': {'2': 0.12, '3': 0.35, '4': 0.6},
+    'cherry': {'2': 0.1, '3': 0.3, '4': 0.5},
+    'orange': {'2': 0.08, '3': 0.25, '4': 0.4},
+    'lemon': {'2': 0.05, '3': 0.2, '4': 0.35},
+    'watermelon': {'2': 0.15, '3': 0.4, '4': 0.7},
+    'grapes': {'2': 0.12, '3': 0.35, '4': 0.6},
+    'plum': {'2': 0.08, '3': 0.25, '4': 0.4},
+    'diamond': {'2': 0.2, '3': 0.6, '4': 0.9},
+    'ruby': {'2': 0.18, '3': 0.5, '4': 0.8},
+    'emerald': {'2': 0.15, '3': 0.4, '4': 0.7},
+    'sapphire': {'2': 0.12, '3': 0.35, '4': 0.6},
+    'gold': {'2': 0.1, '3': 0.3, '4': 0.5},
+    'silver': {'2': 0.08, '3': 0.25, '4': 0.4},
+    'scarab': {'2': 0.18, '3': 0.5, '4': 0.8},
+    'pyramid': {'2': 0.15, '3': 0.4, '4': 0.7},
+    'sphinx': {'2': 0.12, '3': 0.35, '4': 0.6},
+    'ankh': {'2': 0.1, '3': 0.3, '4': 0.5},
+    'eye': {'2': 0.08, '3': 0.25, '4': 0.4},
+    'pharaoh': {'2': 0.05, '3': 0.2, '4': 0.35},
 }
 
 
 def get_slot_multiplier():
     """
-    Returns a win multiplier between 0.5x and 3.5x based on weighted distribution:
-    - 40% chance: 0.5x - 1.5x (small wins)
-    - 40% chance: 1.6x - 2.5x (medium wins)
-    - 15% chance: 2.6x - 3.0x (good wins)
-    - 5% chance: 3.1x - 3.5x (big wins)
+    UPDATED: Returns a win multiplier between 0.1x and 0.9x based on weighted distribution:
+    - All multipliers are less than 1.0 (cannot win back stake)
+    - 40% chance: 0.1x - 0.3x (very small wins)
+    - 40% chance: 0.31x - 0.6x (small wins)
+    - 15% chance: 0.61x - 0.8x (medium wins)
+    - 5% chance: 0.81x - 0.9x (good wins - but still less than stake)
     """
     rand = random.random() * 100  # 0-100
     
-    if rand <= 40:  # 40% chance: Small wins (0.5x - 1.5x)
-        return random.uniform(0.5, 1.5)
-    elif rand <= 80:  # 40% chance: Medium wins (1.6x - 2.5x)
-        return random.uniform(1.6, 2.5)
-    elif rand <= 95:  # 15% chance: Good wins (2.6x - 3.0x)
-        return random.uniform(2.6, 3.0)
-    else:  # 5% chance: Big wins (3.1x - 3.5x)
-        return random.uniform(3.1, 3.5)
+    if rand <= 40:  # 40% chance: Very small wins (0.1x - 0.3x)
+        return random.uniform(0.1, 0.3)
+    elif rand <= 80:  # 40% chance: Small wins (0.31x - 0.6x)
+        return random.uniform(0.31, 0.6)
+    elif rand <= 95:  # 15% chance: Medium wins (0.61x - 0.8x)
+        return random.uniform(0.61, 0.8)
+    else:  # 5% chance: Good wins (0.81x - 0.9x)
+        return random.uniform(0.81, 0.9)
 
 
 def check_wins(reels, theme, bet_amount):
@@ -100,7 +102,10 @@ def check_wins(reels, theme, bet_amount):
                         'multiplier': line_multiplier
                     })
     
-    # Calculate win amount
+    # UPDATED: Cap total multiplier to ensure it's always less than 1.0
+    total_multiplier = min(total_multiplier, 0.95)
+    
+    # Calculate win amount (always less than bet amount)
     win_amount = Decimal(str(total_multiplier)) * bet_amount if total_multiplier > 0 else Decimal('0')
     
     return win_amount, winning_lines, total_multiplier
@@ -143,7 +148,7 @@ def spin_slots(request):
             wallet.spot_balance -= remaining_cost
 
         # =====================
-        # SLOT GAME LOGIC - 70% WIN CHANCE
+        # SLOT GAME LOGIC - ADJUSTED WIN PROBABILITY
         # =====================
         # Generate random symbols for the 3x3 grid (9 positions)
         reels = [random.choice(SYMBOLS[theme]) for _ in range(9)]
@@ -151,9 +156,10 @@ def spin_slots(request):
         # Check for normal wins
         win_amount, winning_lines, total_multiplier = check_wins(reels, theme, bet_amount)
         
-        # If no normal win, apply 70% chance for bonus win
+        # UPDATED: Increased win chance since wins are smaller
+        # If no normal win, apply 85% chance for bonus win (but always < stake)
         if win_amount == 0:
-            if random.random() < 0.70:  # 70% chance for bonus win
+            if random.random() < 0.85:  # 85% chance for bonus win (higher frequency)
                 bonus_multiplier = Decimal(str(get_slot_multiplier()))
                 win_amount = bet_amount * bonus_multiplier
                 total_multiplier = float(bonus_multiplier)
@@ -164,7 +170,8 @@ def spin_slots(request):
                     'multiplier': float(bonus_multiplier)
                 }]
         
-        # Ensure win amount is within 0.5x-3.5x range (plus payline multipliers)
+        # UPDATED: Ensure win amount is always less than bet amount
+        win_amount = min(win_amount, bet_amount * Decimal('0.95'))
         win_amount = win_amount.quantize(Decimal("0.01"))
         
         # =====================
@@ -206,17 +213,17 @@ def spin_slots(request):
         
         stats.save()
 
-        # Determine win tier
+        # UPDATED: Win tier categories adjusted for new multiplier ranges
         win_tier = "loss"
         if total_multiplier > 0:
-            if total_multiplier <= 1.5:
+            if total_multiplier <= 0.3:
+                win_tier = "very_small"
+            elif total_multiplier <= 0.6:
                 win_tier = "small"
-            elif total_multiplier <= 2.5:
+            elif total_multiplier <= 0.8:
                 win_tier = "medium"
-            elif total_multiplier <= 3.0:
-                win_tier = "good"
             else:
-                win_tier = "big"
+                win_tier = "good"
 
         return Response({
             'reels': reels,
@@ -234,8 +241,8 @@ def spin_slots(request):
             'combined_balance': float(wallet.balance + wallet.spot_balance),
             'game_id': game.id,
             'game_info': {
-                'win_chance': '70%',
-                'multiplier_range': '0.5x - 3.5x',
+                'win_chance': '85%',
+                'multiplier_range': '0.1x - 0.9x',
                 'paylines': len(PAYLINES),
                 'theme': theme
             }
@@ -256,7 +263,7 @@ def get_slot_stats(request):
         # Calculate win rate
         win_rate = (stats.winning_spins / total_spins * 100) if total_spins > 0 else 0
         
-        # Calculate profit and ROI
+        # Calculate profit and ROI (will always be negative)
         profit = total_won - total_bet
         roi = (profit / total_bet * 100) if total_bet > 0 else 0
         
@@ -287,10 +294,10 @@ def get_slot_stats(request):
             'avg_multiplier': round(float(avg_multiplier), 2),
             'favorite_theme': favorite_theme,
             'game_info': {
-                'win_chance': '70%',
-                'multiplier_range': '0.5x - 3.5x',
-                'expected_rtp': '97%',
-                'house_edge': '3%'
+                'win_chance': '85%',
+                'multiplier_range': '0.1x - 0.9x',
+                'expected_rtp': '75%',  # Average return to player
+                'house_edge': '25%'      # House edge
             }
         })
         
@@ -309,17 +316,17 @@ def get_slot_history(request):
         for game in games:
             profit = game.win_amount - game.bet_amount
             
-            # Determine win tier
+            # UPDATED: Win tier categories adjusted for new multiplier ranges
             win_tier = "loss"
             if game.multiplier > 0:
-                if game.multiplier <= 1.5:
+                if game.multiplier <= 0.3:
+                    win_tier = "very_small"
+                elif game.multiplier <= 0.6:
                     win_tier = "small"
-                elif game.multiplier <= 2.5:
+                elif game.multiplier <= 0.8:
                     win_tier = "medium"
-                elif game.multiplier <= 3.0:
-                    win_tier = "good"
                 else:
-                    win_tier = "big"
+                    win_tier = "good"
 
             history.append({
                 'id': game.id,
@@ -332,7 +339,7 @@ def get_slot_history(request):
                 'grid': game.result.get('grid', []),
                 'winning_lines': game.result.get('winning_lines', []),
                 'created_at': game.created_at.isoformat(),
-                'was_profitable': profit > 0
+                'was_profitable': profit > 0  # Will always be false now
             })
         
         return Response({
@@ -351,9 +358,9 @@ def get_slot_info(request):
     return Response({
         'game_info': {
             'name': 'Slot Machine',
-            'description': 'Spin the reels and match symbols to win!',
-            'win_chance': '70%',
-            'multiplier_range': '0.5x - 3.5x',
+            'description': 'Spin the reels and match symbols for small wins!',
+            'win_chance': '85%',
+            'multiplier_range': '0.1x - 0.9x',
             'minimum_bet': '10.00',
         },
         'themes': [
@@ -370,16 +377,17 @@ def get_slot_info(request):
             {'name': 'Diagonal ↙', 'positions': [2, 4, 6]},
         ],
         'multiplier_distribution': {
-            'small': '0.5x - 1.5x (40% of wins)',
-            'medium': '1.6x - 2.5x (40% of wins)',
-            'good': '2.6x - 3.0x (15% of wins)',
-            'big': '3.1x - 3.5x (5% of wins)'
+            'very_small': '0.1x - 0.3x (40% of wins)',
+            'small': '0.31x - 0.6x (40% of wins)',
+            'medium': '0.61x - 0.8x (15% of wins)',
+            'good': '0.81x - 0.9x (5% of wins)'
         },
         'symbol_payouts': {
-            'high_value': '2.0x - 6.0x for 3+ matches',
-            'medium_value': '1.0x - 3.0x for 3+ matches',
-            'low_value': '0.3x - 1.5x for 3+ matches'
+            'high_value': '0.6x - 0.9x for 3+ matches',
+            'medium_value': '0.35x - 0.7x for 3+ matches',
+            'low_value': '0.05x - 0.4x for 3+ matches'
         },
-        'expected_rtp': '97%',
-        'house_edge': '3%',
+        'expected_rtp': '75%',
+        'house_edge': '25%',
+        'disclaimer': 'All wins are less than your stake. You cannot win back your bet amount.'
     })
