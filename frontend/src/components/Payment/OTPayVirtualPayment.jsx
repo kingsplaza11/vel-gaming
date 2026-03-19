@@ -690,7 +690,7 @@ const BankDepositPayment = ({ user, onSuccess, onBack }) => {
                   <Typography variant="body2" color="text.secondary">
                     1. Transfer the exact amount to the bank details above<br/>
                     2. Click "I Have Made Payment" after transferring<br/>
-                    3. We'll verify and credit your wallet
+                    3. We'll verify and credit your wallet Automatically
                   </Typography>
                 </Box>
               </Box>
