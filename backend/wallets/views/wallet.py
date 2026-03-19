@@ -486,13 +486,24 @@ class WalletViewSet(viewsets.GenericViewSet):
     # ---------------------------------------------------
     # wallets/views.py - Update the mark_as_paid method
 
+    # wallets/views.py - Update mark_as_paid with more logging
+
     @action(detail=False, methods=["post"])
     def mark_as_paid(self, request):
         """User marks that they have made the payment"""
+        logger.info(f"=== MARK AS PAID CALLED ===")
+        logger.info(f"Request user: {request.user}")
+        logger.info(f"Request data: {request.data}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        
         deposit_request_id = request.data.get('deposit_request_id')
         reference = request.data.get('reference')
         
+        logger.info(f"deposit_request_id: {deposit_request_id}")
+        logger.info(f"reference: {reference}")
+        
         if not deposit_request_id and not reference:
+            logger.warning("No deposit_request_id or reference provided")
             return Response(
                 {"status": False, "message": "Deposit request ID or reference required"},
                 status=status.HTTP_400_BAD_REQUEST
@@ -500,18 +511,23 @@ class WalletViewSet(viewsets.GenericViewSet):
         
         try:
             if deposit_request_id:
+                logger.info(f"Looking up deposit by ID: {deposit_request_id}")
                 deposit_request = DepositRequest.objects.get(
                     id=deposit_request_id,
                     user=request.user
                 )
             else:
+                logger.info(f"Looking up deposit by reference: {reference}")
                 deposit_request = DepositRequest.objects.get(
                     reference=reference,
                     user=request.user
                 )
             
+            logger.info(f"Found deposit request: {deposit_request.id}, status: {deposit_request.status}")
+            
             # Check if already marked as paid
             if deposit_request.status != 'pending':
+                logger.warning(f"Deposit request not pending. Current status: {deposit_request.status}")
                 return Response({
                     'status': False,
                     'message': f'This deposit request is already {deposit_request.status}',
@@ -520,6 +536,7 @@ class WalletViewSet(viewsets.GenericViewSet):
             
             # Check if expired
             if deposit_request.expires_at and deposit_request.expires_at < timezone.now():
+                logger.warning(f"Deposit request expired at {deposit_request.expires_at}")
                 deposit_request.status = 'expired'
                 deposit_request.save(update_fields=['status'])
                 return Response({
@@ -534,6 +551,8 @@ class WalletViewSet(viewsets.GenericViewSet):
             deposit_request.meta['user_marked_as_paid_from_ip'] = request.META.get('REMOTE_ADDR', '')
             deposit_request.save(update_fields=['status', 'meta'])
             
+            logger.info(f"Updated deposit request status to processing")
+            
             # Update wallet transaction meta
             if deposit_request.transaction_reference:
                 try:
@@ -543,25 +562,19 @@ class WalletViewSet(viewsets.GenericViewSet):
                     wallet_tx.meta['user_marked_as_paid'] = True
                     wallet_tx.meta['user_marked_as_paid_at'] = str(timezone.now())
                     wallet_tx.save(update_fields=['meta'])
+                    logger.info(f"Updated wallet transaction meta")
                 except WalletTransaction.DoesNotExist:
-                    pass
+                    logger.warning(f"Wallet transaction not found for reference: {deposit_request.transaction_reference}")
             
-            # ============= SEND EMAIL AFTER USER MARKS AS PAID =============
+            # Send email after user marks as paid
             try:
-                # Send confirmation email to user
-                email_sent = send_deposit_confirmation_email(request.user, deposit_request)
-                if email_sent:
-                    logger.info(f"Deposit confirmation email sent to {request.user.email} for reference {deposit_request.reference}")
-                else:
-                    logger.warning(f"Failed to send deposit confirmation email to {request.user.email}")
+                from ..utils.email_service import send_deposit_confirmation_email
+                send_deposit_confirmation_email(request.user, deposit_request)
+                logger.info("Deposit confirmation email queued")
             except Exception as e:
-                logger.error(f"Error sending deposit confirmation email: {str(e)}")
-                # Don't fail the request if email fails
+                logger.error(f"Failed to send deposit confirmation email: {str(e)}")
             
-            # ============= NOTIFY ADMIN (Optional) =============
-            # You can add admin notification here (email, slack, etc.)
-            
-            return Response({
+            response_data = {
                 'status': True,
                 'message': 'Payment notification received. Your deposit is now pending admin verification.',
                 'deposit_request': {
@@ -569,14 +582,23 @@ class WalletViewSet(viewsets.GenericViewSet):
                     'reference': deposit_request.reference,
                     'status': deposit_request.status,
                     'updated_at': deposit_request.updated_at,
-                },
-                'email_notification': 'sent'  # Optional flag for frontend
-            })
+                }
+            }
+            
+            logger.info(f"Returning success response: {response_data}")
+            return Response(response_data)
             
         except DepositRequest.DoesNotExist:
+            logger.error(f"Deposit request not found for ID: {deposit_request_id} or reference: {reference}")
             return Response(
                 {"status": False, "message": "Deposit request not found"},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error in mark_as_paid: {str(e)}", exc_info=True)
+            return Response(
+                {"status": False, "message": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     # ---------------------------------------------------
