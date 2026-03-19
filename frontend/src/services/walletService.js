@@ -12,46 +12,65 @@ export const walletService = {
   // Get transaction history
   getTransactions: () => api.get("/wallet/transactions/"),
 
-  // Initialize deposit - creates virtual account
+  // ============= DEPOSIT METHODS =============
+  
+  // Get admin banks for deposit (kept for admin panel but not used in user flow)
+  getAdminBanks: () => {
+    console.log("Fetching admin banks");
+    return api.get("/wallet/get_admin_banks/");
+  },
+
+  // Create deposit request (bank is randomly selected on backend)
+  createDepositRequest: (data) => {
+    console.log("Creating deposit request with amount:", data.amount);
+    return api.post("/wallet/create_deposit_request/", {
+      amount: data.amount,
+      source_bank_name: data.source_bank_name || '',
+      source_account_number: data.source_account_number || '',
+      source_account_name: data.source_account_name || '',
+    });
+  },
+
+  // Check deposit status
+  checkDepositStatus: (reference) => {
+    console.log("Checking deposit status for:", reference);
+    return api.get(`/wallet/check_deposit_status/?reference=${reference}`);
+  },
+
+  // Mark deposit as paid (user has made transfer)
+  markAsPaid: (data) => {
+    console.log("Marking deposit as paid:", data);
+    return api.post("/wallet/mark_as_paid/", {
+      deposit_request_id: data.deposit_request_id,
+      reference: data.reference
+    });
+  },
+
+  // Get user's deposit requests history
+  getDepositRequests: () => {
+    console.log("Fetching user deposit requests");
+    return api.get("/wallet/deposit_requests/");
+  },
+
+  // ============= LEGACY DEPOSIT METHODS =============
+  
+  // Initialize deposit - creates virtual account (legacy)
   initializeDeposit: (amount, email = null) => {
-    const payload = {
-      amount: amount,
-    };
-    
-    // Only add email if provided (backend will use user's email as fallback)
-    if (email) {
-      payload.email = email;
-    }
-    
+    const payload = { amount: amount };
+    if (email) payload.email = email;
     console.log("Sending to backend:", payload);
     return api.post("/wallet/fund/", payload);
   },
 
-  // Check payment status (used for polling)
+  // Check payment status (used for polling) - legacy
   checkPaymentStatus: (reference) => {
     console.log("Checking payment status for:", reference);
     return api.get(`/wallet/check-payment-status/?reference=${reference}`);
   },
-    
-  // Basic manual verification
-  manualVerify: (reference) => {
-    console.log("Manual verify for:", reference);
-    return api.post("/wallet/manual-verify/", { reference });
-  },
-  
-  // Temporary manual verification (credits wallet)
-  manualVerifyTemp: (reference) => {
-    console.log("Temporary manual verify for:", reference);
-    return api.post("/wallet/manual-verify-temp/", { reference });
-  },
-  
-  // Advanced manual verification with OTPay checking
-  manualVerifyAdvanced: (reference) => {
-    console.log("Advanced manual verify for:", reference);
-    return api.post("/wallet/manual-verify-advanced/", { reference });
-  },
 
-  // Resolve bank account details
+  // ============= WITHDRAWAL METHODS =============
+
+  // Resolve bank account details (for withdrawal)
   resolveAccount: (bank_code, account_number) => {
     console.log("Resolving account:", bank_code, account_number);
     return api.get("/wallet/resolve-account/", {
@@ -59,9 +78,66 @@ export const walletService = {
     });
   },
 
-  // Process withdrawal
-  autoWithdraw: (payload) => {
+  // Process withdrawal request
+  withdraw: (payload) => {
     console.log("Processing withdrawal:", payload);
-    return api.post("/wallet/withdraw/", payload);
+    return api.post("/wallet/withdraw/", {
+      amount: payload.amount,
+      account_number: payload.account_number,
+      bank_code: payload.bank_code,
+      bank_name: payload.bank_name,
+      account_name: payload.account_name
+    });
   },
+
+  // Alias for backward compatibility
+  autoWithdraw: (payload) => {
+    return walletService.withdraw(payload);
+  },
+
+  // ============= WITHDRAWAL REQUEST METHODS =============
+
+  // Get user's withdrawal requests
+  getWithdrawalRequests: () => {
+    console.log("Fetching user withdrawal requests");
+    return api.get("/wallet/withdrawal_requests/");
+  },
+
+  // Cancel a withdrawal request (if still pending)
+  cancelWithdrawalRequest: (reference) => {
+    console.log("Cancelling withdrawal request:", reference);
+    return api.post("/wallet/cancel_withdrawal/", { reference });
+  },
+
+  // ============= UTILITY METHODS =============
+
+  // Check if user has pending deposit
+  checkPendingDeposit: () => {
+    console.log("Checking for pending deposits");
+    return api.get("/wallet/check_pending/");
+  },
+
+  // Expire a pending transaction
+  expirePendingTransaction: (reference) => {
+    console.log("Expiring pending transaction:", reference);
+    return api.post("/wallet/expire_pending/", { reference });
+  },
+
+  // Get wallet transaction details by reference
+  getTransactionByReference: (reference) => {
+    console.log("Getting transaction by reference:", reference);
+    return api.get(`/wallet/transactions/?reference=${reference}`);
+  }
 };
+
+// Export simplified version
+export const createDepositRequest = (data) => walletService.createDepositRequest(data);
+export const checkDepositStatus = (reference) => walletService.checkDepositStatus(reference);
+export const markAsPaid = (data) => walletService.markAsPaid(data);
+export const getDepositRequests = () => walletService.getDepositRequests();
+export const withdraw = (payload) => walletService.withdraw(payload);
+export const resolveAccount = (bank_code, account_number) => walletService.resolveAccount(bank_code, account_number);
+export const getBalance = () => walletService.getBalance();
+export const getTransactions = () => walletService.getTransactions();
+
+export default walletService;

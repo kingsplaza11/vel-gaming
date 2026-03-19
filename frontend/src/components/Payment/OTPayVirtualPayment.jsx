@@ -1,4 +1,4 @@
-// src/components/Payment/OTPayVirtualPayment.jsx
+// src/components/Payment/BankDepositPayment.jsx
 import React, { useState, useEffect } from "react";
 import { useWallet } from '../../contexts/WalletContext';
 import { walletService } from "../../services/walletService";
@@ -27,42 +27,45 @@ import {
 } from "@mui/material";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import PaymentIcon from '@mui/icons-material/Payment';
-import ErrorIcon from '@mui/icons-material/Error';
-import SuccessIcon from '@mui/icons-material/CheckCircle';
-import PendingIcon from '@mui/icons-material/Pending';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import InfoIcon from '@mui/icons-material/Info';
+import HistoryIcon from '@mui/icons-material/History';
 
-const MIN_AMOUNT = 3000;
-const MAX_AMOUNT = 10000000;
-
-const OTPayVirtualPayment = ({ user, onSuccess }) => {
+const BankDepositPayment = ({ user, onSuccess }) => {
   const { refreshWallet } = useWallet();
   const [amount, setAmount] = useState("");
-  const [email, setEmail] = useState(user?.email || "");
+  const [sourceBankName, setSourceBankName] = useState("");
+  const [sourceAccountNumber, setSourceAccountNumber] = useState("");
+  const [sourceAccountName, setSourceAccountName] = useState("");
+  
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState("");
-  const [virtualAccount, setVirtualAccount] = useState(null);
-  const [reference, setReference] = useState(null);
+  const [depositRequest, setDepositRequest] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState("idle"); // idle, created, completed, expired
   const [copiedField, setCopiedField] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes in seconds
-  const [checkInterval, setCheckInterval] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(86400); // 24 hours in seconds
   const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
   const [pollCount, setPollCount] = useState(0);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [supportAttempts, setSupportAttempts] = useState(0);
+  const [checkInterval, setCheckInterval] = useState(null);
+  const [userDepositRequests, setUserDepositRequests] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [bankInfo, setBankInfo] = useState(null);
 
   const steps = ['Enter Amount', 'Make Transfer', 'Confirmation'];
   const [activeStep, setActiveStep] = useState(0);
+
+  // Fetch user's deposit history on component mount
+  useEffect(() => {
+    fetchUserDepositRequests();
+  }, []);
 
   // Clean up interval on unmount
   useEffect(() => {
@@ -75,27 +78,39 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
 
   // Timer countdown
   useEffect(() => {
-    if (paymentStatus === 'created' && timeLeft > 0) {
+    if (paymentStatus === 'created' && timeLeft > 0 && depositRequest?.expires_at) {
+      const expiresAt = new Date(depositRequest.expires_at).getTime();
+      const now = new Date().getTime();
+      const remaining = Math.floor((expiresAt - now) / 1000);
+      
+      if (remaining <= 0) {
+        setPaymentStatus('expired');
+        setPaymentError('Deposit request expired. Please create a new one.');
+      } else {
+        setTimeLeft(remaining);
+      }
+
       const timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             setPaymentStatus('expired');
-            setPaymentError('Payment window expired. Please start over.');
+            setPaymentError('Deposit request expired. Please create a new one.');
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
+      
       return () => clearInterval(timer);
     }
-  }, [paymentStatus, timeLeft]);
+  }, [paymentStatus, depositRequest]);
 
   // Auto-polling for payment status
   const startPolling = (ref) => {
     if (checkInterval) clearInterval(checkInterval);
     
     setPollCount(0);
-    const maxPolls = 180; // Poll for 15 minutes (180 * 5 seconds)
+    const maxPolls = 720; // Poll for 1 hour (720 * 5 seconds)
     
     const interval = setInterval(async () => {
       setPollCount(prev => {
@@ -111,15 +126,9 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
       
       try {
         console.log(`Polling attempt ${pollCount + 1} for reference:`, ref);
-        const response = await walletService.checkPaymentStatus(ref);
+        const response = await walletService.checkDepositStatus(ref);
         
-        // Check if transaction is completed (using meta.status as in your backend)
-        const isCompleted = 
-          response.data?.meta?.status === 'completed' ||
-          response.data?.status === 'completed' ||
-          response.data?.transaction_status === 'COMPLETED';
-        
-        if (isCompleted) {
+        if (response.data?.deposit_request?.status === 'completed') {
           console.log("Payment completed, stopping poll");
           clearInterval(interval);
           setPaymentStatus('completed');
@@ -141,10 +150,29 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
     setCheckInterval(interval);
   };
 
+  const fetchUserDepositRequests = async () => {
+    try {
+      const response = await walletService.getDepositRequests();
+      if (response.status && response.deposit_requests) {
+        setUserDepositRequests(response.deposit_requests);
+      }
+    } catch (error) {
+      console.error("Error fetching deposit requests:", error);
+    }
+  };
+
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    
+    if (hours > 0) {
+      return `${hours}h ${mins}m ${secs}s`;
+    } else if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
 
   const validate = () => {
@@ -154,22 +182,18 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
       return "Please enter a valid amount";
     }
 
-    if (amountNum < MIN_AMOUNT) {
-      return `Minimum amount is ₦${MIN_AMOUNT.toLocaleString()}`;
+    if (amountNum < 3000) {
+      return "Minimum deposit is ₦3000";
     }
 
-    if (amountNum > MAX_AMOUNT) {
-      return `Maximum amount is ₦${MAX_AMOUNT.toLocaleString()}`;
-    }
-
-    if (!email || !email.includes('@')) {
-      return "Please enter a valid email address";
+    if (amountNum > 10000000) {
+      return "Maximum deposit is ₦10,000,000";
     }
 
     return "";
   };
 
-  const handleCreateVirtualAccount = async () => {
+  const handleCreateDepositRequest = async () => {
     const errorMsg = validate();
     if (errorMsg) {
       setPaymentError(errorMsg);
@@ -181,36 +205,71 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
     setPaymentSuccess("");
 
     try {
-      console.log("Creating virtual account with:", {
+      console.log("Creating deposit request with amount:", Number(amount));
+
+      const res = await walletService.createDepositRequest({
         amount: Number(amount),
-        email: email,
+        source_bank_name: sourceBankName,
+        source_account_number: sourceAccountNumber,
+        source_account_name: sourceAccountName,
       });
 
-      const res = await walletService.initializeDeposit(Number(amount), email);
-      
-      console.log("API Response:", res.data);
+      console.log("API Response:", res);
 
-      if (res.data?.status === true) {
-        setVirtualAccount(res.data.virtual_account);
-        setReference(res.data.reference);
+      if (res?.status === true) {
+        setDepositRequest(res.deposit_request);
+        setBankInfo(res.deposit_request.bank_details);
         setPaymentStatus('created');
         setActiveStep(1);
-        setTimeLeft(1800); // Reset timer
-        startPolling(res.data.reference);
+        setTimeLeft(86400); // Reset timer to 24 hours
+        startPolling(res.deposit_request.reference);
         
-        setPaymentSuccess("Virtual account created successfully! Transfer the exact amount to complete your deposit.");
+        setPaymentSuccess("Deposit request created successfully! Please complete your bank transfer.");
+        
+        // Refresh deposit requests list
+        fetchUserDepositRequests();
       } else {
-        throw new Error(res.data?.message || "Failed to create virtual account");
+        throw new Error(res?.message || "Failed to create deposit request");
       }
     } catch (err) {
-      console.error("Error creating virtual account:", err);
+      console.error("Error creating deposit request:", err);
       console.error("Error response:", err.response?.data);
       
       const msg = err?.response?.data?.message || 
                   err?.response?.data?.error ||
                   err?.message || 
-                  "Payment initialization failed. Please try again.";
+                  "Deposit request failed. Please try again.";
       setPaymentError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (!depositRequest) return;
+    
+    setLoading(true);
+    
+    try {
+      const res = await walletService.markAsPaid({
+        deposit_request_id: depositRequest.id
+      });
+      
+      if (res?.status === true) {
+        setPaymentSuccess(res.message);
+        setDepositRequest({
+          ...depositRequest,
+          status: res.deposit_request.status
+        });
+        
+        // Refresh deposit requests
+        fetchUserDepositRequests();
+      } else {
+        throw new Error(res?.message || "Failed to mark as paid");
+      }
+    } catch (err) {
+      console.error("Error marking as paid:", err);
+      setPaymentError(err?.message || "Failed to mark as paid. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -227,38 +286,44 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
   };
 
   const handleRefreshStatus = async () => {
-    if (!reference) return;
+    if (!depositRequest?.reference) return;
     
     setRefreshing(true);
     setPaymentError("");
 
     try {
-      console.log("Refreshing status for reference:", reference);
-      const response = await walletService.checkPaymentStatus(reference);
-      console.log("Refresh response:", response.data);
+      console.log("Refreshing status for reference:", depositRequest.reference);
+      const response = await walletService.checkDepositStatus(depositRequest.reference);
+      console.log("Refresh response:", response);
 
-      // Check if completed using meta.status
-      const isCompleted = 
-        response.data?.meta?.status === 'completed' ||
-        response.data?.status === 'completed' ||
-        response.data?.transaction_status === 'COMPLETED';
-
-      if (isCompleted) {
-        setPaymentStatus('completed');
-        setActiveStep(2);
-        setPaymentSuccess(`Payment of ₦${Number(amount).toLocaleString()} confirmed!`);
-        setTransactionDetails(response.data);
+      if (response.status && response.deposit_request) {
+        const status = response.deposit_request.status;
         
-        await refreshWallet();
-        if (onSuccess) onSuccess(response.data);
-      } else {
-        // Don't show error, just inform user it's still pending
-        setPaymentSuccess("Payment is still being processed. Please wait a few more minutes.");
-        setTimeout(() => setPaymentSuccess(""), 5000);
+        if (status === 'completed') {
+          setPaymentStatus('completed');
+          setActiveStep(2);
+          setPaymentSuccess(`Payment of ₦${Number(amount).toLocaleString()} confirmed!`);
+          setTransactionDetails(response);
+          
+          await refreshWallet();
+          if (onSuccess) onSuccess(response);
+        } else {
+          setDepositRequest({
+            ...depositRequest,
+            status: status
+          });
+          
+          if (status === 'processing') {
+            setPaymentSuccess("Your payment has been received and is being verified by admin.");
+          } else {
+            setPaymentSuccess(`Current status: ${status}. Please wait for admin verification.`);
+          }
+          setTimeout(() => setPaymentSuccess(""), 5000);
+        }
       }
     } catch (err) {
       console.error("Refresh error:", err);
-      setPaymentError("Unable to check payment status. Please try again.");
+      setPaymentError("Unable to check deposit status. Please try again.");
     } finally {
       setRefreshing(false);
     }
@@ -267,30 +332,32 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
   const handleContactSupport = () => {
     setSupportAttempts(prev => prev + 1);
     
-    const subject = encodeURIComponent(`Payment Issue - Reference: ${reference}`);
+    const subject = encodeURIComponent(`Deposit Issue - Reference: ${depositRequest?.reference}`);
     const body = encodeURIComponent(
-      `Hello Support,\n\nI've made a transfer but my wallet hasn't been credited after waiting.\n\n` +
+      `Hello Support,\n\nI've made a transfer but my deposit hasn't been confirmed after waiting.\n\n` +
       `Transaction Details:\n` +
-      `- Reference: ${reference}\n` +
+      `- Reference: ${depositRequest?.reference}\n` +
       `- Amount: ₦${amount}\n` +
       `- Date: ${new Date().toLocaleString()}\n` +
-      `- Bank: ${virtualAccount?.bank_name}\n` +
-      `- Account Number: ${virtualAccount?.account_number}\n` +
-      `- Account Name: ${virtualAccount?.account_name}\n\n` +
-      `I've waited for ${Math.floor((1800 - timeLeft) / 60)} minutes. Please help verify this transaction.`
+      `- Bank: ${depositRequest?.bank_details?.bank_name}\n` +
+      `- Account Number: ${depositRequest?.bank_details?.account_number}\n\n` +
+      `I've waited for ${Math.floor((86400 - timeLeft) / 3600)} hours. Please help verify this transaction.`
     );
-    window.location.href = `mailto:support@veltoragames.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:support@veltrogames.com?subject=${subject}&body=${body}`;
   };
 
   const handleStartOver = () => {
     setAmount("");
-    setVirtualAccount(null);
-    setReference(null);
+    setSourceBankName("");
+    setSourceAccountNumber("");
+    setSourceAccountName("");
+    setDepositRequest(null);
+    setBankInfo(null);
     setPaymentStatus("idle");
     setPaymentError("");
     setPaymentSuccess("");
     setActiveStep(0);
-    setTimeLeft(1800);
+    setTimeLeft(86400);
     setPollCount(0);
     setSupportAttempts(0);
     setTransactionDetails(null);
@@ -308,19 +375,6 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
           <Box>
             <TextField
               fullWidth
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-              disabled={loading}
-              helperText="We'll send payment confirmation to this email"
-              error={paymentError && paymentError.includes('email')}
-            />
-            
-            <TextField
-              fullWidth
               label="Amount (NGN)"
               type="number"
               value={amount}
@@ -331,17 +385,52 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
               margin="normal"
               required
               disabled={loading}
-              inputProps={{ min: MIN_AMOUNT, max: MAX_AMOUNT, step: 100 }}
-              helperText={`Minimum: ₦${MIN_AMOUNT.toLocaleString()} | Maximum: ₦${MAX_AMOUNT.toLocaleString()}`}
+              inputProps={{ min: 3000, max: 10000000, step: 100 }}
+              helperText="Minimum: ₦3000 | Maximum: ₦10,000,000"
               error={paymentError && paymentError.includes('amount')}
+            />
+
+            <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
+              Your Bank Details (Optional - helps us verify faster)
+            </Typography>
+            
+            <TextField
+              fullWidth
+              label="Your Bank Name"
+              value={sourceBankName}
+              onChange={(e) => setSourceBankName(e.target.value)}
+              margin="normal"
+              disabled={loading}
+              size="small"
+            />
+            
+            <TextField
+              fullWidth
+              label="Your Account Number"
+              value={sourceAccountNumber}
+              onChange={(e) => setSourceAccountNumber(e.target.value)}
+              margin="normal"
+              disabled={loading}
+              size="small"
+              inputProps={{ maxLength: 10 }}
+            />
+            
+            <TextField
+              fullWidth
+              label="Your Account Name"
+              value={sourceAccountName}
+              onChange={(e) => setSourceAccountName(e.target.value)}
+              margin="normal"
+              disabled={loading}
+              size="small"
             />
 
             <Button
               fullWidth
               variant="contained"
               color="primary"
-              onClick={handleCreateVirtualAccount}
-              disabled={loading || !amount || !email}
+              onClick={handleCreateDepositRequest}
+              disabled={loading || !amount}
               sx={{ 
                 mt: 3, 
                 mb: 2,
@@ -352,25 +441,71 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                 }
               }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Generate Virtual Account"}
+              {loading ? <CircularProgress size={24} color="inherit" /> : "Proceed to Deposit"}
             </Button>
+
+            {/* Show pending deposit requests */}
+            {userDepositRequests.length > 0 && (
+              <Box sx={{ mt: 3 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => setShowHistory(!showHistory)}
+                  startIcon={<HistoryIcon />}
+                >
+                  {showHistory ? 'Hide' : 'Show'} Recent Deposit Requests
+                </Button>
+                
+                {showHistory && (
+                  <Box sx={{ mt: 2 }}>
+                    {userDepositRequests.slice(0, 3).map((req) => (
+                      <Paper key={req.id} sx={{ p: 2, mb: 1, bgcolor: 'background.default' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              ₦{req.amount.toLocaleString()}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Ref: {req.reference}
+                            </Typography>
+                          </Box>
+                          <Chip 
+                            label={req.status} 
+                            size="small"
+                            color={
+                              req.status === 'completed' ? 'success' :
+                              req.status === 'pending' ? 'warning' :
+                              req.status === 'processing' ? 'info' :
+                              req.status === 'expired' ? 'default' : 'error'
+                            }
+                          />
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {new Date(req.created_at).toLocaleString()}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            )}
 
             <Alert severity="info" sx={{ mt: 2 }}>
               <Typography variant="body2">
-                <strong>Note:</strong> You'll receive a virtual account number to transfer funds into. 
-                Your wallet will be credited automatically once payment is confirmed.
+                <strong>Note:</strong> After creating a deposit request, you'll receive bank details to transfer funds into. 
+                Your deposit will be verified by admin after payment.
               </Typography>
             </Alert>
           </Box>
         );
       
       case 1:
-        return virtualAccount && (
+        return depositRequest && (
           <Box>
             <Alert severity="warning" sx={{ mb: 3 }}>
               <Typography variant="body2">
                 <strong>⚠️ Important:</strong> Transfer the exact amount of <strong>₦{Number(amount).toLocaleString()}</strong> to the account below. 
-                If you transfer a different amount, your wallet won't be credited automatically.
+                After transferring, click "I Have Made Payment" to notify us.
               </Typography>
             </Alert>
 
@@ -383,7 +518,7 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                   </Typography>
                 </Box>
                 <Chip 
-                  label={`Ref: ${reference}`} 
+                  label={`Ref: ${depositRequest.reference}`} 
                   size="small" 
                   variant="outlined"
                   sx={{ fontFamily: 'monospace' }}
@@ -397,11 +532,11 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                   Bank Name
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="h6">{virtualAccount.bank_name}</Typography>
+                  <Typography variant="h6">{depositRequest.bank_details.bank_name}</Typography>
                   <Tooltip title={copiedField === 'bank' ? 'Copied!' : 'Copy'}>
                     <IconButton 
                       size="small" 
-                      onClick={() => handleCopy(virtualAccount.bank_name, 'bank')}
+                      onClick={() => handleCopy(depositRequest.bank_details.bank_name, 'bank')}
                     >
                       {copiedField === 'bank' ? <CheckCircleIcon color="success" /> : <ContentCopyIcon />}
                     </IconButton>
@@ -415,11 +550,11 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Typography variant="h4" sx={{ fontFamily: 'monospace', letterSpacing: 2, fontWeight: 'bold' }}>
-                    {virtualAccount.account_number}
+                    {depositRequest.bank_details.account_number}
                   </Typography>
                   <Tooltip title={copiedField === 'number' ? 'Copied!' : 'Copy'}>
                     <IconButton 
-                      onClick={() => handleCopy(virtualAccount.account_number, 'number')}
+                      onClick={() => handleCopy(depositRequest.bank_details.account_number, 'number')}
                     >
                       {copiedField === 'number' ? <CheckCircleIcon color="success" /> : <ContentCopyIcon />}
                     </IconButton>
@@ -432,10 +567,10 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                   Account Name
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="h6">{virtualAccount.account_name}</Typography>
+                  <Typography variant="h6">{depositRequest.bank_details.account_name}</Typography>
                   <Tooltip title={copiedField === 'name' ? 'Copied!' : 'Copy'}>
                     <IconButton 
-                      onClick={() => handleCopy(virtualAccount.account_name, 'name')}
+                      onClick={() => handleCopy(depositRequest.bank_details.account_name, 'name')}
                     >
                       {copiedField === 'name' ? <CheckCircleIcon color="success" /> : <ContentCopyIcon />}
                     </IconButton>
@@ -463,29 +598,43 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* Auto-verification status */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', mb: 2 }}>
-                <AccountBalanceIcon fontSize="small" />
-                <Typography variant="body2">
-                  {pollCount < 180 
-                    ? `Auto-verifying... (Polling: ${pollCount}/180)` 
-                    : "Monitoring complete. Use refresh button to check status."}
+              {/* Current Status */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Current Status
                 </Typography>
+                <Chip 
+                  label={depositRequest.status.toUpperCase()} 
+                  color={
+                    depositRequest.status === 'completed' ? 'success' :
+                    depositRequest.status === 'pending' ? 'warning' :
+                    depositRequest.status === 'processing' ? 'info' :
+                    depositRequest.status === 'expired' ? 'default' : 'error'
+                  }
+                  sx={{ fontWeight: 'bold' }}
+                />
               </Box>
 
-              {pollCount < 180 && (
-                <LinearProgress 
+              {/* I Have Made Payment Button */}
+              {depositRequest.status === 'pending' && (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="success"
+                  onClick={handleMarkAsPaid}
+                  disabled={loading}
                   sx={{ 
-                    mb: 3, 
-                    backgroundColor: 'rgba(255,215,0,0.2)',
-                    '& .MuiLinearProgress-bar': { 
-                      backgroundColor: '#FFD700' 
-                    }
-                  }} 
-                />
+                    py: 1.5,
+                    mb: 2,
+                    background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+                  }}
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircleIcon />}
+                >
+                  {loading ? "Processing..." : "I Have Made Payment"}
+                </Button>
               )}
 
-              {/* Single Action Button - Refresh Only */}
+              {/* Refresh Button */}
               <Button
                 fullWidth
                 variant="contained"
@@ -500,11 +649,11 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                 }}
                 startIcon={refreshing ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
               >
-                {refreshing ? "Checking..." : "Check Payment Status"}
+                {refreshing ? "Checking..." : "Check Status"}
               </Button>
 
               {/* Support Contact - Shows after multiple refresh attempts or long wait */}
-              {(pollCount > 60 || supportAttempts > 0) && (
+              {(pollCount > 120 || supportAttempts > 0) && (
                 <Box sx={{ mt: 3 }}>
                   <Alert 
                     severity="info"
@@ -548,11 +697,10 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                   <AccordionDetails>
                     <pre style={{ fontSize: '11px', overflowX: 'auto' }}>
                       {JSON.stringify({
-                        reference,
+                        reference: depositRequest.reference,
                         amount,
-                        virtualAccount,
+                        status: depositRequest.status,
                         pollCount,
-                        paymentStatus,
                         timeLeft
                       }, null, 2)}
                     </pre>
@@ -577,19 +725,22 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
           <Box sx={{ textAlign: 'center', py: 3 }}>
             <CheckCircleIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Payment Successful!
+              Deposit Request Received!
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph>
-              Your wallet has been credited with <strong>₦{Number(amount).toLocaleString()}</strong>
+              Your deposit request of <strong>₦{Number(amount).toLocaleString()}</strong> is currently pending review.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              You will be notified once the payment has been completed by our admin team.
             </Typography>
             
             <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                Transaction Reference: <strong>{reference}</strong>
+                Reference: <strong>{depositRequest?.reference}</strong>
               </Typography>
-              {transactionDetails?.meta?.completed_at && (
+              {transactionDetails?.deposit_request?.completed_at && (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  Completed: {new Date(transactionDetails.meta.completed_at).toLocaleString()}
+                  Completed: {new Date(transactionDetails.deposit_request.completed_at).toLocaleString()}
                 </Typography>
               )}
             </Paper>
@@ -666,7 +817,7 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                 </Button>
               }
             >
-              Payment window expired. Please start a new deposit.
+              Deposit request expired. Please create a new deposit.
             </Alert>
           )}
 
@@ -679,11 +830,12 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
                 <InfoIcon sx={{ fontSize: 20 }} />
                 <Box>
                   <Typography variant="body2" fontWeight="bold">
-                    ⚡ Automatic Verification
+                    📝 How it works
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Your payment will be verified automatically. Just wait a few moments after transferring - 
-                    no need to click any additional buttons.
+                    1. Transfer the exact amount to the bank details above<br/>
+                    2. Click "I Have Made Payment" after transferring<br/>
+                    3. Admin will verify and credit your wallet within 24 hours
                   </Typography>
                 </Box>
               </Box>
@@ -703,4 +855,4 @@ const OTPayVirtualPayment = ({ user, onSuccess }) => {
   );
 };
 
-export default OTPayVirtualPayment;
+export default BankDepositPayment;

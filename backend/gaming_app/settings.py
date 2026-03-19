@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'channels',
     'rest_framework',
     'corsheaders',
@@ -61,16 +62,21 @@ AUTH_USER_MODEL = 'accounts.User'
 
 ROOT_URLCONF = 'gaming_app.urls'
 
+# Also ensure TEMPLATES setting has the correct context processors
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+            ],
+            'builtins': [
+                'django.templatetags.static',
             ],
         },
     },
@@ -218,6 +224,11 @@ OTPAY_TIMEOUT = 30
 
 OTPAY_CALLBACK_URL = "https://cnd9sp31-8001.uks1.devtunnels.ms/payment/callback"
 OTPAY_WEBHOOK_SECRET = "your_webhook_secret"  # If OTPay provides one
+
+# Support Contact
+SUPPORT_EMAIL = 'support@veltrogames.com'
+SITE_NAME = 'Veltro Games'
+SITE_URL = 'https://veltrogames.com'
 
 # Keep Paystack keys temporarily during migration if needed
 # PAYSTACK_SECRET_KEY = "your_paystack_key"

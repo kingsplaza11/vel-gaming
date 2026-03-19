@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdrawal Completed</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #ffffff;
+            padding: 30px 20px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+        }
+        .bank-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #48bb78;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Withdrawal Completed! 💰</h1>
+            <p>Funds have been sent to your bank account</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello <strong>{{ user.username }}</strong>,</p>
+            
+            <p>Your withdrawal request has been successfully processed and funds have been sent to your bank account.</p>
+            
+            <div class="bank-details">
+                <h3 style="margin-top: 0;">Transfer Details</h3>
+                <table style="width: 100%;">
+                    <tr>
+                        <td><strong>Amount:</strong></td>
+                        <td>₦{{ amount|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Net Amount:</strong></td>
+                        <td>₦{{ net_amount|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bank:</strong></td>
+                        <td>{{ bank_name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Account Number:</strong></td>
+                        <td>{{ account_number }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Reference:</strong></td>
+                        <td>{{ reference }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p>Funds should reflect in your account within 24-48 hours depending on your bank.</p>
+            
+            <p style="text-align: center; margin-top: 30px;">
+                <a href="{{ site_url }}/dashboard" style="color: #48bb78;">Return to Dashboard</a>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for using {{ site_name }}!</p>
+            <p>Questions? Contact <a href="mailto:{{ support_email }}">{{ support_email }}</a></p>
+        </div>
+    </div>
+</body>
+</html>

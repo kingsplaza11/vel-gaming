@@ -12,7 +12,7 @@ const API_BASE =
 ====================================================== */
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 15000,
+  timeout: 30000,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

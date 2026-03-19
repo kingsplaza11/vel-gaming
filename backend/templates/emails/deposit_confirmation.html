@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit Request Confirmation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #ffffff;
+            padding: 30px 20px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+        }
+        .bank-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        td {
+            padding: 10px 0;
+        }
+        .label {
+            font-weight: 600;
+            color: #555;
+            width: 40%;
+        }
+        .value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Deposit Request Received! 🎮</h1>
+            <p>Your deposit request is being processed</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello <strong>{{ user.username }}</strong>,</p>
+            
+            <p>We have received your deposit request. Please transfer the exact amount to the bank details below to complete your deposit.</p>
+            
+            <div class="bank-details">
+                <h3 style="margin-top: 0; color: #667eea;">Bank Transfer Details</h3>
+                <table>
+                    <tr>
+                        <td class="label">Bank Name:</td>
+                        <td class="value"><strong>{{ bank_name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="label">Account Number:</td>
+                        <td class="value"><strong>{{ account_number }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="label">Account Name:</td>
+                        <td class="value"><strong>{{ account_name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="label">Amount to Transfer:</td>
+                        <td class="value"><strong style="color: #28a745;">₦{{ amount|floatformat:2 }}</strong></td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="info-box">
+                <strong>⚠️ Important:</strong>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li>Transfer the <strong>exact amount</strong> shown above</li>
+                    <li>Your deposit will be verified within 24 hours</li>
+                    <li>You'll receive another email once your wallet is credited</li>
+                    <li>Save this email for your reference</li>
+                </ul>
+            </div>
+            
+            <table>
+                <tr>
+                    <td class="label">Reference:</td>
+                    <td class="value"><strong>{{ reference }}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label">Request Date:</td>
+                    <td class="value">{{ created_at|date:"F j, Y, g:i a" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Current Status:</td>
+                    <td class="value"><span style="color: #ffc107;">{{ status }}</span></td>
+                </tr>
+            </table>
+            
+            <p style="margin-top: 30px;">
+                <a href="{{ site_url }}/dashboard" class="button">View in Dashboard</a>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>Need help? Contact our support team:</p>
+            <p>
+                📧 <a href="mailto:{{ support_email }}">{{ support_email }}</a><br>
+            </p>
+            <p>&copy; {% now "Y" %} {{ site_name }}. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

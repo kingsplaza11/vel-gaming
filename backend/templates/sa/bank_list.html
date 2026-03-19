@@ -1,0 +1,305 @@
+{% extends 'sa/base.html' %}
+{% load humanize %}
+
+{% block title %}Bank Accounts | Admin{% endblock %}
+
+{% block page_title %}Bank Accounts Management{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'adminpanel:bank_create' %}" class="btn btn-gradient">
+    <i class="fas fa-plus-circle me-2"></i>Add New Bank
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon primary">
+                        <i class="fas fa-university"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Total Banks</h6>
+                    <h3 class="fw-bold mb-0">{{ banks.count }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Active Banks</h6>
+                    <h3 class="fw-bold mb-0">{{ banks.active|default:0 }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Default Bank</h6>
+                    <h3 class="fw-bold mb-0">
+                        {% for bank in banks %}
+                            {% if bank.is_default %}{{ bank.bank_name }}{% endif %}
+                        {% endfor %}
+                    </h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon info">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Total Deposits</h6>
+                    <h3 class="fw-bold mb-0">{{ total_deposits|default:"0" }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Banks Table -->
+        <div class="dashboard-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0">
+                    <i class="fas fa-university me-2 text-primary"></i>
+                    Bank Accounts
+                </h5>
+                <div class="d-flex gap-2">
+                    <div class="input-group" style="width: 250px;">
+                        <span class="input-group-text bg-transparent border-secondary">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Search banks...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover" id="banksTable">
+                    <thead>
+                        <tr>
+                            <th>Bank Name</th>
+                            <th>Account Number</th>
+                            <th>Account Name</th>
+                            <th>Min Deposit</th>
+                            <th>Max Deposit</th>
+                            <th>Status</th>
+                            <th>Default</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bank in banks %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 rounded p-2 me-2">
+                                        <i class="fas fa-university text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-medium">{{ bank.bank_name }}</span>
+                                        {% if bank.branch %}
+                                        <small class="d-block text-secondary">{{ bank.branch }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="font-monospace">{{ bank.account_number }}</span>
+                                <button class="btn btn-sm btn-link copy-btn" data-copy="{{ bank.account_number }}">
+                                    <i class="fas fa-copy text-secondary"></i>
+                                </button>
+                            </td>
+                            <td>{{ bank.account_name }}</td>
+                            <td>₦{{ bank.min_deposit_amount|floatformat:0|intcomma }}</td>
+                            <td>
+                                {% if bank.max_deposit_amount %}
+                                    ₦{{ bank.max_deposit_amount|floatformat:0|intcomma }}
+                                {% else %}
+                                    <span class="text-secondary">No limit</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if bank.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if bank.is_default %}
+                                    <span class="badge bg-primary">Default</span>
+                                {% else %}
+                                    <span class="text-secondary">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'adminpanel:bank_edit' bank.id %}" 
+                                       class="action-btn edit" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="action-btn {% if bank.is_active %}warning{% else %}success{% endif %} toggle-status" 
+                                            data-bank-id="{{ bank.id }}"
+                                            data-current="{{ bank.is_active|lower }}"
+                                            title="{% if bank.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                        <i class="fas {% if bank.is_active %}fa-ban{% else %}fa-check-circle{% endif %}"></i>
+                                    </button>
+                                    <button class="action-btn decline delete-bank" 
+                                            data-bank-id="{{ bank.id }}"
+                                            data-bank-name="{{ bank.bank_name }}"
+                                            {% if bank.deposit_requests.exists %}disabled{% endif %}
+                                            title="{% if bank.deposit_requests.exists %}Cannot delete bank with deposits{% else %}Delete{% endif %}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="fas fa-university fa-3x text-secondary mb-3"></i>
+                                <h5>No Bank Accounts Found</h5>
+                                <p class="text-secondary">Get started by adding your first bank account.</p>
+                                <a href="{% url 'adminpanel:bank_create' %}" class="btn btn-gradient mt-2">
+                                    <i class="fas fa-plus-circle me-2"></i>Add Bank Account
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Delete Bank Account
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deleteBankName"></strong>?</p>
+                <p class="text-danger mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <i class="fas fa-trash me-2"></i>Delete Bank
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Search functionality
+    $('#searchInput').on('keyup', function() {
+        const value = $(this).val().toLowerCase();
+        $('#banksTable tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+        });
+    });
+
+    // Copy account number
+    $('.copy-btn').click(function() {
+        const text = $(this).data('copy');
+        navigator.clipboard.writeText(text);
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Copied!',
+            text: 'Account number copied to clipboard',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    });
+
+    // Toggle status
+    $('.toggle-status').click(function() {
+        const btn = $(this);
+        const bankId = btn.data('bank-id');
+        const isActive = btn.data('current') === 'true';
+        const action = isActive ? 'deactivate' : 'activate';
+        
+        Swal.fire({
+            title: `Confirm ${action}`,
+            text: `Are you sure you want to ${action} this bank account?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: isActive ? '#e53e3e' : '#48bb78',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Yes, ${action}`
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(`/admin/banks/${bankId}/toggle-status/`, function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.message,
+                            timer: 1500
+                        }).then(() => location.reload());
+                    }
+                }).fail(function(xhr) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: xhr.responseJSON?.error || 'Failed to update status'
+                    });
+                });
+            }
+        });
+    });
+
+    // Delete bank
+    let deleteId = null;
+    
+    $('.delete-bank').click(function() {
+        const btn = $(this);
+        if (btn.prop('disabled')) return;
+        
+        deleteId = btn.data('bank-id');
+        $('#deleteBankName').text(btn.data('bank-name'));
+        $('#deleteModal').modal('show');
+    });
+
+    $('#confirmDelete').click(function() {
+        if (!deleteId) return;
+        
+        $.post(`/admin/banks/${deleteId}/delete/`, function(response) {
+            if (response.success) {
+                $('#deleteModal').modal('hide');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Deleted!',
+                    text: response.message,
+                    timer: 1500
+                }).then(() => location.reload());
+            }
+        }).fail(function(xhr) {
+            $('#deleteModal').modal('hide');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: xhr.responseJSON?.error || 'Failed to delete bank'
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

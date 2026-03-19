@@ -1,0 +1,492 @@
+{% extends 'sa/base.html' %}
+{% load humanize %}
+
+{% block title %}Deposits | Admin{% endblock %}
+
+{% block page_title %}Deposit Management{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button class="btn btn-outline-secondary" id="bulkActionsBtn" disabled>
+        <i class="fas fa-check-double me-2"></i>Bulk Actions
+    </button>
+    <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" 
+            data-bs-toggle="dropdown">
+    </button>
+    <ul class="dropdown-menu dropdown-menu-dark">
+        <li><a class="dropdown-item bulk-action" href="#" data-action="approve">
+            <i class="fas fa-check-circle text-success me-2"></i>Approve Selected
+        </a></li>
+        <li><a class="dropdown-item bulk-action" href="#" data-action="processing">
+            <i class="fas fa-clock text-warning me-2"></i>Mark as Processing
+        </a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item bulk-action" href="#" data-action="decline">
+            <i class="fas fa-times-circle text-danger me-2"></i>Decline Selected
+        </a></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon primary">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Pending</h6>
+                    <h3 class="fw-bold mb-0">{{ stats.total_pending }}</h3>
+                    <small class="text-success">₦{{ stats.pending_amount|default:0|floatformat:0|intcomma }}</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon warning">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Processing</h6>
+                    <h3 class="fw-bold mb-0">{{ stats.total_processing }}</h3>
+                    <small class="text-warning">₦{{ stats.processing_amount|default:0|floatformat:0|intcomma }}</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Completed</h6>
+                    <h3 class="fw-bold mb-0">{{ stats.total_completed }}</h3>
+                    <small class="text-success">₦{{ stats.completed_amount|default:0|floatformat:0|intcomma }}</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h6 class="text-secondary mb-1">Failed/Expired</h6>
+                    <h3 class="fw-bold mb-0">{{ stats.total_failed|add:stats.total_expired }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <form method="get" class="row g-3 align-items-end" id="filterForm">
+                <div class="col-md-2">
+                    <label class="form-label small">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Bank</label>
+                    <select name="bank" class="form-select">
+                        <option value="">All Banks</option>
+                        {% for bank in banks %}
+                        <option value="{{ bank.id }}" {% if bank_filter == bank.id|stringformat:"s" %}selected{% endif %}>
+                            {{ bank.bank_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">From Date</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">To Date</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Search</label>
+                    <input type="text" name="q" class="form-control" placeholder="Reference, User..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-gradient w-100">
+                        <i class="fas fa-filter me-2"></i>Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Deposits Table -->
+        <div class="dashboard-card">
+            <div class="table-responsive">
+                <table class="table" id="depositsTable">
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" class="form-check-input" id="selectAll">
+                            </th>
+                            <th>Reference</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Bank</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for deposit in page_obj %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="form-check-input deposit-checkbox" 
+                                       value="{{ deposit.id }}">
+                            </td>
+                            <td>
+                                <span class="font-monospace small">{{ deposit.reference }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-2" 
+                                         style="width: 32px; height: 32px;">
+                                        <i class="fas fa-user text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-medium">{{ deposit.user.username }}</span>
+                                        <small class="d-block text-secondary">{{ deposit.user.email }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-bold">₦{{ deposit.amount|floatformat:0|intcomma }}</span>
+                                {% if deposit.processing_fee > 0 %}
+                                <small class="d-block text-secondary">Fee: ₦{{ deposit.processing_fee }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span>{{ deposit.admin_bank.bank_name }}</span>
+                                <small class="d-block text-secondary">{{ deposit.admin_bank.account_number }}</small>
+                            </td>
+                            <td>
+                                {% if deposit.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif deposit.status == 'processing' %}
+                                    <span class="badge bg-info">Processing</span>
+                                {% elif deposit.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif deposit.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% elif deposit.status == 'expired' %}
+                                    <span class="badge bg-secondary">Expired</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ deposit.created_at|date:"M d, Y" }}</small>
+                                <small class="d-block text-secondary">{{ deposit.created_at|time }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'adminpanel:deposit_detail' deposit.reference %}" 
+                                       class="action-btn view" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if deposit.status == 'pending' or deposit.status == 'processing' %}
+                                        <button class="action-btn approve approve-deposit" 
+                                                data-reference="{{ deposit.reference }}"
+                                                title="Approve">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="action-btn decline decline-deposit" 
+                                                data-reference="{{ deposit.reference }}"
+                                                title="Decline">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="fas fa-money-bill-wave fa-3x text-secondary mb-3"></i>
+                                <h5>No Deposits Found</h5>
+                                <p class="text-secondary">No deposit requests match your criteria.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link bg-dark border-secondary" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link bg-dark border-secondary" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link bg-primary border-primary">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link bg-dark border-secondary" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link bg-dark border-secondary" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Decline Modal -->
+<div class="modal fade" id="declineModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle text-danger me-2"></i>
+                    Decline Deposit
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea class="form-control" id="declineReason" rows="4" 
+                          placeholder="Please provide a reason for declining..."></textarea>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDecline">
+                    <i class="fas fa-times-circle me-2"></i>Decline
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let selectedDeposits = [];
+    let currentReference = null;
+
+    // Select all functionality
+    $('#selectAll').change(function() {
+        $('.deposit-checkbox').prop('checked', $(this).prop('checked'));
+        updateSelected();
+    });
+
+    $(document).on('change', '.deposit-checkbox', function() {
+        if ($('.deposit-checkbox:checked').length === $('.deposit-checkbox').length) {
+            $('#selectAll').prop('checked', true);
+        } else {
+            $('#selectAll').prop('checked', false);
+        }
+        updateSelected();
+    });
+
+    function updateSelected() {
+        selectedDeposits = [];
+        $('.deposit-checkbox:checked').each(function() {
+            selectedDeposits.push($(this).val());
+        });
+        $('#bulkActionsBtn').prop('disabled', selectedDeposits.length === 0);
+    }
+
+    // Bulk actions
+    $('.bulk-action').click(function(e) {
+        e.preventDefault();
+        const action = $(this).data('action');
+        
+        if (selectedDeposits.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Selection',
+                text: 'Please select at least one deposit.'
+            });
+            return;
+        }
+
+        if (action === 'decline') {
+            $('#declineModal').modal('show');
+            $('#confirmDecline').data('action', 'decline');
+        } else {
+            performBulkAction(action);
+        }
+    });
+
+    $('#confirmDecline').click(function() {
+        const reason = $('#declineReason').val().trim();
+        if (!reason) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Reason Required',
+                text: 'Please provide a reason for declining.'
+            });
+            return;
+        }
+        performBulkAction('decline', reason);
+    });
+
+    function performBulkAction(action, reason = '') {
+        Swal.fire({
+            title: 'Processing...',
+            text: 'Please wait while we process your request',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: '{% url "adminpanel:bulk_update_deposits" %}',
+            method: 'POST',
+            data: JSON.stringify({
+                deposit_ids: selectedDeposits,
+                action: action,
+                admin_notes: reason
+            }),
+            contentType: 'application/json',
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: `Updated ${response.updated_count} deposits.`,
+                    timer: 2000
+                }).then(() => location.reload());
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: xhr.responseJSON?.error || 'Failed to process bulk action'
+                });
+            }
+        });
+    }
+
+    // Single approve
+    $('.approve-deposit').click(function() {
+        const reference = $(this).data('reference');
+        
+        Swal.fire({
+            title: 'Approve Deposit?',
+            text: 'This will credit the user\'s wallet immediately.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#48bb78',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, approve it'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                approveDeposit(reference);
+            }
+        });
+    });
+
+    function approveDeposit(reference) {
+        Swal.fire({
+            title: 'Processing...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: `/admin/deposits/${reference}/approve/`,
+            method: 'POST',
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Approved!',
+                    text: response.message,
+                    timer: 2000
+                }).then(() => location.reload());
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: xhr.responseJSON?.error || 'Failed to approve deposit'
+                });
+            }
+        });
+    }
+
+    // Single decline
+    $('.decline-deposit').click(function() {
+        currentReference = $(this).data('reference');
+        $('#declineModal').modal('show');
+    });
+
+    $('#confirmDecline').off().on('click', function() {
+        const reason = $('#declineReason').val().trim();
+        if (!reason) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Reason Required',
+                text: 'Please provide a reason for declining.'
+            });
+            return;
+        }
+
+        $('#declineModal').modal('hide');
+        
+        Swal.fire({
+            title: 'Processing...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: `/admin/deposits/${currentReference}/decline/`,
+            method: 'POST',
+            data: JSON.stringify({ admin_notes: reason }),
+            contentType: 'application/json',
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Declined',
+                    text: response.message,
+                    timer: 2000
+                }).then(() => location.reload());
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: xhr.responseJSON?.error || 'Failed to decline deposit'
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
