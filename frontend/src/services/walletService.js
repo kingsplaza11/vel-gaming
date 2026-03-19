@@ -21,14 +21,27 @@ export const walletService = {
   },
 
   // Create deposit request (bank is randomly selected on backend)
-  createDepositRequest: (data) => {
-    console.log("Creating deposit request with amount:", data.amount);
-    return api.post("/wallet/create_deposit_request/", {
-      amount: data.amount,
-      source_bank_name: data.source_bank_name || '',
-      source_account_number: data.source_account_number || '',
-      source_account_name: data.source_account_name || '',
-    });
+  createDepositRequest: async (data) => {
+    console.log("Creating deposit request with data:", data);
+    try {
+      const response = await api.post("/wallet/create_deposit_request/", {
+        amount: data.amount,
+        source_bank_name: data.source_bank_name || '',
+        source_account_number: data.source_account_number || '',
+        source_account_name: data.source_account_name || '',
+      });
+      
+      console.log("Raw API response:", response);
+      console.log("Response data:", response.data);
+      console.log("Response status:", response.status);
+      
+      return response;
+    } catch (error) {
+      console.error("API call error in createDepositRequest:", error);
+      console.error("Error response:", error.response);
+      console.error("Error data:", error.response?.data);
+      throw error;
+    }
   },
 
   // Check deposit status

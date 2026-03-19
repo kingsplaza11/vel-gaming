@@ -208,6 +208,8 @@ class WalletViewSet(viewsets.GenericViewSet):
     # CREATE DEPOSIT REQUEST
     # ---------------------------------------------------
 
+    # wallets/views.py - Updated create_deposit_request (remove email)
+
     @action(detail=False, methods=["post"])
     def create_deposit_request(self, request):
         """Create a new deposit request with random bank selection"""
@@ -230,6 +232,19 @@ class WalletViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Quick validation
+        if amount < 3000:
+            return Response(
+                {"status": False, "message": "Minimum deposit amount is ₦3000"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if amount > 10000000:
+            return Response(
+                {"status": False, "message": "Maximum deposit amount is ₦10,000,000"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         # Get all active banks
         active_banks = AdminBank.objects.filter(is_active=True)
         
@@ -247,18 +262,24 @@ class WalletViewSet(viewsets.GenericViewSet):
                     suitable_banks.append(bank)
         
         if not suitable_banks:
-            # Find the bank with highest max limit or lowest min limit for better error message
-            highest_max = max(active_banks, key=lambda b: b.max_deposit_amount or 0)
-            lowest_min = min(active_banks, key=lambda b: b.min_deposit_amount)
+            # Find min and max limits for better error message
+            min_limit = min(b.min_deposit_amount for b in active_banks)
+            max_limits = [b.max_deposit_amount for b in active_banks if b.max_deposit_amount]
+            max_limit = max(max_limits) if max_limits else None
             
-            if amount < lowest_min.min_deposit_amount:
+            if amount < min_limit:
                 return Response(
-                    {"status": False, "message": f"Amount too low. Minimum deposit across all banks is ₦{lowest_min.min_deposit_amount}"},
+                    {"status": False, "message": f"Amount too low. Minimum deposit is ₦{min_limit}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            elif max_limit and amount > max_limit:
+                return Response(
+                    {"status": False, "message": f"Amount too high. Maximum deposit is ₦{max_limit}"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             else:
                 return Response(
-                    {"status": False, "message": f"Amount too high for all banks. Maximum deposit available is ₦{highest_max.max_deposit_amount}"},
+                    {"status": False, "message": "No suitable bank available for this amount."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
@@ -271,7 +292,7 @@ class WalletViewSet(viewsets.GenericViewSet):
             status__in=['pending', 'processing']
         ).count()
         
-        if pending_count >= 3:  # Allow up to 3 pending deposits
+        if pending_count >= 3:
             return Response(
                 {"status": False, "message": "You have too many pending deposit requests. Please wait for them to be processed."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -293,7 +314,7 @@ class WalletViewSet(viewsets.GenericViewSet):
                 source_account_name=source_account_name,
                 reference=reference,
                 status='pending',
-                expires_at=timezone.now() + timedelta(hours=24),  # Expires in 24 hours
+                expires_at=timezone.now() + timedelta(hours=24),
                 meta={
                     'created_via': 'web',
                     'user_agent': request.META.get('HTTP_USER_AGENT', ''),
@@ -330,11 +351,8 @@ class WalletViewSet(viewsets.GenericViewSet):
             deposit_request.transaction_reference = wallet_tx.reference
             deposit_request.save(update_fields=['transaction_reference'])
         
-        # Send confirmation email
-        try:
-            send_deposit_confirmation_email(request.user, deposit_request)
-        except Exception as e:
-            logger.error(f"Failed to send deposit confirmation email: {str(e)}")
+        # ============= REMOVED EMAIL FROM HERE =============
+        # Email will be sent when user clicks "I Have Made Payment"
         
         return Response({
             'status': True,
@@ -466,6 +484,8 @@ class WalletViewSet(viewsets.GenericViewSet):
     # ---------------------------------------------------
     # MARK DEPOSIT AS PAID (USER ACTION)
     # ---------------------------------------------------
+    # wallets/views.py - Update the mark_as_paid method
+
     @action(detail=False, methods=["post"])
     def mark_as_paid(self, request):
         """User marks that they have made the payment"""
@@ -526,7 +546,20 @@ class WalletViewSet(viewsets.GenericViewSet):
                 except WalletTransaction.DoesNotExist:
                     pass
             
-            # Notify admin (you can add your notification logic here)
+            # ============= SEND EMAIL AFTER USER MARKS AS PAID =============
+            try:
+                # Send confirmation email to user
+                email_sent = send_deposit_confirmation_email(request.user, deposit_request)
+                if email_sent:
+                    logger.info(f"Deposit confirmation email sent to {request.user.email} for reference {deposit_request.reference}")
+                else:
+                    logger.warning(f"Failed to send deposit confirmation email to {request.user.email}")
+            except Exception as e:
+                logger.error(f"Error sending deposit confirmation email: {str(e)}")
+                # Don't fail the request if email fails
+            
+            # ============= NOTIFY ADMIN (Optional) =============
+            # You can add admin notification here (email, slack, etc.)
             
             return Response({
                 'status': True,
@@ -536,7 +569,8 @@ class WalletViewSet(viewsets.GenericViewSet):
                     'reference': deposit_request.reference,
                     'status': deposit_request.status,
                     'updated_at': deposit_request.updated_at,
-                }
+                },
+                'email_notification': 'sent'  # Optional flag for frontend
             })
             
         except DepositRequest.DoesNotExist:

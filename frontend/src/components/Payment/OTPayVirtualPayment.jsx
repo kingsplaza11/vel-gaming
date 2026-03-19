@@ -20,21 +20,17 @@ import {
   Tooltip,
   Snackbar,
   Chip,
-  LinearProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from "@mui/material";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import InfoIcon from '@mui/icons-material/Info';
 import HistoryIcon from '@mui/icons-material/History';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import HomeIcon from '@mui/icons-material/Home';
 
-const BankDepositPayment = ({ user, onSuccess }) => {
+const BankDepositPayment = ({ user, onSuccess, onBack }) => {
   const { refreshWallet } = useWallet();
   const [amount, setAmount] = useState("");
   const [sourceBankName, setSourceBankName] = useState("");
@@ -42,22 +38,15 @@ const BankDepositPayment = ({ user, onSuccess }) => {
   const [sourceAccountName, setSourceAccountName] = useState("");
   
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [depositRequest, setDepositRequest] = useState(null);
-  const [paymentStatus, setPaymentStatus] = useState("idle"); // idle, created, completed, expired
+  const [paymentStatus, setPaymentStatus] = useState("idle"); // idle, created, processing, completed, expired
   const [copiedField, setCopiedField] = useState(null);
   const [timeLeft, setTimeLeft] = useState(86400); // 24 hours in seconds
   const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
-  const [pollCount, setPollCount] = useState(0);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
-  const [transactionDetails, setTransactionDetails] = useState(null);
-  const [supportAttempts, setSupportAttempts] = useState(0);
-  const [checkInterval, setCheckInterval] = useState(null);
   const [userDepositRequests, setUserDepositRequests] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [bankInfo, setBankInfo] = useState(null);
 
   const steps = ['Enter Amount', 'Make Transfer', 'Confirmation'];
   const [activeStep, setActiveStep] = useState(0);
@@ -67,16 +56,7 @@ const BankDepositPayment = ({ user, onSuccess }) => {
     fetchUserDepositRequests();
   }, []);
 
-  // Clean up interval on unmount
-  useEffect(() => {
-    return () => {
-      if (checkInterval) {
-        clearInterval(checkInterval);
-      }
-    };
-  }, [checkInterval]);
-
-  // Timer countdown
+  // Timer countdown for created deposits
   useEffect(() => {
     if (paymentStatus === 'created' && timeLeft > 0 && depositRequest?.expires_at) {
       const expiresAt = new Date(depositRequest.expires_at).getTime();
@@ -104,51 +84,6 @@ const BankDepositPayment = ({ user, onSuccess }) => {
       return () => clearInterval(timer);
     }
   }, [paymentStatus, depositRequest]);
-
-  // Auto-polling for payment status
-  const startPolling = (ref) => {
-    if (checkInterval) clearInterval(checkInterval);
-    
-    setPollCount(0);
-    const maxPolls = 720; // Poll for 1 hour (720 * 5 seconds)
-    
-    const interval = setInterval(async () => {
-      setPollCount(prev => {
-        const newCount = prev + 1;
-        if (newCount > maxPolls) {
-          console.log("Max polling attempts reached, stopping");
-          clearInterval(interval);
-          setCheckInterval(null);
-          return prev;
-        }
-        return newCount;
-      });
-      
-      try {
-        console.log(`Polling attempt ${pollCount + 1} for reference:`, ref);
-        const response = await walletService.checkDepositStatus(ref);
-        
-        if (response.data?.deposit_request?.status === 'completed') {
-          console.log("Payment completed, stopping poll");
-          clearInterval(interval);
-          setPaymentStatus('completed');
-          setActiveStep(2);
-          setPaymentSuccess(`Payment of ₦${Number(amount).toLocaleString()} confirmed!`);
-          setTransactionDetails(response.data);
-          
-          // Refresh wallet balance
-          await refreshWallet();
-          
-          if (onSuccess) onSuccess(response.data);
-        }
-      } catch (error) {
-        console.error('Error checking payment status:', error);
-        // Don't stop polling on error
-      }
-    }, 5000); // Check every 5 seconds
-    
-    setCheckInterval(interval);
-  };
 
   const fetchUserDepositRequests = async () => {
     try {
@@ -207,39 +142,39 @@ const BankDepositPayment = ({ user, onSuccess }) => {
     try {
       console.log("Creating deposit request with amount:", Number(amount));
 
-      const res = await walletService.createDepositRequest({
+      const response = await walletService.createDepositRequest({
         amount: Number(amount),
         source_bank_name: sourceBankName,
         source_account_number: sourceAccountNumber,
         source_account_name: sourceAccountName,
       });
 
-      console.log("API Response:", res);
-
-      if (res?.status === true) {
-        setDepositRequest(res.deposit_request);
-        setBankInfo(res.deposit_request.bank_details);
-        setPaymentStatus('created');
-        setActiveStep(1);
-        setTimeLeft(86400); // Reset timer to 24 hours
-        startPolling(res.deposit_request.reference);
-        
-        setPaymentSuccess("Deposit request created successfully! Please complete your bank transfer.");
-        
-        // Refresh deposit requests list
-        fetchUserDepositRequests();
+      if (response && response.data) {
+        if (response.data.status === true) {
+          setDepositRequest(response.data.deposit_request);
+          setPaymentStatus('created');
+          setActiveStep(1);
+          setTimeLeft(86400);
+          
+          setPaymentSuccess("Deposit request created successfully! Please complete your bank transfer.");
+          fetchUserDepositRequests();
+        } else {
+          throw new Error(response.data.message || "Failed to create deposit request");
+        }
       } else {
-        throw new Error(res?.message || "Failed to create deposit request");
+        throw new Error("Invalid response from server");
       }
     } catch (err) {
       console.error("Error creating deposit request:", err);
-      console.error("Error response:", err.response?.data);
       
-      const msg = err?.response?.data?.message || 
-                  err?.response?.data?.error ||
-                  err?.message || 
-                  "Deposit request failed. Please try again.";
-      setPaymentError(msg);
+      let errorMessage = "Deposit request failed. Please try again.";
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setPaymentError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -256,10 +191,14 @@ const BankDepositPayment = ({ user, onSuccess }) => {
       });
       
       if (res?.status === true) {
-        setPaymentSuccess(res.message);
+        // Update status to processing
+        setPaymentStatus('processing');
+        setActiveStep(2); // Go directly to confirmation step
+        
+        // Update deposit request status
         setDepositRequest({
           ...depositRequest,
-          status: res.deposit_request.status
+          status: 'processing'
         });
         
         // Refresh deposit requests
@@ -285,53 +224,7 @@ const BankDepositPayment = ({ user, onSuccess }) => {
     }, 2000);
   };
 
-  const handleRefreshStatus = async () => {
-    if (!depositRequest?.reference) return;
-    
-    setRefreshing(true);
-    setPaymentError("");
-
-    try {
-      console.log("Refreshing status for reference:", depositRequest.reference);
-      const response = await walletService.checkDepositStatus(depositRequest.reference);
-      console.log("Refresh response:", response);
-
-      if (response.status && response.deposit_request) {
-        const status = response.deposit_request.status;
-        
-        if (status === 'completed') {
-          setPaymentStatus('completed');
-          setActiveStep(2);
-          setPaymentSuccess(`Payment of ₦${Number(amount).toLocaleString()} confirmed!`);
-          setTransactionDetails(response);
-          
-          await refreshWallet();
-          if (onSuccess) onSuccess(response);
-        } else {
-          setDepositRequest({
-            ...depositRequest,
-            status: status
-          });
-          
-          if (status === 'processing') {
-            setPaymentSuccess("Your payment has been received and is being verified by admin.");
-          } else {
-            setPaymentSuccess(`Current status: ${status}. Please wait for admin verification.`);
-          }
-          setTimeout(() => setPaymentSuccess(""), 5000);
-        }
-      }
-    } catch (err) {
-      console.error("Refresh error:", err);
-      setPaymentError("Unable to check deposit status. Please try again.");
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const handleContactSupport = () => {
-    setSupportAttempts(prev => prev + 1);
-    
     const subject = encodeURIComponent(`Deposit Issue - Reference: ${depositRequest?.reference}`);
     const body = encodeURIComponent(
       `Hello Support,\n\nI've made a transfer but my deposit hasn't been confirmed after waiting.\n\n` +
@@ -341,7 +234,7 @@ const BankDepositPayment = ({ user, onSuccess }) => {
       `- Date: ${new Date().toLocaleString()}\n` +
       `- Bank: ${depositRequest?.bank_details?.bank_name}\n` +
       `- Account Number: ${depositRequest?.bank_details?.account_number}\n\n` +
-      `I've waited for ${Math.floor((86400 - timeLeft) / 3600)} hours. Please help verify this transaction.`
+      `Please help verify this transaction.`
     );
     window.location.href = `mailto:support@veltrogames.com?subject=${subject}&body=${body}`;
   };
@@ -352,20 +245,11 @@ const BankDepositPayment = ({ user, onSuccess }) => {
     setSourceAccountNumber("");
     setSourceAccountName("");
     setDepositRequest(null);
-    setBankInfo(null);
     setPaymentStatus("idle");
     setPaymentError("");
     setPaymentSuccess("");
     setActiveStep(0);
     setTimeLeft(86400);
-    setPollCount(0);
-    setSupportAttempts(0);
-    setTransactionDetails(null);
-    
-    if (checkInterval) {
-      clearInterval(checkInterval);
-      setCheckInterval(null);
-    }
   };
 
   const getStepContent = (step) => {
@@ -425,24 +309,35 @@ const BankDepositPayment = ({ user, onSuccess }) => {
               size="small"
             />
 
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              onClick={handleCreateDepositRequest}
-              disabled={loading || !amount}
-              sx={{ 
-                mt: 3, 
-                mb: 2,
-                py: 1.5,
-                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #FFA500 0%, #FFD700 100%)',
-                }
-              }}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Proceed to Deposit"}
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+              {onBack && (
+                <Button
+                  variant="outlined"
+                  onClick={onBack}
+                  startIcon={<ArrowBackIcon />}
+                  sx={{ flex: 1 }}
+                >
+                  Back
+                </Button>
+              )}
+              <Button
+                fullWidth={!onBack}
+                variant="contained"
+                color="primary"
+                onClick={handleCreateDepositRequest}
+                disabled={loading || !amount}
+                sx={{ 
+                  flex: onBack ? 1 : 'none',
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #FFA500 0%, #FFD700 100%)',
+                  }
+                }}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : "Proceed to Deposit"}
+              </Button>
+            </Box>
 
             {/* Show pending deposit requests */}
             {userDepositRequests.length > 0 && (
@@ -598,125 +493,36 @@ const BankDepositPayment = ({ user, onSuccess }) => {
 
               <Divider sx={{ my: 2 }} />
 
-              {/* Current Status */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Current Status
-                </Typography>
-                <Chip 
-                  label={depositRequest.status.toUpperCase()} 
-                  color={
-                    depositRequest.status === 'completed' ? 'success' :
-                    depositRequest.status === 'pending' ? 'warning' :
-                    depositRequest.status === 'processing' ? 'info' :
-                    depositRequest.status === 'expired' ? 'default' : 'error'
-                  }
-                  sx={{ fontWeight: 'bold' }}
-                />
-              </Box>
-
               {/* I Have Made Payment Button */}
-              {depositRequest.status === 'pending' && (
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="success"
-                  onClick={handleMarkAsPaid}
-                  disabled={loading}
-                  sx={{ 
-                    py: 1.5,
-                    mb: 2,
-                    background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
-                  }}
-                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircleIcon />}
-                >
-                  {loading ? "Processing..." : "I Have Made Payment"}
-                </Button>
-              )}
-
-              {/* Refresh Button */}
               <Button
                 fullWidth
                 variant="contained"
-                onClick={handleRefreshStatus}
-                disabled={refreshing}
+                color="success"
+                onClick={handleMarkAsPaid}
+                disabled={loading}
                 sx={{ 
                   py: 1.5,
-                  background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)',
-                  }
+                  mb: 2,
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
                 }}
-                startIcon={refreshing ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
+                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircleIcon />}
               >
-                {refreshing ? "Checking..." : "Check Status"}
+                {loading ? "Processing..." : "I Have Made Payment"}
               </Button>
 
-              {/* Support Contact - Shows after multiple refresh attempts or long wait */}
-              {(pollCount > 120 || supportAttempts > 0) && (
-                <Box sx={{ mt: 3 }}>
-                  <Alert 
-                    severity="info"
-                    action={
-                      <Button 
-                        color="inherit" 
-                        size="small" 
-                        onClick={handleContactSupport}
-                        startIcon={<SupportAgentIcon />}
-                      >
-                        Contact Support
-                      </Button>
-                    }
-                  >
-                    <Typography variant="body2">
-                      Still waiting? Our support team can help.
-                    </Typography>
-                  </Alert>
-                </Box>
-              )}
-
-              {/* Debug Info Toggle */}
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                <Button 
-                  size="small" 
-                  onClick={() => setShowDebugInfo(!showDebugInfo)}
-                  sx={{ textTransform: 'none' }}
+              {/* Support Contact */}
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleContactSupport}
+                  startIcon={<SupportAgentIcon />}
+                  color="info"
                 >
-                  {showDebugInfo ? 'Hide' : 'Show'} Technical Details
+                  Need Help? Contact Support
                 </Button>
               </Box>
-
-              {/* Debug Info */}
-              {showDebugInfo && (
-                <Accordion sx={{ mt: 2 }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="body2" color="text.secondary">
-                      Transaction Details
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <pre style={{ fontSize: '11px', overflowX: 'auto' }}>
-                      {JSON.stringify({
-                        reference: depositRequest.reference,
-                        amount,
-                        status: depositRequest.status,
-                        pollCount,
-                        timeLeft
-                      }, null, 2)}
-                    </pre>
-                  </AccordionDetails>
-                </Accordion>
-              )}
             </Paper>
-
-            <Button
-              fullWidth
-              variant="text"
-              onClick={handleStartOver}
-              sx={{ mt: 1 }}
-            >
-              Start Over
-            </Button>
           </Box>
         );
       
@@ -724,28 +530,34 @@ const BankDepositPayment = ({ user, onSuccess }) => {
         return (
           <Box sx={{ textAlign: 'center', py: 3 }}>
             <CheckCircleIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Deposit Request Received!
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: 'success.main' }}>
+              Thank You!
             </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              Your deposit request of <strong>₦{Number(amount).toLocaleString()}</strong> is currently pending review.
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              You will be notified once the payment has been completed by our admin team.
+            <Typography variant="h6" gutterBottom>
+              Your deposit request has been received
             </Typography>
             
-            <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
+              <Typography variant="body1" paragraph>
+                We are now processing your deposit of <strong>₦{Number(amount).toLocaleString()}</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
                 Reference: <strong>{depositRequest?.reference}</strong>
               </Typography>
-              {transactionDetails?.deposit_request?.completed_at && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  Completed: {new Date(transactionDetails.deposit_request.completed_at).toLocaleString()}
-                </Typography>
-              )}
+              <Box sx={{ my: 2 }}>
+                <Divider>
+                  <Chip label="What happens next?" size="small" />
+                </Divider>
+              </Box>
+              <Typography variant="body1" sx={{ mt: 2 }}>
+                Sit back and relax while we verify your deposit. This might take a while as our team reviews the transaction.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                You will receive an email confirmation once your wallet has been credited.
+              </Typography>
             </Paper>
             
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 3 }}>
               <Button
                 variant="contained"
                 onClick={handleStartOver}
@@ -759,6 +571,7 @@ const BankDepositPayment = ({ user, onSuccess }) => {
               <Button
                 variant="outlined"
                 onClick={() => window.location.href = '/dashboard'}
+                startIcon={<HomeIcon />}
               >
                 Go to Dashboard
               </Button>
@@ -797,7 +610,7 @@ const BankDepositPayment = ({ user, onSuccess }) => {
             </Alert>
           )}
 
-          {paymentSuccess && (
+          {paymentSuccess && paymentStatus !== 'processing' && (
             <Alert 
               severity="success" 
               sx={{ mb: 2 }}
@@ -823,8 +636,8 @@ const BankDepositPayment = ({ user, onSuccess }) => {
 
           {getStepContent(activeStep)}
 
-          {/* Info Alert */}
-          {activeStep === 1 && paymentStatus !== 'completed' && (
+          {/* Info Alert for Make Transfer step */}
+          {activeStep === 1 && paymentStatus === 'created' && (
             <Alert severity="info" sx={{ mt: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                 <InfoIcon sx={{ fontSize: 20 }} />
@@ -835,7 +648,7 @@ const BankDepositPayment = ({ user, onSuccess }) => {
                   <Typography variant="body2" color="text.secondary">
                     1. Transfer the exact amount to the bank details above<br/>
                     2. Click "I Have Made Payment" after transferring<br/>
-                    3. Admin will verify and credit your wallet within 24 hours
+                    3. We'll verify and credit your wallet
                   </Typography>
                 </Box>
               </Box>

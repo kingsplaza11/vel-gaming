@@ -232,3 +232,114 @@ def send_withdrawal_declined_email(user, withdrawal_request, reason):
     except Exception as e:
         logger.error(f"Failed to send withdrawal declined email: {str(e)}")
         return False
+
+
+
+# wallets/utils/email_service.py - Update with async sending
+
+import threading
+
+def send_email_async(subject, template_name, context, to_email):
+    """Send email asynchronously in a background thread"""
+    
+    def _send():
+        try:
+            # Render templates
+            html_content = render_to_string(f'emails/{template_name}.html', context)
+            text_content = strip_tags(html_content)
+            
+            # Create email
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[to_email],
+            )
+            email.attach_alternative(html_content, "text/html")
+            
+            # Send with timeout
+            email.send(fail_silently=True)
+            
+            logger.info(f"Email sent successfully to {to_email}")
+            
+        except Exception as e:
+            logger.error(f"Failed to send email to {to_email}: {str(e)}")
+    
+    # Start background thread
+    thread = threading.Thread(target=_send)
+    thread.daemon = True
+    thread.start()
+    
+    return True
+
+
+def send_deposit_confirmation_email(user, deposit_request):
+    """
+    Send confirmation email to user after they mark deposit as paid
+    """
+    try:
+        subject = f"Deposit Request Received - Reference: {deposit_request.reference}"
+        
+        # Simple context
+        context = {
+            'username': user.username,
+            'amount': f"{deposit_request.amount:,.2f}",
+            'reference': deposit_request.reference,
+            'bank_name': deposit_request.admin_bank.bank_name,
+            'account_number': deposit_request.admin_bank.account_number,
+            'account_name': deposit_request.admin_bank.account_name,
+            'created_at': deposit_request.created_at.strftime("%Y-%m-%d %H:%M"),
+            'support_email': 'support@veltrogames.com',
+            'site_name': 'Veltro Games',
+        }
+        
+        # Send asynchronously
+        send_email_async(
+            subject=subject,
+            template_name='deposit_confirmation',
+            context=context,
+            to_email=user.email
+        )
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to initiate deposit confirmation email: {str(e)}")
+        return False
+
+
+def send_withdrawal_confirmation_email(user, withdrawal_request, wallet_transaction):
+    """
+    Send confirmation email to user after withdrawal request submission
+    """
+    try:
+        subject = f"Withdrawal Request Submitted - Reference: {withdrawal_request.reference}"
+        
+        net_amount = withdrawal_request.amount - withdrawal_request.processing_fee
+        
+        context = {
+            'username': user.username,
+            'amount': f"{withdrawal_request.amount:,.2f}",
+            'processing_fee': f"{withdrawal_request.processing_fee:,.2f}",
+            'net_amount': f"{net_amount:,.2f}",
+            'reference': withdrawal_request.reference,
+            'account_name': withdrawal_request.account_name,
+            'bank_name': withdrawal_request.bank_name,
+            'account_number': withdrawal_request.account_number,
+            'estimated_time': '24-48 hours',
+            'support_email': 'support@veltrogames.com',
+            'site_name': 'Veltro Games',
+        }
+        
+        send_email_async(
+            subject=subject,
+            template_name='withdrawal_confirmation',
+            context=context,
+            to_email=user.email
+        )
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send withdrawal confirmation email: {str(e)}")
+        return False
