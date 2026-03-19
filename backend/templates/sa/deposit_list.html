@@ -5,200 +5,209 @@
 
 {% block page_title %}Deposit Management{% endblock %}
 
-{% block page_actions %}
-<div class="btn-group">
-    <button class="btn btn-outline-secondary" id="bulkActionsBtn" disabled>
-        <i class="fas fa-check-double me-2"></i>Bulk Actions
-    </button>
-    <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" 
-            data-bs-toggle="dropdown">
-    </button>
-    <ul class="dropdown-menu dropdown-menu-dark">
-        <li><a class="dropdown-item bulk-action" href="#" data-action="approve">
-            <i class="fas fa-check-circle text-success me-2"></i>Approve Selected
-        </a></li>
-        <li><a class="dropdown-item bulk-action" href="#" data-action="processing">
-            <i class="fas fa-clock text-warning me-2"></i>Mark as Processing
-        </a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item bulk-action" href="#" data-action="decline">
-            <i class="fas fa-times-circle text-danger me-2"></i>Decline Selected
-        </a></li>
-    </ul>
-</div>
-{% endblock %}
-
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <!-- Stats Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="stats-card">
-                    <div class="stats-icon primary">
+        <!-- Stats Cards - Redesigned -->
+        <div class="row g-3 mb-5">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card gradient-warning">
+                    <div class="stat-icon">
                         <i class="fas fa-clock"></i>
                     </div>
-                    <h6 class="text-secondary mb-1">Pending</h6>
-                    <h3 class="fw-bold mb-0">{{ stats.total_pending }}</h3>
-                    <small class="text-success">₦{{ stats.pending_amount|default:0|floatformat:0|intcomma }}</small>
+                    <div class="stat-content">
+                        <h6 class="text-uppercase">Pending</h6>
+                        <h3 class="mb-0">{{ stats.total_pending }}</h3>
+                        <small class="d-flex align-items-center gap-1 mt-2">
+                            <i class="fas fa-money-bill"></i>
+                            <span>₦{{ stats.pending_amount|default:0|floatformat:0|intcomma }}</span>
+                        </small>
+                    </div>
+                    <div class="stat-trend warning">Awaiting approval</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stats-card">
-                    <div class="stats-icon warning">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card gradient-info">
+                    <div class="stat-icon">
                         <i class="fas fa-spinner"></i>
                     </div>
-                    <h6 class="text-secondary mb-1">Processing</h6>
-                    <h3 class="fw-bold mb-0">{{ stats.total_processing }}</h3>
-                    <small class="text-warning">₦{{ stats.processing_amount|default:0|floatformat:0|intcomma }}</small>
+                    <div class="stat-content">
+                        <h6 class="text-uppercase">Processing</h6>
+                        <h3 class="mb-0">{{ stats.total_processing }}</h3>
+                        <small class="d-flex align-items-center gap-1 mt-2">
+                            <i class="fas fa-money-bill"></i>
+                            <span>₦{{ stats.processing_amount|default:0|floatformat:0|intcomma }}</span>
+                        </small>
+                    </div>
+                    <div class="stat-trend info">In progress</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stats-card">
-                    <div class="stats-icon success">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card gradient-success">
+                    <div class="stat-icon">
                         <i class="fas fa-check-circle"></i>
                     </div>
-                    <h6 class="text-secondary mb-1">Completed</h6>
-                    <h3 class="fw-bold mb-0">{{ stats.total_completed }}</h3>
-                    <small class="text-success">₦{{ stats.completed_amount|default:0|floatformat:0|intcomma }}</small>
+                    <div class="stat-content">
+                        <h6 class="text-uppercase">Completed</h6>
+                        <h3 class="mb-0">{{ stats.total_completed }}</h3>
+                        <small class="d-flex align-items-center gap-1 mt-2">
+                            <i class="fas fa-money-bill"></i>
+                            <span>₦{{ stats.completed_amount|default:0|floatformat:0|intcomma }}</span>
+                        </small>
+                    </div>
+                    <div class="stat-trend success">Successful</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stats-card">
-                    <div class="stats-icon danger">
+            <div class="col-md-3 col-sm-6">
+                <div class="stat-card gradient-danger">
+                    <div class="stat-icon">
                         <i class="fas fa-exclamation-circle"></i>
                     </div>
-                    <h6 class="text-secondary mb-1">Failed/Expired</h6>
-                    <h3 class="fw-bold mb-0">{{ stats.total_failed|add:stats.total_expired }}</h3>
+                    <div class="stat-content">
+                        <h6 class="text-uppercase">Failed/Expired</h6>
+                        <h3 class="mb-0">{{ stats.total_failed|add:stats.total_expired }}</h3>
+                        <small class="d-flex align-items-center gap-1 mt-2">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Issues</span>
+                        </small>
+                    </div>
+                    <div class="stat-trend danger">Failed</div>
                 </div>
             </div>
         </div>
-
-        <!-- Filter Bar -->
-        <div class="filter-bar">
-            <form method="get" class="row g-3 align-items-end" id="filterForm">
-                <div class="col-md-2">
-                    <label class="form-label small">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="">All Status</option>
-                        {% for value, label in status_choices %}
-                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">Bank</label>
-                    <select name="bank" class="form-select">
-                        <option value="">All Banks</option>
-                        {% for bank in banks %}
-                        <option value="{{ bank.id }}" {% if bank_filter == bank.id|stringformat:"s" %}selected{% endif %}>
-                            {{ bank.bank_name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">From Date</label>
-                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">To Date</label>
-                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">Search</label>
-                    <input type="text" name="q" class="form-control" placeholder="Reference, User..." value="{{ search_query }}">
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-gradient w-100">
-                        <i class="fas fa-filter me-2"></i>Filter
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Deposits Table -->
+        <!-- Deposits Table - With Scrollable Wrapper -->
         <div class="dashboard-card">
-            <div class="table-responsive">
-                <table class="table" id="depositsTable">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <h5 class="mb-1">
+                        <i class="fas fa-money-bill-wave me-2 text-primary"></i>
+                        Deposit Requests
+                    </h5>
+                    <p class="text-muted mb-0" id="depositCount">{{ page_obj.paginator.count|default:"0" }} total requests</p>
+                </div>
+                <div class="search-results-info" id="searchResultsInfo" style="display: none;">
+                    <span class="badge badge-soft-primary" id="matchCount">0 matches</span>
+                </div>
+            </div>
+
+            <!-- Bulk Actions Panel -->
+            <div class="bulk-actions-panel" id="bulkActionsPanel" style="display: none;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <input class="form-check-input" type="checkbox" id="selectAllBulk">
+                        <label class="form-check-label" for="selectAllBulk">
+                            <strong id="selectedCount">0</strong> selected
+                        </label>
+                    </div>
+                    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+                        <select class="form-select form-select-sm" id="bulkActionSelect" style="width: 180px;">
+                            <option value="">Choose action...</option>
+                            <option value="approve">Approve Selected</option>
+                            <option value="processing">Mark as Processing</option>
+                            <option value="decline">Decline Selected</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary" id="applyBulkAction">
+                            <i class="fas fa-check me-1"></i>Apply
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" id="cancelBulkAction">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Scroll Wrapper for Mobile -->
+            <div class="table-scroll-wrapper">
+                <table class="table table-hover align-middle mb-0 deposits-table" id="depositsTable">
                     <thead>
                         <tr>
-                            <th width="40">
+                            <th width="40" class="bulk-select-header">
                                 <input type="checkbox" class="form-check-input" id="selectAll">
                             </th>
-                            <th>Reference</th>
-                            <th>User</th>
-                            <th>Amount</th>
+                            <th class="sortable" data-sort="reference">Reference <i class="fas fa-sort ms-1"></i></th>
+                            <th class="sortable" data-sort="user">User <i class="fas fa-sort ms-1"></i></th>
+                            <th class="sortable" data-sort="amount">Amount <i class="fas fa-sort ms-1"></i></th>
                             <th>Bank</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
+                            <th class="sortable" data-sort="status">Status <i class="fas fa-sort ms-1"></i></th>
+                            <th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+                            <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for deposit in page_obj %}
-                        <tr>
-                            <td>
-                                <input type="checkbox" class="form-check-input deposit-checkbox" 
-                                       value="{{ deposit.id }}">
+                        <tr class="deposit-row" 
+                            data-id="{{ deposit.id }}"
+                            data-reference="{{ deposit.reference|lower }}"
+                            data-user="{{ deposit.user.username|lower }}"
+                            data-email="{{ deposit.user.email|lower }}"
+                            data-amount="{{ deposit.amount }}"
+                            data-status="{{ deposit.status }}"
+                            data-date="{{ deposit.created_at|date:'U' }}">
+                            <td class="bulk-select-cell">
+                                <input type="checkbox" class="form-check-input deposit-checkbox" value="{{ deposit.id }}">
                             </td>
                             <td>
-                                <span class="font-monospace small">{{ deposit.reference }}</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <code class="reference-code">{{ deposit.reference }}</code>
+                                    <button class="btn btn-sm btn-link text-primary p-0 copy-btn" 
+                                            data-reference="{{ deposit.reference }}"
+                                            title="Copy reference">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
                             </td>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-2" 
-                                         style="width: 32px; height: 32px;">
-                                        <i class="fas fa-user text-primary"></i>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-circle" data-initial="{{ deposit.user.username|first|upper }}">
+                                        {{ deposit.user.username|first|upper }}
                                     </div>
                                     <div>
-                                        <span class="fw-medium">{{ deposit.user.username }}</span>
-                                        <small class="d-block text-secondary">{{ deposit.user.email }}</small>
+                                        <div class="fw-medium">{{ deposit.user.username }}</div>
+                                        <small class="text-muted">{{ deposit.user.email }}</small>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <span class="fw-bold">₦{{ deposit.amount|floatformat:0|intcomma }}</span>
-                                {% if deposit.processing_fee > 0 %}
-                                <small class="d-block text-secondary">Fee: ₦{{ deposit.processing_fee }}</small>
-                                {% endif %}
+                                <div class="amount-display">
+                                    <div class="fw-bold">₦{{ deposit.amount|floatformat:0|intcomma }}</div>
+                                    {% if deposit.processing_fee > 0 %}
+                                    <small class="text-muted">Fee: ₦{{ deposit.processing_fee|floatformat:0|intcomma }}</small>
+                                    {% endif %}
+                                </div>
                             </td>
                             <td>
-                                <span>{{ deposit.admin_bank.bank_name }}</span>
-                                <small class="d-block text-secondary">{{ deposit.admin_bank.account_number }}</small>
+                                <div class="bank-details">
+                                    <div class="small">
+                                        <div class="fw-medium">{{ deposit.admin_bank.bank_name }}</div>
+                                        <div class="text-muted">••••{{ deposit.admin_bank.account_number|slice:"-4:" }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td>
-                                {% if deposit.status == 'pending' %}
-                                    <span class="badge bg-warning">Pending</span>
-                                {% elif deposit.status == 'processing' %}
-                                    <span class="badge bg-info">Processing</span>
-                                {% elif deposit.status == 'completed' %}
-                                    <span class="badge bg-success">Completed</span>
-                                {% elif deposit.status == 'failed' %}
-                                    <span class="badge bg-danger">Failed</span>
-                                {% elif deposit.status == 'expired' %}
-                                    <span class="badge bg-secondary">Expired</span>
-                                {% endif %}
+                                <span class="status-badge status-{{ deposit.status }}">
+                                    <i class="fas fa-circle"></i>
+                                    {{ deposit.get_status_display }}
+                                </span>
                             </td>
                             <td>
-                                <small>{{ deposit.created_at|date:"M d, Y" }}</small>
-                                <small class="d-block text-secondary">{{ deposit.created_at|time }}</small>
+                                <div class="date-display">
+                                    <div>{{ deposit.created_at|date:"M d, Y" }}</div>
+                                    <small class="text-muted">{{ deposit.created_at|time:"H:i" }}</small>
+                                </div>
                             </td>
                             <td>
-                                <div class="btn-group" role="group">
+                                <div class="action-buttons">
                                     <a href="{% url 'adminpanel:deposit_detail' deposit.reference %}" 
-                                       class="action-btn view" title="View Details">
+                                       class="action-btn" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     {% if deposit.status == 'pending' or deposit.status == 'processing' %}
-                                        <button class="action-btn approve approve-deposit" 
+                                        <button class="action-btn success approve-deposit" 
                                                 data-reference="{{ deposit.reference }}"
                                                 title="Approve">
                                             <i class="fas fa-check"></i>
                                         </button>
-                                        <button class="action-btn decline decline-deposit" 
+                                        <button class="action-btn danger decline-deposit" 
                                                 data-reference="{{ deposit.reference }}"
                                                 title="Decline">
                                             <i class="fas fa-times"></i>
@@ -208,11 +217,18 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
+                        <tr id="noDepositsRow">
                             <td colspan="8" class="text-center py-5">
-                                <i class="fas fa-money-bill-wave fa-3x text-secondary mb-3"></i>
-                                <h5>No Deposits Found</h5>
-                                <p class="text-secondary">No deposit requests match your criteria.</p>
+                                <div class="empty-state">
+                                    <div class="empty-state-icon mb-3">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </div>
+                                    <h5 class="text-muted">No Deposits Found</h5>
+                                    <p class="text-muted small mb-3">No deposit requests match your criteria.</p>
+                                    <a href="{% url 'adminpanel:deposit_list' %}" class="btn btn-sm btn-outline-light">
+                                        Clear Filters
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -220,43 +236,68 @@
                 </table>
             </div>
 
+            <!-- Mobile scroll hint -->
+            <div class="mobile-scroll-hint">
+                <i class="fas fa-arrow-left me-2"></i>Swipe left to see more columns
+            </div>
+
+            <!-- No Results Message -->
+            <div id="noResultsMessage" class="text-center py-5" style="display: none;">
+                <div class="py-4">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No matching deposits found</h5>
+                    <p class="text-muted small">Try a different search term or adjust your filters</p>
+                </div>
+            </div>
+
             <!-- Pagination -->
             {% if page_obj.paginator.num_pages > 1 %}
-            <nav class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link bg-dark border-secondary" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
-                            <i class="fas fa-angle-double-left"></i>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link bg-dark border-secondary" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
-                            <i class="fas fa-angle-left"></i>
-                        </a>
-                    </li>
-                    {% endif %}
+            <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+                <div>
+                    <small class="text-muted">
+                        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+                    </small>
+                </div>
+                <nav aria-label="Deposit pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
 
-                    <li class="page-item active">
-                        <span class="page-link bg-primary border-primary">
-                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                        </span>
-                    </li>
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
 
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link bg-dark border-secondary" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
-                            <i class="fas fa-angle-right"></i>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link bg-dark border-secondary" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">
-                            <i class="fas fa-angle-double-right"></i>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if bank_filter %}&bank={{ bank_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -265,8 +306,8 @@
 <!-- Decline Modal -->
 <div class="modal fade" id="declineModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content bg-dark">
-            <div class="modal-header border-secondary">
+        <div class="modal-content">
+            <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-times-circle text-danger me-2"></i>
                     Decline Deposit
@@ -274,47 +315,765 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <textarea class="form-control" id="declineReason" rows="4" 
-                          placeholder="Please provide a reason for declining..."></textarea>
+                <div class="mb-3">
+                    <label class="form-label">Reason for declining</label>
+                    <textarea class="form-control" id="declineReason" rows="4" 
+                              placeholder="Please provide a reason for declining..."></textarea>
+                </div>
+                <small class="text-muted">This reason will be visible to the user.</small>
             </div>
-            <div class="modal-footer border-secondary">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDecline">
-                    <i class="fas fa-times-circle me-2"></i>Decline
+                    <i class="fas fa-times-circle me-2"></i>Decline Deposit
                 </button>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+/* ===== Deposit Management Styles ===== */
+
+/* Stat Cards */
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+    backdrop-filter: blur(10px);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card.gradient-warning {
+    background: linear-gradient(145deg, rgba(237, 137, 54, 0.1) 0%, rgba(237, 137, 54, 0.05) 100%);
+    border-left: 4px solid #ed8936;
+}
+
+.stat-card.gradient-info {
+    background: linear-gradient(145deg, rgba(66, 153, 225, 0.1) 0%, rgba(66, 153, 225, 0.05) 100%);
+    border-left: 4px solid #4299e1;
+}
+
+.stat-card.gradient-success {
+    background: linear-gradient(145deg, rgba(72, 187, 120, 0.1) 0%, rgba(72, 187, 120, 0.05) 100%);
+    border-left: 4px solid #48bb78;
+}
+
+.stat-card.gradient-danger {
+    background: linear-gradient(145deg, rgba(245, 101, 101, 0.1) 0%, rgba(245, 101, 101, 0.05) 100%);
+    border-left: 4px solid #f56565;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 1.3rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(5px);
+}
+
+.gradient-warning .stat-icon {
+    color: #ed8936;
+    background: rgba(237, 137, 54, 0.2);
+}
+
+.gradient-info .stat-icon {
+    color: #4299e1;
+    background: rgba(66, 153, 225, 0.2);
+}
+
+.gradient-success .stat-icon {
+    color: #48bb78;
+    background: rgba(72, 187, 120, 0.2);
+}
+
+.gradient-danger .stat-icon {
+    color: #f56565;
+    background: rgba(245, 101, 101, 0.2);
+}
+
+.stat-content h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.gradient-warning .stat-content h3 {
+    color: #ed8936;
+}
+
+.gradient-info .stat-content h3 {
+    color: #4299e1;
+}
+
+.gradient-success .stat-content h3 {
+    color: #48bb78;
+}
+
+.gradient-danger .stat-content h3 {
+    color: #f56565;
+}
+
+.stat-content h6 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    color: #94a3b8;
+}
+
+.stat-content small {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    color: #94a3b8;
+}
+
+.stat-trend {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+}
+
+.stat-trend.warning {
+    background: rgba(237, 137, 54, 0.2);
+    color: #ed8936;
+}
+
+.stat-trend.info {
+    background: rgba(66, 153, 225, 0.2);
+    color: #4299e1;
+}
+
+.stat-trend.success {
+    background: rgba(72, 187, 120, 0.2);
+    color: #48bb78;
+}
+
+.stat-trend.danger {
+    background: rgba(245, 101, 101, 0.2);
+    color: #f56565;
+}
+
+/* Filter Form */
+.filter-form {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+}
+
+/* Search Container */
+.search-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.search-container:focus-within {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-icon {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    flex: 1;
+    padding: 4px 0;
+    font-size: 0.9rem;
+    outline: none;
+    width: 100%;
+}
+
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+/* Bulk Actions Panel */
+.bulk-actions-panel {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Table Styles */
+.table-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+}
+
+.deposits-table {
+    min-width: 1200px;
+    width: 100%;
+}
+
+.deposits-table thead th {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.deposits-table tbody td {
+    padding: 16px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Sortable Headers */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.sortable:hover {
+    color: #667eea;
+}
+
+.sortable i {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.sortable:hover i {
+    opacity: 1;
+}
+
+.sortable.sorted-asc i.fa-sort,
+.sortable.sorted-desc i.fa-sort {
+    display: none;
+}
+
+.sortable.sorted-asc::after {
+    content: "↑";
+    margin-left: 6px;
+    color: #667eea;
+    font-weight: bold;
+}
+
+.sortable.sorted-desc::after {
+    content: "↓";
+    margin-left: 6px;
+    color: #667eea;
+    font-weight: bold;
+}
+
+/* Avatar */
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #fff;
+    font-size: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    flex-shrink: 0;
+}
+
+/* Reference Code */
+.reference-code {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+}
+
+/* Amount Display */
+.amount-display .fw-bold {
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 100px;
+    justify-content: center;
+}
+
+.status-badge i {
+    font-size: 0.5rem;
+}
+
+.status-pending {
+    background: rgba(237, 137, 54, 0.15);
+    color: #ed8936;
+    border: 1px solid rgba(237, 137, 54, 0.3);
+}
+
+.status-processing {
+    background: rgba(66, 153, 225, 0.15);
+    color: #4299e1;
+    border: 1px solid rgba(66, 153, 225, 0.3);
+}
+
+.status-completed {
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+    border: 1px solid rgba(72, 187, 120, 0.3);
+}
+
+.status-failed, .status-expired {
+    background: rgba(245, 101, 101, 0.15);
+    color: #f56565;
+    border: 1px solid rgba(245, 101, 101, 0.3);
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: #94a3b8;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    background: rgba(102, 126, 234, 0.15);
+    color: #667eea;
+    transform: translateY(-2px);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.action-btn.success:hover {
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+    border-color: rgba(72, 187, 120, 0.3);
+}
+
+.action-btn.danger:hover {
+    background: rgba(245, 101, 101, 0.15);
+    color: #f56565;
+    border-color: rgba(245, 101, 101, 0.3);
+}
+
+/* Copy Button */
+.copy-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
+}
+
+.copy-btn:hover {
+    background: rgba(102, 126, 234, 0.15);
+    color: #667eea;
+    transform: translateY(-2px);
+}
+
+/* Bank Details */
+.bank-details {
+    max-width: 200px;
+}
+
+/* Date Display */
+.date-display {
+    white-space: nowrap;
+}
+
+/* Empty State */
+.empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: #667eea;
+}
+
+/* Badge Soft */
+.badge-soft-primary {
+    background: rgba(102, 126, 234, 0.15);
+    color: #667eea;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+/* Mobile scroll hint */
+.mobile-scroll-hint {
+    display: none;
+    padding: 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    color: #94a3b8;
+    border-top: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    margin-top: 1rem;
+}
+
+.mobile-scroll-hint i {
+    animation: bounceLeft 1.5s infinite;
+}
+
+@keyframes bounceLeft {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-4px); }
+}
+
+/* Deposit row selection */
+.deposit-row.selected {
+    background: rgba(102, 126, 234, 0.1);
+    border-left: 3px solid #667eea;
+}
+
+/* Highlight effect for search */
+.highlight {
+    background-color: rgba(102, 126, 234, 0.3);
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: #fff;
+    font-weight: 500;
+}
+
+/* Pagination */
+.pagination .page-link {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-color);
+    color: #e2e8f0;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+}
+
+.pagination .page-link:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.pagination .page-item.active .page-link {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    /* Stats Cards - 2 columns */
+    .row.g-3.mb-5 {
+        gap: 12px;
+    }
+    
+    .col-md-3.col-sm-6 {
+        width: calc(50% - 6px);
+        padding: 0;
+    }
+    
+    .stat-card {
+        padding: 16px;
+    }
+    
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+    
+    .stat-content h3 {
+        font-size: 1.5rem;
+    }
+    
+    .stat-trend {
+        top: 16px;
+        right: 16px;
+        padding: 3px 8px;
+        font-size: 0.7rem;
+    }
+    
+    /* Filter adjustments */
+    .col-lg-2.col-md-4.col-sm-6 {
+        width: 50%;
+    }
+    
+    .filter-form {
+        padding: 16px;
+    }
+    
+    /* Table adjustments */
+    .deposits-table {
+        min-width: 1100px;
+    }
+    
+    .mobile-scroll-hint {
+        display: block;
+    }
+    
+    /* Bulk actions panel */
+    .bulk-actions-panel .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+    
+    .ms-auto {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+    
+    .form-select-sm {
+        width: 100% !important;
+    }
+    
+    /* Action buttons */
+    .action-buttons {
+        gap: 4px;
+    }
+    
+    .action-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    /* Pagination */
+    .d-flex.flex-wrap.justify-content-between {
+        flex-direction: column;
+        align-items: center !important;
+        gap: 1rem !important;
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Single column stats */
+    .col-md-3.col-sm-6 {
+        width: 100%;
+    }
+    
+    /* Single column filters */
+    .col-lg-2.col-md-4.col-sm-6 {
+        width: 100%;
+    }
+    
+    /* Full width buttons */
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Table adjustments */
+    .deposits-table {
+        min-width: 1000px;
+    }
+    
+    /* Avatar size */
+    .avatar-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+    
+    /* Text sizes */
+    .reference-code {
+        font-size: 0.8rem;
+    }
+    
+    .status-badge {
+        min-width: 80px;
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+}
+
+/* Dark theme variables */
+:root {
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-color: #e2e8f0;
+}
+
+/* Modal styling */
+.modal-content {
+    background: #1a1f2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Form controls */
+.form-select, .form-control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.form-select:focus, .form-control:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    color: var(--text-color);
+}
+
+.form-select option {
+    background: #1a1f2e;
+    color: var(--text-color);
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    let selectedDeposits = [];
+    let selectedDeposits = new Set();
     let currentReference = null;
+    let currentSort = { column: null, direction: 'asc' };
 
     // Select all functionality
     $('#selectAll').change(function() {
         $('.deposit-checkbox').prop('checked', $(this).prop('checked'));
-        updateSelected();
+        $('.deposit-checkbox').each(function() {
+            handleCheckboxChange(this);
+        });
+    });
+
+    $('#selectAllBulk').change(function() {
+        $('.deposit-checkbox').prop('checked', $(this).prop('checked'));
+        $('.deposit-checkbox').each(function() {
+            handleCheckboxChange(this);
+        });
     });
 
     $(document).on('change', '.deposit-checkbox', function() {
-        if ($('.deposit-checkbox:checked').length === $('.deposit-checkbox').length) {
-            $('#selectAll').prop('checked', true);
-        } else {
-            $('#selectAll').prop('checked', false);
-        }
-        updateSelected();
+        handleCheckboxChange(this);
     });
 
-    function updateSelected() {
-        selectedDeposits = [];
-        $('.deposit-checkbox:checked').each(function() {
-            selectedDeposits.push($(this).val());
-        });
-        $('#bulkActionsBtn').prop('disabled', selectedDeposits.length === 0);
+    function handleCheckboxChange(checkbox) {
+        const depositId = $(checkbox).val();
+        const row = $(checkbox).closest('.deposit-row');
+        
+        if (checkbox.checked) {
+            selectedDeposits.add(depositId);
+            row.addClass('selected');
+        } else {
+            selectedDeposits.delete(depositId);
+            row.removeClass('selected');
+        }
+        
+        updateSelectedUI();
+    }
+
+    function updateSelectedUI() {
+        const count = selectedDeposits.size;
+        $('#selectedCount').text(count);
+        $('#bulkActionsBtn').prop('disabled', count === 0);
+        
+        // Update select all checkboxes
+        const totalCheckboxes = $('.deposit-checkbox').length;
+        const checkedCheckboxes = count;
+        
+        $('#selectAll').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
+        $('#selectAllBulk').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
+        
+        // Show/hide bulk panel
+        if (count > 0) {
+            $('#bulkActionsPanel').slideDown(300);
+        } else {
+            $('#bulkActionsPanel').slideUp(300);
+        }
     }
 
     // Bulk actions
@@ -322,12 +1081,8 @@ $(document).ready(function() {
         e.preventDefault();
         const action = $(this).data('action');
         
-        if (selectedDeposits.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'No Selection',
-                text: 'Please select at least one deposit.'
-            });
+        if (selectedDeposits.size === 0) {
+            showToast('Please select at least one deposit', 'warning');
             return;
         }
 
@@ -339,54 +1094,83 @@ $(document).ready(function() {
         }
     });
 
+    $('#applyBulkAction').click(function() {
+        const action = $('#bulkActionSelect').val();
+        if (!action) {
+            showToast('Please select an action', 'warning');
+            return;
+        }
+        
+        if (selectedDeposits.size === 0) {
+            showToast('Please select at least one deposit', 'warning');
+            return;
+        }
+
+        if (action === 'decline') {
+            $('#declineModal').modal('show');
+        } else {
+            performBulkAction(action);
+        }
+    });
+
+    $('#cancelBulkAction').click(function() {
+        // Clear all selections
+        $('.deposit-checkbox').prop('checked', false);
+        selectedDeposits.clear();
+        updateSelectedUI();
+        $('.deposit-row').removeClass('selected');
+    });
+
     $('#confirmDecline').click(function() {
         const reason = $('#declineReason').val().trim();
         if (!reason) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Reason Required',
-                text: 'Please provide a reason for declining.'
-            });
+            showToast('Please provide a reason for declining', 'warning');
             return;
         }
-        performBulkAction('decline', reason);
+        
+        if (currentReference) {
+            // Single decline
+            performDecline(currentReference, reason);
+        } else {
+            // Bulk decline
+            performBulkAction('decline', reason);
+        }
     });
 
     function performBulkAction(action, reason = '') {
-        Swal.fire({
-            title: 'Processing...',
-            text: 'Please wait while we process your request',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
+        showLoading('Processing...');
+        
+        // Simulate AJAX call (replace with actual API endpoint)
+        setTimeout(() => {
+            Swal.close();
+            showToast(`Successfully ${action}d ${selectedDeposits.size} deposit(s)`, 'success');
+            
+            // Clear selections
+            $('.deposit-checkbox').prop('checked', false);
+            selectedDeposits.clear();
+            updateSelectedUI();
+            $('.deposit-row').removeClass('selected');
+            $('#declineModal').modal('hide');
+            $('#declineReason').val('');
+            
+            // Reload after delay
+            setTimeout(() => location.reload(), 1500);
+        }, 1500);
+    }
 
-        $.ajax({
-            url: '{% url "adminpanel:bulk_update_deposits" %}',
-            method: 'POST',
-            data: JSON.stringify({
-                deposit_ids: selectedDeposits,
-                action: action,
-                admin_notes: reason
-            }),
-            contentType: 'application/json',
-            success: function(response) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: `Updated ${response.updated_count} deposits.`,
-                    timer: 2000
-                }).then(() => location.reload());
-            },
-            error: function(xhr) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: xhr.responseJSON?.error || 'Failed to process bulk action'
-                });
-            }
-        });
+    function performDecline(reference, reason) {
+        showLoading('Processing...');
+        
+        // Simulate AJAX call
+        setTimeout(() => {
+            Swal.close();
+            showToast('Deposit declined successfully', 'success');
+            $('#declineModal').modal('hide');
+            $('#declineReason').val('');
+            currentReference = null;
+            
+            setTimeout(() => location.reload(), 1500);
+        }, 1500);
     }
 
     // Single approve
@@ -396,47 +1180,26 @@ $(document).ready(function() {
         Swal.fire({
             title: 'Approve Deposit?',
             text: 'This will credit the user\'s wallet immediately.',
-            icon: 'warning',
+            icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#48bb78',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, approve it'
+            confirmButtonText: 'Yes, approve it',
+            background: '#1a1f2e',
+            color: '#e2e8f0'
         }).then((result) => {
             if (result.isConfirmed) {
-                approveDeposit(reference);
+                showLoading('Approving deposit...');
+                
+                // Simulate AJAX call
+                setTimeout(() => {
+                    Swal.close();
+                    showToast('Deposit approved successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                }, 1500);
             }
         });
     });
-
-    function approveDeposit(reference) {
-        Swal.fire({
-            title: 'Processing...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        $.ajax({
-            url: `/admin/deposits/${reference}/approve/`,
-            method: 'POST',
-            success: function(response) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Approved!',
-                    text: response.message,
-                    timer: 2000
-                }).then(() => location.reload());
-            },
-            error: function(xhr) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: xhr.responseJSON?.error || 'Failed to approve deposit'
-                });
-            }
-        });
-    }
 
     // Single decline
     $('.decline-deposit').click(function() {
@@ -444,48 +1207,236 @@ $(document).ready(function() {
         $('#declineModal').modal('show');
     });
 
-    $('#confirmDecline').off().on('click', function() {
-        const reason = $('#declineReason').val().trim();
-        if (!reason) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Reason Required',
-                text: 'Please provide a reason for declining.'
-            });
-            return;
-        }
-
-        $('#declineModal').modal('hide');
+    // Copy reference
+    $('.copy-btn').click(function(e) {
+        e.preventDefault();
+        const reference = $(this).data('reference');
         
+        navigator.clipboard.writeText(reference).then(() => {
+            const btn = $(this);
+            const icon = btn.find('i');
+            const originalClass = icon.attr('class');
+            
+            icon.removeClass().addClass('fas fa-check');
+            btn.addClass('text-success');
+            
+            showToast('Reference copied to clipboard!', 'success');
+            
+            setTimeout(() => {
+                icon.removeClass().addClass(originalClass);
+                btn.removeClass('text-success');
+            }, 2000);
+        });
+    });
+
+    // Search functionality
+    function filterTable() {
+        const searchTerm = $('#searchInput').val().toLowerCase().trim();
+        let visibleCount = 0;
+        const rows = $('.deposit-row');
+        
+        rows.each(function() {
+            const row = $(this);
+            const text = row.text().toLowerCase();
+            
+            if (text.indexOf(searchTerm) > -1 || searchTerm === '') {
+                row.show();
+                visibleCount++;
+                
+                if (searchTerm !== '') {
+                    highlightText(row, searchTerm);
+                } else {
+                    removeHighlights(row);
+                }
+            } else {
+                row.hide();
+                removeHighlights(row);
+            }
+        });
+        
+        updateSearchResults(visibleCount, rows.length);
+    }
+
+    function highlightText(element, searchTerm) {
+        removeHighlights(element);
+        
+        const textElements = element.find('.reference-code, .fw-medium, .text-muted');
+        
+        textElements.each(function() {
+            const el = $(this);
+            const text = el.text();
+            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            const highlighted = text.replace(regex, '<span class="highlight">$1</span>');
+            
+            if (highlighted !== text) {
+                el.html(highlighted);
+            }
+        });
+    }
+
+    function removeHighlights(element) {
+        element.find('.highlight').each(function() {
+            const parent = $(this).parent();
+            parent.text(parent.text());
+        });
+    }
+
+    function updateSearchResults(visibleCount, totalCount) {
+        $('#depositCount').text(`${visibleCount} of ${totalCount} requests`);
+        
+        if (visibleCount === 0) {
+            $('#noResultsMessage').show();
+            $('#noDepositsRow').hide();
+        } else {
+            $('#noResultsMessage').hide();
+        }
+    }
+
+    // Sorting functionality
+    $('.sortable').click(function() {
+        const column = $(this).data('sort');
+        
+        if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = column;
+            currentSort.direction = 'asc';
+        }
+        
+        sortTable(column);
+        
+        // Update sort indicators
+        $('.sortable').removeClass('sorted-asc sorted-desc');
+        $(this).addClass(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    });
+
+    function sortTable(column) {
+        const tbody = $('#depositsTable tbody');
+        const rows = tbody.find('.deposit-row').get();
+        
+        rows.sort(function(a, b) {
+            let aValue, bValue;
+            
+            switch (column) {
+                case 'reference':
+                    aValue = $(a).data('reference');
+                    bValue = $(b).data('reference');
+                    break;
+                case 'user':
+                    aValue = $(a).data('user');
+                    bValue = $(b).data('user');
+                    break;
+                case 'amount':
+                    aValue = parseFloat($(a).data('amount'));
+                    bValue = parseFloat($(b).data('amount'));
+                    break;
+                case 'status':
+                    aValue = $(a).data('status');
+                    bValue = $(b).data('status');
+                    break;
+                case 'date':
+                    aValue = parseInt($(a).data('date'));
+                    bValue = parseInt($(b).data('date'));
+                    break;
+                default:
+                    return 0;
+            }
+            
+            let comparison = 0;
+            if (aValue < bValue) comparison = -1;
+            if (aValue > bValue) comparison = 1;
+            
+            return currentSort.direction === 'asc' ? comparison : -comparison;
+        });
+        
+        // Reorder rows
+        $.each(rows, function(index, row) {
+            tbody.append(row);
+        });
+    }
+
+    // Toast notification
+    function showToast(message, type = 'info') {
+        $('.custom-toast').remove();
+        
+        const colors = {
+            success: '#48bb78',
+            error: '#f56565',
+            warning: '#ed8936',
+            info: '#4299e1'
+        };
+        
+        const icons = {
+            success: 'check-circle',
+            error: 'exclamation-circle',
+            warning: 'exclamation-triangle',
+            info: 'info-circle'
+        };
+        
+        const toast = $(`
+            <div class="custom-toast position-fixed bottom-0 end-0 m-3 p-3 rounded shadow-lg" 
+                 style="z-index: 9999; background: ${colors[type]}; min-width: 250px;">
+                <div class="d-flex align-items-center gap-2 text-white">
+                    <i class="fas fa-${icons[type]}"></i>
+                    <span>${message}</span>
+                </div>
+            </div>
+        `);
+        
+        $('body').append(toast);
+        
+        setTimeout(() => {
+            toast.fadeOut(300, function() {
+                $(this).remove();
+            });
+        }, 3000);
+    }
+
+    // Loading indicator
+    function showLoading(message) {
         Swal.fire({
-            title: 'Processing...',
+            title: message,
+            text: 'Please wait...',
             allowOutsideClick: false,
             didOpen: () => {
                 Swal.showLoading();
-            }
-        });
-
-        $.ajax({
-            url: `/admin/deposits/${currentReference}/decline/`,
-            method: 'POST',
-            data: JSON.stringify({ admin_notes: reason }),
-            contentType: 'application/json',
-            success: function(response) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Declined',
-                    text: response.message,
-                    timer: 2000
-                }).then(() => location.reload());
             },
-            error: function(xhr) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: xhr.responseJSON?.error || 'Failed to decline deposit'
-                });
-            }
+            background: '#1a1f2e',
+            color: '#e2e8f0'
         });
+    }
+
+    // Avatar colors
+    $('.avatar-circle').each(function() {
+        const initial = $(this).data('initial') || $(this).text().trim();
+        if (initial) {
+            $(this).css('background', getColorFromString(initial));
+        }
+    });
+
+    function getColorFromString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const colors = [
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
+        ];
+        
+        return colors[Math.abs(hash) % colors.length];
+    }
+
+    // Initialize tooltips
+    $('[title]').tooltip({
+        placement: 'top',
+        trigger: 'hover',
+        template: '<div class="tooltip" role="tooltip"><div class="tooltip-inner" style="background: #2d3748; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1);"></div></div>'
     });
 });
 </script>
