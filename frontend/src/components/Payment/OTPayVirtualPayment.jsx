@@ -181,16 +181,28 @@ const BankDepositPayment = ({ user, onSuccess, onBack }) => {
   };
 
   const handleMarkAsPaid = async () => {
-    if (!depositRequest) return;
+    if (!depositRequest) {
+      setPaymentError("No active deposit request found");
+      return;
+    }
     
     setLoading(true);
-    
+    setPaymentError("");
+    setPaymentSuccess("");
+
     try {
+      console.log("Marking deposit as paid with ID:", depositRequest.id);
+      console.log("Full deposit request object:", depositRequest);
+
       const res = await walletService.markAsPaid({
         deposit_request_id: depositRequest.id
       });
-      
-      if (res?.status === true) {
+
+      console.log("Mark as paid response:", res);
+      console.log("Response data:", res.data);
+      console.log("Response status:", res.status);
+
+      if (res?.data?.status === true) {
         // Update status to processing
         setPaymentStatus('processing');
         setActiveStep(2); // Go directly to confirmation step
@@ -203,12 +215,42 @@ const BankDepositPayment = ({ user, onSuccess, onBack }) => {
         
         // Refresh deposit requests
         fetchUserDepositRequests();
+        
+        setPaymentSuccess("Payment notification sent successfully!");
       } else {
-        throw new Error(res?.message || "Failed to mark as paid");
+        console.error("Unexpected response structure:", res);
+        throw new Error(res?.data?.message || res?.message || "Failed to mark as paid");
       }
     } catch (err) {
-      console.error("Error marking as paid:", err);
-      setPaymentError(err?.message || "Failed to mark as paid. Please try again.");
+      console.error("Error in markAsPaid:", err);
+      console.error("Error response:", err.response);
+      console.error("Error data:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      console.error("Error headers:", err.response?.headers);
+      
+      // Extract error message
+      let errorMessage = "Failed to mark as paid. Please try again.";
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      // Check for specific HTTP status codes
+      if (err.response?.status === 404) {
+        errorMessage = "Deposit request not found. It may have expired.";
+      } else if (err.response?.status === 400) {
+        errorMessage = err.response.data.message || "Invalid request. Please check your deposit status.";
+      } else if (err.response?.status === 401) {
+        errorMessage = "Your session has expired. Please login again.";
+      } else if (err.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      }
+      
+      setPaymentError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -570,7 +612,7 @@ const BankDepositPayment = ({ user, onSuccess, onBack }) => {
               
               <Button
                 variant="outlined"
-                onClick={() => window.location.href = '/dashboard'}
+                onClick={() => window.location.href = '/'}
                 startIcon={<HomeIcon />}
               >
                 Go to Dashboard

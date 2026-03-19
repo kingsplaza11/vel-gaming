@@ -51,12 +51,30 @@ export const walletService = {
   },
 
   // Mark deposit as paid (user has made transfer)
-  markAsPaid: (data) => {
-    console.log("Marking deposit as paid:", data);
-    return api.post("/wallet/mark_as_paid/", {
-      deposit_request_id: data.deposit_request_id,
-      reference: data.reference
-    });
+  markAsPaid: async (data) => {
+    console.log("Marking deposit as paid with data:", data);
+    try {
+      const response = await api.post("/wallet/mark_as_paid/", {
+        deposit_request_id: data.deposit_request_id,
+        reference: data.reference
+      });
+      
+      console.log("Raw markAsPaid response:", response);
+      console.log("markAsPaid response data:", response.data);
+      console.log("markAsPaid response status:", response.status);
+      
+      return response;
+    } catch (error) {
+      console.error("API call error in markAsPaid:", error);
+      console.error("Error config:", error.config);
+      console.error("Error response:", error.response);
+      console.error("Error data:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      console.error("Error headers:", error.response?.headers);
+      
+      // Re-throw with more context
+      throw error;
+    }
   },
 
   // Get user's deposit requests history
