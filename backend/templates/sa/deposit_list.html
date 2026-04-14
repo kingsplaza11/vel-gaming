@@ -1014,13 +1014,28 @@
 }
 </style>
 {% endblock %}
-
 {% block extra_js %}
 <script>
 $(document).ready(function() {
     let selectedDeposits = new Set();
     let currentReference = null;
     let currentSort = { column: null, direction: 'asc' };
+
+    // Helper function to get CSRF token
+    function getCSRFToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === ('csrftoken' + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 
     // Select all functionality
     $('#selectAll').change(function() {
@@ -1059,7 +1074,6 @@ $(document).ready(function() {
     function updateSelectedUI() {
         const count = selectedDeposits.size;
         $('#selectedCount').text(count);
-        $('#bulkActionsBtn').prop('disabled', count === 0);
         
         // Update select all checkboxes
         const totalCheckboxes = $('.deposit-checkbox').length;
@@ -1077,23 +1091,6 @@ $(document).ready(function() {
     }
 
     // Bulk actions
-    $('.bulk-action').click(function(e) {
-        e.preventDefault();
-        const action = $(this).data('action');
-        
-        if (selectedDeposits.size === 0) {
-            showToast('Please select at least one deposit', 'warning');
-            return;
-        }
-
-        if (action === 'decline') {
-            $('#declineModal').modal('show');
-            $('#confirmDecline').data('action', 'decline');
-        } else {
-            performBulkAction(action);
-        }
-    });
-
     $('#applyBulkAction').click(function() {
         const action = $('#bulkActionSelect').val();
         if (!action) {
@@ -1107,9 +1104,12 @@ $(document).ready(function() {
         }
 
         if (action === 'decline') {
+            currentReference = null; // Indicate bulk action
             $('#declineModal').modal('show');
-        } else {
-            performBulkAction(action);
+        } else if (action === 'approve') {
+            performBulkApprove();
+        } else if (action === 'processing') {
+            performBulkProcessing();
         }
     });
 
@@ -1120,58 +1120,6 @@ $(document).ready(function() {
         updateSelectedUI();
         $('.deposit-row').removeClass('selected');
     });
-
-    $('#confirmDecline').click(function() {
-        const reason = $('#declineReason').val().trim();
-        if (!reason) {
-            showToast('Please provide a reason for declining', 'warning');
-            return;
-        }
-        
-        if (currentReference) {
-            // Single decline
-            performDecline(currentReference, reason);
-        } else {
-            // Bulk decline
-            performBulkAction('decline', reason);
-        }
-    });
-
-    function performBulkAction(action, reason = '') {
-        showLoading('Processing...');
-        
-        // Simulate AJAX call (replace with actual API endpoint)
-        setTimeout(() => {
-            Swal.close();
-            showToast(`Successfully ${action}d ${selectedDeposits.size} deposit(s)`, 'success');
-            
-            // Clear selections
-            $('.deposit-checkbox').prop('checked', false);
-            selectedDeposits.clear();
-            updateSelectedUI();
-            $('.deposit-row').removeClass('selected');
-            $('#declineModal').modal('hide');
-            $('#declineReason').val('');
-            
-            // Reload after delay
-            setTimeout(() => location.reload(), 1500);
-        }, 1500);
-    }
-
-    function performDecline(reference, reason) {
-        showLoading('Processing...');
-        
-        // Simulate AJAX call
-        setTimeout(() => {
-            Swal.close();
-            showToast('Deposit declined successfully', 'success');
-            $('#declineModal').modal('hide');
-            $('#declineReason').val('');
-            currentReference = null;
-            
-            setTimeout(() => location.reload(), 1500);
-        }, 1500);
-    }
 
     // Single approve
     $('.approve-deposit').click(function() {
@@ -1189,14 +1137,7 @@ $(document).ready(function() {
             color: '#e2e8f0'
         }).then((result) => {
             if (result.isConfirmed) {
-                showLoading('Approving deposit...');
-                
-                // Simulate AJAX call
-                setTimeout(() => {
-                    Swal.close();
-                    showToast('Deposit approved successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                }, 1500);
+                approveDeposit(reference);
             }
         });
     });
@@ -1206,6 +1147,276 @@ $(document).ready(function() {
         currentReference = $(this).data('reference');
         $('#declineModal').modal('show');
     });
+
+    // Confirm decline button
+    $('#confirmDecline').off('click').on('click', function() {
+        const reason = $('#declineReason').val().trim();
+        if (!reason) {
+            showToast('Please provide a reason for declining', 'warning');
+            return;
+        }
+        
+        if (currentReference) {
+            // Single decline
+            declineDeposit(currentReference, reason);
+        } else {
+            // Bulk decline
+            performBulkDecline(reason);
+        }
+    });
+
+    // Approve single deposit - Using Django URL
+    function approveDeposit(reference) {
+        showLoading('Approving deposit...');
+        
+        // Build URL using Django template
+        const url = "{% url 'adminpanel:approve_deposit' 'REFERENCE_PLACEHOLDER' %}".replace('REFERENCE_PLACEHOLDER', reference);
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                admin_notes: 'Approved by admin'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            console.error('Error:', error);
+            showToast('An error occurred while approving', 'error');
+        });
+    }
+
+    // Decline single deposit - Using Django URL
+    function declineDeposit(reference, reason) {
+        showLoading('Declining deposit...');
+        
+        // Build URL using Django template
+        const url = "{% url 'adminpanel:decline_deposit' 'REFERENCE_PLACEHOLDER' %}".replace('REFERENCE_PLACEHOLDER', reference);
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                admin_notes: reason
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                showToast(data.message, 'success');
+                $('#declineModal').modal('hide');
+                $('#declineReason').val('');
+                currentReference = null;
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            console.error('Error:', error);
+            showToast('An error occurred while declining', 'error');
+        });
+    }
+
+    // Mark as processing single deposit - Using Django URL
+    function markAsProcessing(reference) {
+        showLoading('Updating status...');
+        
+        // Build URL using Django template
+        const url = "{% url 'adminpanel:mark_deposit_processing' 'REFERENCE_PLACEHOLDER' %}".replace('REFERENCE_PLACEHOLDER', reference);
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            console.error('Error:', error);
+            showToast('An error occurred', 'error');
+        });
+    }
+
+    // Bulk approve - Using Django URL
+    function performBulkApprove() {
+        const depositReferences = getSelectedReferences();
+        
+        if (depositReferences.length === 0) {
+            showToast('No deposits selected', 'warning');
+            return;
+        }
+        
+        showLoading(`Approving ${depositReferences.length} deposit(s)...`);
+        
+        const url = "{% url 'adminpanel:bulk_update_deposits' %}";
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                deposit_ids: depositReferences,
+                action: 'approve',
+                admin_notes: 'Bulk approved by admin'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                showToast(data.message, 'success');
+                clearSelections();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            console.error('Error:', error);
+            showToast('An error occurred during bulk approve', 'error');
+        });
+    }
+
+    // Bulk processing - Using Django URL
+    function performBulkProcessing() {
+        const depositReferences = getSelectedReferences();
+        
+        if (depositReferences.length === 0) {
+            showToast('No deposits selected', 'warning');
+            return;
+        }
+        
+        showLoading(`Marking ${depositReferences.length} deposit(s) as processing...`);
+        
+        const url = "{% url 'adminpanel:bulk_update_deposits' %}";
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                deposit_ids: depositReferences,
+                action: 'processing',
+                admin_notes: ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                showToast(data.message, 'success');
+                clearSelections();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            console.error('Error:', error);
+            showToast('An error occurred', 'error');
+        });
+    }
+
+    // Bulk decline - Using Django URL
+    function performBulkDecline(reason) {
+        const depositReferences = getSelectedReferences();
+        
+        if (depositReferences.length === 0) {
+            showToast('No deposits selected', 'warning');
+            return;
+        }
+        
+        showLoading(`Declining ${depositReferences.length} deposit(s)...`);
+        
+        const url = "{% url 'adminpanel:bulk_update_deposits' %}";
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                deposit_ids: depositReferences,
+                action: 'decline',
+                admin_notes: reason
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                showToast(data.message, 'success');
+                $('#declineModal').modal('hide');
+                $('#declineReason').val('');
+                clearSelections();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            console.error('Error:', error);
+            showToast('An error occurred during bulk decline', 'error');
+        });
+    }
+
+    // Helper function to get selected deposit references
+    function getSelectedReferences() {
+        const references = [];
+        $('.deposit-checkbox:checked').each(function() {
+            const reference = $(this).closest('.deposit-row').find('.copy-btn').data('reference');
+            if (reference) {
+                references.push(reference);
+            }
+        });
+        return references;
+    }
+
+    // Clear selections
+    function clearSelections() {
+        $('.deposit-checkbox').prop('checked', false);
+        selectedDeposits.clear();
+        updateSelectedUI();
+        $('.deposit-row').removeClass('selected');
+    }
 
     // Copy reference
     $('.copy-btn').click(function(e) {
@@ -1284,9 +1495,8 @@ $(document).ready(function() {
     function updateSearchResults(visibleCount, totalCount) {
         $('#depositCount').text(`${visibleCount} of ${totalCount} requests`);
         
-        if (visibleCount === 0) {
+        if (visibleCount === 0 && totalCount > 0) {
             $('#noResultsMessage').show();
-            $('#noDepositsRow').hide();
         } else {
             $('#noResultsMessage').hide();
         }
@@ -1432,12 +1642,8 @@ $(document).ready(function() {
         return colors[Math.abs(hash) % colors.length];
     }
 
-    // Initialize tooltips
-    $('[title]').tooltip({
-        placement: 'top',
-        trigger: 'hover',
-        template: '<div class="tooltip" role="tooltip"><div class="tooltip-inner" style="background: #2d3748; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1);"></div></div>'
-    });
+    // Attach search input handler
+    $('#searchInput').on('keyup', filterTable);
 });
 </script>
 {% endblock %}

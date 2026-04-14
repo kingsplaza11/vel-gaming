@@ -700,14 +700,17 @@ def approve_withdrawal(request, reference):
         })
         withdrawal.save()
         
-        # Update related wallet transaction
-        WalletTransaction.objects.filter(
+        # Update related wallet transaction - FIXED: update the JSON meta field directly
+        wallet_transactions = WalletTransaction.objects.filter(
             meta__withdrawal_reference=reference
-        ).update(
-            meta__status='completed',
-            meta__approved_by=request.user.username,
-            meta__approved_at=str(timezone.now())
         )
+        
+        for transaction in wallet_transactions:
+            # Update the meta JSON field
+            transaction.meta['status'] = 'completed'
+            transaction.meta['approved_by'] = request.user.username
+            transaction.meta['approved_at'] = str(timezone.now())
+            transaction.save()
         
         # Send completion email
         try:
@@ -764,6 +767,19 @@ def decline_withdrawal(request, reference):
             'decline_reason': admin_notes
         })
         withdrawal.save()
+        
+        # Update related wallet transaction - FIXED: update the JSON meta field directly
+        wallet_transactions = WalletTransaction.objects.filter(
+            meta__withdrawal_reference=reference
+        )
+        
+        for transaction in wallet_transactions:
+            # Update the meta JSON field
+            transaction.meta['status'] = 'failed'
+            transaction.meta['declined_by'] = request.user.username
+            transaction.meta['declined_at'] = str(timezone.now())
+            transaction.meta['decline_reason'] = admin_notes
+            transaction.save()
         
         # Refund the amount back to user's spot balance
         with db_transaction.atomic():
